@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[@Name="MealBaseIngredientless" and not(comps/li[@Class="Contagion.CompProperties_ContaminatedFood"])]/comps</xpath>
+    <value>
+      <li Class="Contagion.CompProperties_ContaminatedFood" />
+    </value>
+  </Operation>
+</Patch>

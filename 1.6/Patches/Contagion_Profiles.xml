@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Flu" and not(modExtensions)]</xpath>
+    <value>
+      <modExtensions />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+        <contagiousMinSeverity>0.05</contagiousMinSeverity>
+        <contagiousMaxSeverity>0.8</contagiousMaxSeverity>
+        <contagiousDuringIncubation>true</contagiousDuringIncubation>
+        <incubationDays>1.5</incubationDays>
+        <immunityDurationDays>0</immunityDurationDays>
+        <affectsHumans>true</affectsHumans>
+        <vectors>
+          <li Class="Contagion.Vector_Airborne">
+            <baseChancePerCheck>0.03</baseChancePerCheck>
+            <outdoorFactor>0.15</outdoorFactor>
+            <maxRange>15</maxRange>
+            <distanceFalloffRate>0.25</distanceFalloffRate>
+          </li>
+          <li Class="Contagion.Vector_Social">
+            <baseChancePerInteraction>0.02</baseChancePerInteraction>
+            <outdoorFactor>0.5</outdoorFactor>
+          </li>
+          <li Class="Contagion.Vector_Fomite">
+            <contaminatesVomit>true</contaminatesVomit>
+            <baseChancePerContact>0.03</baseChancePerContact>
+            <potencyDecayPerHour>0.1</potencyDecayPerHour>
+          </li>
+        </vectors>
+        <seeders>
+          <li Class="Contagion.Seeder_Storyteller">
+            <seedCountRange>(1,1)</seedCountRange>
+          </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.01</arrivalChance>
+          </li>
+        </seeders>
+      </li>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Plague" and not(modExtensions)]</xpath>
+    <value>
+      <modExtensions />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Plague" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+        <contagiousMinSeverity>0.05</contagiousMinSeverity>
+        <contagiousMaxSeverity>0.9</contagiousMaxSeverity>
+        <incubationDays>1.0</incubationDays>
+        <immunityDurationDays>0</immunityDurationDays>
+        <affectsHumans>true</affectsHumans>
+        <vectors>
+          <li Class="Contagion.Vector_Proximity">
+            <baseChancePerCheck>0.025</baseChancePerCheck>
+            <maxRange>6</maxRange>
+            <distanceFalloffRate>0.35</distanceFalloffRate>
+            <cleanlinessImpact>1.0</cleanlinessImpact>
+            <outdoorFactor>0.75</outdoorFactor>
+          </li>
+        </vectors>
+        <seeders>
+          <li Class="Contagion.Seeder_Storyteller">
+            <seedCountRange>(1,1)</seedCountRange>
+          </li>
+          <li Class="Contagion.Seeder_AnimalLinked">
+            <mtbDays>120</mtbDays>
+            <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
+            <handlerBias>2.0</handlerBias>
+          </li>
+        </seeders>
+      </li>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="GutWorms" and not(modExtensions)]</xpath>
+    <value>
+      <modExtensions />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="GutWorms" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+        <contagiousMinSeverity>0.0</contagiousMinSeverity>
+        <contagiousMaxSeverity>1.0</contagiousMaxSeverity>
+        <incubationDays>3.0</incubationDays>
+        <immunityDurationDays>15</immunityDurationDays>
+        <affectsHumans>true</affectsHumans>
+        <partsToAffect>
+          <li>Stomach</li>
+        </partsToAffect>
+        <vectors>
+          <li Class="Contagion.Vector_Foodborne">
+            <baseChancePerMeal>0.08</baseChancePerMeal>
+            <cleanlinessImpact>1.0</cleanlinessImpact>
+          </li>
+        </vectors>
+        <seeders>
+          <li Class="Contagion.Seeder_Storyteller">
+            <seedCountRange>(1,1)</seedCountRange>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>90</mtbDays>
+          </li>
+        </seeders>
+      </li>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Malaria" and not(modExtensions)]</xpath>
+    <value>
+      <modExtensions />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Malaria" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+        <contagiousMinSeverity>0.0</contagiousMinSeverity>
+        <contagiousMaxSeverity>1.0</contagiousMaxSeverity>
+        <incubationDays>2.0</incubationDays>
+        <immunityDurationDays>0</immunityDurationDays>
+        <affectsHumans>true</affectsHumans>
+        <vectors>
+          <li Class="Contagion.Vector_Environmental">
+            <baseChancePerCheck>0.0035</baseChancePerCheck>
+            <minTemperature>16</minTemperature>
+            <peakTemperature>30</peakTemperature>
+            <waterProximityRadius>10</waterProximityRadius>
+            <waterProximityWeight>0.02</waterProximityWeight>
+            <indoorReductionPerCellFromEdge>0.08</indoorReductionPerCellFromEdge>
+            <coolRoomThreshold>22</coolRoomThreshold>
+          </li>
+        </vectors>
+        <seeders>
+          <li Class="Contagion.Seeder_Environmental">
+            <baseChanceMultiplier>1.0</baseChanceMultiplier>
+          </li>
+        </seeders>
+      </li>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="SleepingSickness" and not(modExtensions)]</xpath>
+    <value>
+      <modExtensions />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="SleepingSickness" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+        <contagiousMinSeverity>0.0</contagiousMinSeverity>
+        <contagiousMaxSeverity>1.0</contagiousMaxSeverity>
+        <incubationDays>2.5</incubationDays>
+        <immunityDurationDays>0</immunityDurationDays>
+        <affectsHumans>true</affectsHumans>
+        <vectors>
+          <li Class="Contagion.Vector_Environmental">
+            <baseChancePerCheck>0.0025</baseChancePerCheck>
+            <minTemperature>20</minTemperature>
+            <peakTemperature>32</peakTemperature>
+            <waterProximityRadius>12</waterProximityRadius>
+            <waterProximityWeight>0.025</waterProximityWeight>
+            <indoorReductionPerCellFromEdge>0.1</indoorReductionPerCellFromEdge>
+            <coolRoomThreshold>24</coolRoomThreshold>
+          </li>
+        </vectors>
+        <seeders>
+          <li Class="Contagion.Seeder_Environmental">
+            <baseChanceMultiplier>0.75</baseChanceMultiplier>
+          </li>
+        </seeders>
+      </li>
+    </value>
+  </Operation>
+</Patch>

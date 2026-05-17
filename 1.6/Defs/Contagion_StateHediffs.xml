@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <HediffDef>
+    <defName>Contagion_Incubation</defName>
+    <hediffClass>Contagion.Hediff_ContagionIncubation</hediffClass>
+    <label>incubation</label>
+    <description>Hidden incubation state used by Contagion before a disease becomes active.</description>
+    <initialSeverity>1.0</initialSeverity>
+    <maxSeverity>1.0</maxSeverity>
+    <isBad>false</isBad>
+    <scenarioCanAdd>false</scenarioCanAdd>
+  </HediffDef>
+
+  <HediffDef>
+    <defName>Contagion_TemporaryImmunity</defName>
+    <hediffClass>Contagion.Hediff_ContagionTemporaryImmunity</hediffClass>
+    <label>temporary immunity</label>
+    <description>Hidden temporary immunity state used by Contagion to prevent immediate reinfection.</description>
+    <initialSeverity>1.0</initialSeverity>
+    <maxSeverity>1.0</maxSeverity>
+    <isBad>false</isBad>
+    <scenarioCanAdd>false</scenarioCanAdd>
+  </HediffDef>
+</Defs>

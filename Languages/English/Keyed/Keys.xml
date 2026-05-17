@@ -1,6 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
   <Contagion_SettingsCategory>Contagion</Contagion_SettingsCategory>
-  <Contagion_SettingsEmpty>Settings will appear here once transmission tuning is implemented.</Contagion_SettingsEmpty>
+  <Contagion_SettingsGameplayHeader>Gameplay</Contagion_SettingsGameplayHeader>
+  <Contagion_SettingTransmissionRate>Transmission rate: {0}</Contagion_SettingTransmissionRate>
+  <Contagion_SettingTransmissionRateTooltip>Global multiplier applied to transmission vector chances.</Contagion_SettingTransmissionRateTooltip>
+  <Contagion_SettingOutbreakFrequency>Outbreak frequency: {0}</Contagion_SettingOutbreakFrequency>
+  <Contagion_SettingOutbreakFrequencyTooltip>Global multiplier applied to storyteller and other seeding pressures.</Contagion_SettingOutbreakFrequencyTooltip>
+  <Contagion_SettingIncubationLength>Incubation length: {0}</Contagion_SettingIncubationLength>
+  <Contagion_SettingIncubationLengthTooltip>Global multiplier applied to incubation duration before the real disease appears.</Contagion_SettingIncubationLengthTooltip>
+  <Contagion_SettingsDiagnosticsHeader>Diagnostics</Contagion_SettingsDiagnosticsHeader>
+  <Contagion_DiagnosticsModeOff>Off</Contagion_DiagnosticsModeOff>
+  <Contagion_DiagnosticsModeOffTooltip>Disable Contagion runtime counters and optional tracing.</Contagion_DiagnosticsModeOffTooltip>
+  <Contagion_DiagnosticsModeSummary>Summary</Contagion_DiagnosticsModeSummary>
+  <Contagion_DiagnosticsModeSummaryTooltip>Collect lightweight counters for seeding, transmission, and blocking outcomes.</Contagion_DiagnosticsModeSummaryTooltip>
+  <Contagion_DiagnosticsModeVerbose>Verbose</Contagion_DiagnosticsModeVerbose>
+  <Contagion_DiagnosticsModeVerboseTooltip>Enable event-level tracing for debugging. Traces should remain gated behind dev mode.</Contagion_DiagnosticsModeVerboseTooltip>
+  <Contagion_ShowPerformanceStats>Collect performance stats</Contagion_ShowPerformanceStats>
+  <Contagion_ShowPerformanceStatsTooltip>Track transmission tick timings and candidate counts while diagnostics are enabled.</Contagion_ShowPerformanceStatsTooltip>
+  <Contagion_DiagnosticsPending>Runtime counters and trace summaries will appear here once the contagion engine is implemented.</Contagion_DiagnosticsPending>
+  <Contagion_DiagnosticsRuntimeHeader>Runtime summary</Contagion_DiagnosticsRuntimeHeader>
+  <Contagion_DiagnosticsPerformanceHeader>Performance</Contagion_DiagnosticsPerformanceHeader>
+  <Contagion_DiagnosticsNoEvents>No runtime contagion events recorded yet.</Contagion_DiagnosticsNoEvents>
+  <Contagion_DiagnosticsSummaryIncubation>Incubation: {0} seeded, {1} blocked, {2} immunity-blocked.</Contagion_DiagnosticsSummaryIncubation>
+  <Contagion_DiagnosticsSummarySeeding>Seeding success/attempts: storyteller {0}, arrivals {1}, environment {2}.</Contagion_DiagnosticsSummarySeeding>
+  <Contagion_DiagnosticsSummarySpread>Spread success/attempts: airborne {0}, proximity {1}, social {2}.</Contagion_DiagnosticsSummarySpread>
+  <Contagion_DiagnosticsSummaryContamination>Contamination: meals tagged {0}, foodborne {1}, vomit tagged {2}, fomite {3}.</Contagion_DiagnosticsSummaryContamination>
+  <Contagion_DiagnosticsNoPerformanceData>No performance samples recorded yet.</Contagion_DiagnosticsNoPerformanceData>
+  <Contagion_DiagnosticsPerformanceTransmission>Transmission pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceTransmission>
+  <Contagion_DiagnosticsPerformanceEnvironmental>Environmental pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceEnvironmental>
+  <Contagion_ClearDiagnostics>Clear diagnostics</Contagion_ClearDiagnostics>
+  <Contagion_DiagnosticsVerboseDevMode>Verbose traces only emit while RimWorld dev mode is enabled.</Contagion_DiagnosticsVerboseDevMode>
+  <Contagion_LetterLabelExposure>Disease exposure: {0}</Contagion_LetterLabelExposure>
+  <Contagion_LetterExposureSingle>{0} has been exposed to {1}. Symptoms may appear after an incubation period.</Contagion_LetterExposureSingle>
+  <Contagion_LetterExposureMultiple>{0} pawns have been exposed to {1}. Symptoms may appear after an incubation period</Contagion_LetterExposureMultiple>
+  <Contagion_LetterExposureBlocked>Exposure to {0} was prevented.</Contagion_LetterExposureBlocked>
   <Contagion_ResetDefaults>Reset to defaults</Contagion_ResetDefaults>
 </LanguageData>
