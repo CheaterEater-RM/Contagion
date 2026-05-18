@@ -60,18 +60,48 @@ public static class ContagionDiseaseUtility
         }
 
         Pawn pawn = incubation.pawn;
-        if (!CanContractDiseaseNow(pawn, incubation.TargetDiseaseDef, incubation.PartsToAffect, out var _) && !pawn.health.hediffSet.HasHediff(incubation.TargetDiseaseDef))
+        if (pawn.health.hediffSet.HasHediff(incubation.TargetDiseaseDef))
+        {
+            pawn.health.RemoveHediff(incubation);
+            return true;
+        }
+
+        if (!CanContractDiseaseNow(pawn, incubation.TargetDiseaseDef, incubation.PartsToAffect, out var _, incubation))
         {
             pawn.health.RemoveHediff(incubation);
             return false;
         }
 
-        HediffGiverUtility.TryApply(pawn, incubation.TargetDiseaseDef, incubation.PartsToAffect);
+        List<Hediff> addedHediffs = new List<Hediff>();
+        bool activated = HediffGiverUtility.TryApply(
+            pawn,
+            incubation.TargetDiseaseDef,
+            incubation.PartsToAffect,
+            outAddedHediffs: addedHediffs);
+        if (!activated)
+        {
+            Log.Warning($"[Contagion] Incubation for {incubation.TargetDiseaseDef.defName} on {pawn.LabelShortCap} resolved without creating the disease hediff.");
+            pawn.health.RemoveHediff(incubation);
+            return false;
+        }
+
+        TaleRecorder.RecordTale(TaleDefOf.IllnessRevealed, pawn, incubation.TargetDiseaseDef);
+        NotifyDiseaseActivated(pawn, addedHediffs.Count > 0 ? addedHediffs[0] : null, incubation.TargetDiseaseDef);
         pawn.health.RemoveHediff(incubation);
         return true;
     }
 
     public static bool CanContractDiseaseNow(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, out HediffDef immunityCause)
+    {
+        return CanContractDiseaseNow(pawn, diseaseDef, partsToAffect, out immunityCause, null);
+    }
+
+    private static bool CanContractDiseaseNow(
+        Pawn pawn,
+        HediffDef diseaseDef,
+        List<BodyPartDef> partsToAffect,
+        out HediffDef immunityCause,
+        Hediff_ContagionIncubation ignoredIncubation)
     {
         immunityCause = null;
 
@@ -90,7 +120,10 @@ public static class ContagionDiseaseUtility
             return false;
         }
 
-        if (pawn.health.hediffSet.HasHediff(diseaseDef) || FindIncubation(pawn, diseaseDef) != null || HasTemporaryImmunity(pawn, diseaseDef))
+        Hediff_ContagionIncubation existingIncubation = FindIncubation(pawn, diseaseDef);
+        if (pawn.health.hediffSet.HasHediff(diseaseDef)
+            || (existingIncubation != null && existingIncubation != ignoredIncubation)
+            || HasTemporaryImmunity(pawn, diseaseDef))
         {
             return false;
         }
@@ -270,5 +303,89 @@ public static class ContagionDiseaseUtility
     {
         float multiplier = Contagion_Mod.Settings?.incubationLengthMultiplier ?? 1f;
         return Mathf.Max(1, Mathf.RoundToInt(profile.incubationDays * multiplier * TicksPerDay));
+    }
+
+    private static void NotifyDiseaseActivated(Pawn pawn, Hediff diseaseHediff, HediffDef diseaseDef)
+    {
+        if (pawn == null || diseaseDef == null || !PawnUtility.ShouldSendNotificationAbout(pawn))
+        {
+            return;
+        }
+
+        string messageKey = $"ContagionDiseaseActivated-{pawn.thingIDNumber}-{diseaseDef.defName}";
+        if (!MessagesRepeatAvoider.MessageShowAllowed(messageKey, 0.5f))
+        {
+            return;
+        }
+
+        string diseaseLabel = diseaseHediff?.LabelCap ?? diseaseDef.LabelCap;
+        Messages.Message(
+            "Contagion_MessageDiseaseActivated".Translate(pawn.LabelShortCap, diseaseLabel),
+            pawn,
+            MessageTypeDefOf.NegativeHealthEvent,
+            historical: false);
+
+        NotifyOutbreakIfFirstVisibleCase(pawn, diseaseHediff, diseaseDef);
+    }
+
+    private static void NotifyOutbreakIfFirstVisibleCase(Pawn pawn, Hediff diseaseHediff, HediffDef diseaseDef)
+    {
+        Map map = pawn.MapHeld;
+        if (map == null || HasOtherVisibleNotifiableCaseOnMap(map, pawn, diseaseDef))
+        {
+            return;
+        }
+
+        string diseaseLabel = diseaseHediff?.LabelCap ?? diseaseDef.LabelCap;
+        Find.LetterStack.ReceiveLetter(
+            "Contagion_LetterLabelOutbreak".Translate(diseaseDef.LabelCap),
+            "Contagion_LetterOutbreakFirstCase".Translate(pawn.LabelShortCap, diseaseLabel),
+            LetterDefOf.NegativeEvent,
+            pawn);
+    }
+
+    private static bool HasOtherVisibleNotifiableCaseOnMap(Map map, Pawn currentPawn, HediffDef diseaseDef)
+    {
+        IReadOnlyList<Pawn> spawnedPawns = map?.mapPawns?.AllPawnsSpawned;
+        if (spawnedPawns == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < spawnedPawns.Count; i++)
+        {
+            Pawn otherPawn = spawnedPawns[i];
+            if (otherPawn == null || otherPawn == currentPawn || !PawnUtility.ShouldSendNotificationAbout(otherPawn))
+            {
+                continue;
+            }
+
+            if (HasVisibleDisease(otherPawn, diseaseDef))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasVisibleDisease(Pawn pawn, HediffDef diseaseDef)
+    {
+        List<Hediff> hediffs = pawn?.health?.hediffSet?.hediffs;
+        if (hediffs == null || diseaseDef == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < hediffs.Count; i++)
+        {
+            Hediff hediff = hediffs[i];
+            if (hediff?.def == diseaseDef && hediff.Visible)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

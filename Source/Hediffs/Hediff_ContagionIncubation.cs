@@ -6,13 +6,23 @@ namespace Contagion;
 
 public sealed class Hediff_ContagionIncubation : Hediff
 {
+    private const int LazyActivationCheckInterval = 250;
+
     private List<BodyPartDef> _partsToAffect;
 
     private int _activationTick = -1;
 
+    private int _durationTicks = 1;
+
+    private int _nextLazyCheckTick = -1;
+
     public HediffDef TargetDiseaseDef;
 
     public override bool Visible => false;
+
+    public override string LabelBase => TargetDiseaseDef == null
+        ? base.LabelBase
+        : "Contagion_IncubationLabel".Translate(TargetDiseaseDef.label).Resolve();
 
     public override bool ShouldRemove
     {
@@ -37,8 +47,10 @@ public sealed class Hediff_ContagionIncubation : Hediff
     {
         TargetDiseaseDef = targetDiseaseDef;
         _activationTick = activationTick;
+        _durationTicks = Mathf.Max(1, activationTick - Find.TickManager.TicksGame);
+        _nextLazyCheckTick = Mathf.Min(activationTick, Find.TickManager.TicksGame + LazyActivationCheckInterval);
         _partsToAffect = partsToAffect.NullOrEmpty() ? null : new List<BodyPartDef>(partsToAffect);
-        Severity = Mathf.Max(Severity, 1f);
+        UpdateProgressSeverity();
     }
 
     public override void ExposeData()
@@ -47,11 +59,18 @@ public sealed class Hediff_ContagionIncubation : Hediff
         Scribe_Defs.Look(ref TargetDiseaseDef, "targetDiseaseDef");
         Scribe_Collections.Look(ref _partsToAffect, "partsToAffect", LookMode.Def);
         Scribe_Values.Look(ref _activationTick, "activationTick", -1);
+        Scribe_Values.Look(ref _durationTicks, "durationTicks", 1);
+        Scribe_Values.Look(ref _nextLazyCheckTick, "nextLazyCheckTick", -1);
     }
 
-    public override void TickInterval(int delta)
+    public override void PostTickInterval(int delta)
     {
-        base.TickInterval(delta);
+        if (!ShouldRunLazyCheck())
+        {
+            return;
+        }
+
+        UpdateProgressSeverity();
 
         if (!ReadyToActivate)
         {
@@ -59,5 +78,39 @@ public sealed class Hediff_ContagionIncubation : Hediff
         }
 
         ContagionDiseaseUtility.TryActivateIncubatedDisease(this);
+    }
+
+    private bool ShouldRunLazyCheck()
+    {
+        if (_activationTick < 0)
+        {
+            return false;
+        }
+
+        int currentTick = Find.TickManager.TicksGame;
+        if (_nextLazyCheckTick < 0)
+        {
+            _nextLazyCheckTick = Mathf.Min(_activationTick, currentTick + LazyActivationCheckInterval);
+        }
+
+        if (currentTick < _nextLazyCheckTick)
+        {
+            return false;
+        }
+
+        _nextLazyCheckTick = Mathf.Min(_activationTick, currentTick + LazyActivationCheckInterval);
+        return true;
+    }
+
+    private void UpdateProgressSeverity()
+    {
+        if (_activationTick < 0)
+        {
+            return;
+        }
+
+        int ticksRemaining = Mathf.Max(0, _activationTick - Find.TickManager.TicksGame);
+        float progress = 1f - ((float)ticksRemaining / Mathf.Max(1, _durationTicks));
+        Severity = Mathf.Clamp(progress, 0.01f, 1f);
     }
 }

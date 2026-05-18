@@ -256,14 +256,10 @@ internal static class Patch_IncidentWorker_Disease_TryExecuteWorker
             return false;
         }
 
-        TaggedString label = "Contagion_LetterLabelExposure".Translate(__instance.def.diseaseIncident.label);
-        TaggedString text = Patch_IncidentWorker_Disease_Helper.BuildExposureLetterText(seededPawns, __instance.def.diseaseIncident, blockedInfo);
-        if (seededPawns.Count > 0)
+        if (seededPawns.Count == 0 && !blockedInfo.NullOrEmpty())
         {
-            Find.LetterStack.ReceiveLetter(label, text, __instance.def.letterDef, seededPawns[0]);
-        }
-        else
-        {
+            TaggedString label = "Contagion_LetterLabelExposure".Translate(__instance.def.diseaseIncident.label);
+            TaggedString text = Patch_IncidentWorker_Disease_Helper.BuildExposureLetterText(seededPawns, __instance.def.diseaseIncident, blockedInfo);
             Find.LetterStack.ReceiveLetter(label, text, __instance.def.letterDef);
         }
 

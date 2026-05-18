@@ -30,6 +30,10 @@
   <Contagion_DiagnosticsPerformanceEnvironmental>Environmental pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceEnvironmental>
   <Contagion_ClearDiagnostics>Clear diagnostics</Contagion_ClearDiagnostics>
   <Contagion_DiagnosticsVerboseDevMode>Verbose traces only emit while RimWorld dev mode is enabled.</Contagion_DiagnosticsVerboseDevMode>
+  <Contagion_IncubationLabel>{0} incubation</Contagion_IncubationLabel>
+  <Contagion_MessageDiseaseActivated>{0} has developed {1}.</Contagion_MessageDiseaseActivated>
+  <Contagion_LetterLabelOutbreak>Outbreak detected: {0}</Contagion_LetterLabelOutbreak>
+  <Contagion_LetterOutbreakFirstCase>{0} is showing symptoms of {1}. This is the first visible case in the colony, but transmission may already be underway.</Contagion_LetterOutbreakFirstCase>
   <Contagion_LetterLabelExposure>Disease exposure: {0}</Contagion_LetterLabelExposure>
   <Contagion_LetterExposureSingle>{0} has been exposed to {1}. Symptoms may appear after an incubation period.</Contagion_LetterExposureSingle>
   <Contagion_LetterExposureMultiple>{0} pawns have been exposed to {1}. Symptoms may appear after an incubation period</Contagion_LetterExposureMultiple>
