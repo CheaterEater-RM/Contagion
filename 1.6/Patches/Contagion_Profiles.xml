@@ -35,10 +35,48 @@
         </vectors>
         <seeders>
           <li Class="Contagion.Seeder_Storyteller">
-            <seedCountRange>(1,1)</seedCountRange>
+            <seedCountRange>1~1</seedCountRange>
           </li>
           <li Class="Contagion.Seeder_Arrival">
             <arrivalChance>0.01</arrivalChance>
+          </li>
+        </seeders>
+      </li>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Animal_Flu" and not(modExtensions)]</xpath>
+    <value>
+      <modExtensions />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Animal_Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+        <contagiousMinSeverity>0.05</contagiousMinSeverity>
+        <contagiousMaxSeverity>0.8</contagiousMaxSeverity>
+        <contagiousDuringIncubation>true</contagiousDuringIncubation>
+        <incubationDays>1.5</incubationDays>
+        <immunityDurationDays>0</immunityDurationDays>
+        <affectsAnimals>true</affectsAnimals>
+        <vectors>
+          <li Class="Contagion.Vector_Airborne">
+            <baseChancePerCheck>0.03</baseChancePerCheck>
+            <outdoorFactor>0.15</outdoorFactor>
+            <maxRange>15</maxRange>
+            <distanceFalloffRate>0.25</distanceFalloffRate>
+          </li>
+          <li Class="Contagion.Vector_Fomite">
+            <contaminatesVomit>true</contaminatesVomit>
+            <baseChancePerContact>0.03</baseChancePerContact>
+            <potencyDecayPerHour>0.1</potencyDecayPerHour>
+          </li>
+        </vectors>
+        <seeders>
+          <li Class="Contagion.Seeder_Storyteller">
+            <seedCountRange>1~1</seedCountRange>
           </li>
         </seeders>
       </li>
@@ -71,12 +109,45 @@
         </vectors>
         <seeders>
           <li Class="Contagion.Seeder_Storyteller">
-            <seedCountRange>(1,1)</seedCountRange>
+            <seedCountRange>1~1</seedCountRange>
           </li>
           <li Class="Contagion.Seeder_AnimalLinked">
             <mtbDays>120</mtbDays>
             <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
             <handlerBias>2.0</handlerBias>
+          </li>
+        </seeders>
+      </li>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Animal_Plague" and not(modExtensions)]</xpath>
+    <value>
+      <modExtensions />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Animal_Plague" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+        <contagiousMinSeverity>0.05</contagiousMinSeverity>
+        <contagiousMaxSeverity>0.9</contagiousMaxSeverity>
+        <incubationDays>1.0</incubationDays>
+        <immunityDurationDays>0</immunityDurationDays>
+        <affectsAnimals>true</affectsAnimals>
+        <vectors>
+          <li Class="Contagion.Vector_Proximity">
+            <baseChancePerCheck>0.025</baseChancePerCheck>
+            <maxRange>6</maxRange>
+            <distanceFalloffRate>0.35</distanceFalloffRate>
+            <cleanlinessImpact>1.0</cleanlinessImpact>
+            <outdoorFactor>0.75</outdoorFactor>
+          </li>
+        </vectors>
+        <seeders>
+          <li Class="Contagion.Seeder_Storyteller">
+            <seedCountRange>1~1</seedCountRange>
           </li>
         </seeders>
       </li>
@@ -109,7 +180,7 @@
         </vectors>
         <seeders>
           <li Class="Contagion.Seeder_Storyteller">
-            <seedCountRange>(1,1)</seedCountRange>
+            <seedCountRange>1~1</seedCountRange>
           </li>
           <li Class="Contagion.Seeder_Acausal">
             <mtbDays>90</mtbDays>

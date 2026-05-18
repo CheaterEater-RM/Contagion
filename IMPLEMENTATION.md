@@ -198,6 +198,8 @@ Implication for Contagion:
 | Animal flu | `Disease_AnimalFlu` storyteller incident | Yes | Matches flu stages | Separate hediff def with animal-specific tuning |
 | Animal plague | `Disease_AnimalPlague` storyteller incident | Yes | None | Separate hediff def with animal-specific tuning |
 
+Current repo status: the shipped profile XML patches `Flu`, `Animal_Flu`, `Plague`, `Animal_Plague`, `GutWorms`, `Malaria`, and `SleepingSickness` in [Contagion_Profiles.xml](1.6/Patches/Contagion_Profiles.xml).
+
 Additional note:
 
 - the vanilla `DiseaseHuman` category also contains fibrous mechanites, sensory mechanites, muscle parasites, organ decay, blood rot, and paralytic abasia in DLCs
