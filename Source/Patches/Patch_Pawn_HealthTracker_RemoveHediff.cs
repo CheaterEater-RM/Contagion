@@ -26,6 +26,12 @@ internal static class Patch_Pawn_HealthTracker_RemoveHediff
             return;
         }
 
+        if (resolvedProfile.Profile.immunityHediffDef != null)
+        {
+            ContagionDiseaseUtility.GiveCustomImmunity(__state, resolvedProfile.Profile.immunityHediffDef);
+            return;
+        }
+
         if (resolvedProfile.Profile.immunityDurationDays <= 0f)
         {
             return;

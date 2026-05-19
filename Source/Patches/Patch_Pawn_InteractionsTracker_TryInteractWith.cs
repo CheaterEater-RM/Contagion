@@ -34,9 +34,8 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
             return;
         }
 
-        Room sourceRoom = sourcePawn.Position.GetRoom(sourcePawn.Map);
-        Room targetRoom = targetPawn.Position.GetRoom(sourcePawn.Map);
         float transmissionMultiplier = Contagion_Mod.Settings?.transmissionRateMultiplier ?? 1f;
+        Map map = sourcePawn.Map;
 
         foreach (ResolvedTransmissionProfile resolvedProfile in ContagionDiseaseUtility.GetContagiousProfiles(sourcePawn))
         {
@@ -46,16 +45,27 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
             }
 
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.SocialAttempted);
-            float roomFactor = sourceRoom != null && sourceRoom == targetRoom && !sourceRoom.PsychologicallyOutdoors
-                ? 1f
-                : socialVector.outdoorFactor;
-            float chance = socialVector.baseChancePerInteraction * roomFactor * transmissionMultiplier;
+            bool sourceRoofed = map.roofGrid.Roofed(sourcePawn.Position);
+            bool targetRoofed = map.roofGrid.Roofed(targetPawn.Position);
+            bool hasLineOfSight = GenSight.LineOfSight(sourcePawn.Position, targetPawn.Position, map);
+            float enclosureFactor = sourceRoofed && targetRoofed ? 1f : socialVector.outdoorFactor;
+            float obstructionFactor = hasLineOfSight ? 1f : 0f;
+            float chance = ContagionTransmissionUtility.BuildSourceTargetChance(
+                socialVector.baseChancePerInteraction,
+                sourcePawn,
+                targetPawn,
+                resolvedProfile,
+                socialVector,
+                map,
+                enclosureFactor * obstructionFactor,
+                transmissionMultiplier,
+                out HediffDef _);
             if (!Rand.Chance(Mathf.Clamp01(chance)))
             {
                 continue;
             }
 
-            if (ContagionDiseaseUtility.TrySeedIncubation(targetPawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out HediffDef _))
+            if (ContagionDiseaseUtility.TrySeedIncubation(targetPawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, sourcePawn, out HediffDef _))
             {
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.SocialSeeded);
                 ContagionDiagnostics.Trace($"Social transmission: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap} to {targetPawn.LabelShortCap}.");

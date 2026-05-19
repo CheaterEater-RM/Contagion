@@ -11,9 +11,14 @@ public static class ContagionDiseaseUtility
 
     public static bool TrySeedIncubation(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, out HediffDef immunityCause)
     {
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, null, out immunityCause);
+    }
+
+    public static bool TrySeedIncubation(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, Pawn sourcePawn, out HediffDef immunityCause)
+    {
         immunityCause = null;
 
-        if (!CanContractDiseaseNow(pawn, diseaseDef, partsToAffect, out immunityCause))
+        if (!CanContractDiseaseNow(pawn, diseaseDef, partsToAffect, sourcePawn, out immunityCause, null))
         {
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.IncubationBlocked);
             if (immunityCause != null)
@@ -66,7 +71,7 @@ public static class ContagionDiseaseUtility
             return true;
         }
 
-        if (!CanContractDiseaseNow(pawn, incubation.TargetDiseaseDef, incubation.PartsToAffect, out var _, incubation))
+        if (!CanContractDiseaseNow(pawn, incubation.TargetDiseaseDef, incubation.PartsToAffect, null, out var _, incubation))
         {
             pawn.health.RemoveHediff(incubation);
             return false;
@@ -93,13 +98,14 @@ public static class ContagionDiseaseUtility
 
     public static bool CanContractDiseaseNow(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, out HediffDef immunityCause)
     {
-        return CanContractDiseaseNow(pawn, diseaseDef, partsToAffect, out immunityCause, null);
+        return CanContractDiseaseNow(pawn, diseaseDef, partsToAffect, null, out immunityCause, null);
     }
 
     private static bool CanContractDiseaseNow(
         Pawn pawn,
         HediffDef diseaseDef,
         List<BodyPartDef> partsToAffect,
+        Pawn sourcePawn,
         out HediffDef immunityCause,
         Hediff_ContagionIncubation ignoredIncubation)
     {
@@ -115,7 +121,7 @@ public static class ContagionDiseaseUtility
             return false;
         }
 
-        if (!resolvedProfile.Profile.CanAffect(pawn))
+        if (!resolvedProfile.Profile.CanTransmitBetween(sourcePawn, pawn, out float _))
         {
             return false;
         }
@@ -126,6 +132,11 @@ public static class ContagionDiseaseUtility
             || HasTemporaryImmunity(pawn, diseaseDef))
         {
             return false;
+        }
+
+        if (ignoredIncubation == null)
+        {
+            return ContagionTransmissionUtility.GetTargetEligibilityFactor(pawn, resolvedProfile, sourcePawn, out immunityCause) > 0f;
         }
 
         if (partsToAffect.NullOrEmpty())
@@ -187,6 +198,23 @@ public static class ContagionDiseaseUtility
         immunity.Configure(diseaseDef, Find.TickManager.TicksGame + durationTicks);
     }
 
+    public static void GiveCustomImmunity(Pawn pawn, HediffDef immunityHediffDef)
+    {
+        if (pawn == null || immunityHediffDef == null)
+        {
+            return;
+        }
+
+        Hediff immunity = HediffMaker.MakeHediff(immunityHediffDef, pawn);
+        if (immunity == null)
+        {
+            Log.Error($"[Contagion] Failed to create custom immunity hediff {immunityHediffDef.defName}.");
+            return;
+        }
+
+        pawn.health.AddHediff(immunity);
+    }
+
     public static Hediff_ContagionIncubation FindIncubation(Pawn pawn, HediffDef diseaseDef)
     {
         if (pawn?.health?.hediffSet == null || diseaseDef == null)
@@ -244,7 +272,9 @@ public static class ContagionDiseaseUtility
                     continue;
                 }
 
-                if (!incubationProfile.Profile.HasVectors || !incubationProfile.Profile.contagiousDuringIncubation || !seenDiseases.Add(incubationProfile.DiseaseDef))
+                if (!incubationProfile.Profile.HasVectors
+                    || ContagionTransmissionUtility.GetSourceInfectivity(pawn, incubationProfile) <= 0f
+                    || !seenDiseases.Add(incubationProfile.DiseaseDef))
                 {
                     continue;
                 }
@@ -263,7 +293,7 @@ public static class ContagionDiseaseUtility
                 continue;
             }
 
-            if (hediff.Severity < resolvedProfile.Profile.contagiousMinSeverity || hediff.Severity > resolvedProfile.Profile.contagiousMaxSeverity)
+            if (ContagionTransmissionUtility.GetSourceInfectivity(pawn, resolvedProfile) <= 0f)
             {
                 continue;
             }
@@ -331,7 +361,23 @@ public static class ContagionDiseaseUtility
     private static void NotifyOutbreakIfFirstVisibleCase(Pawn pawn, Hediff diseaseHediff, HediffDef diseaseDef)
     {
         Map map = pawn.MapHeld;
-        if (map == null || HasOtherVisibleNotifiableCaseOnMap(map, pawn, diseaseDef))
+        if (map == null)
+        {
+            return;
+        }
+
+        if (!DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile))
+        {
+            return;
+        }
+
+        if (resolvedProfile.Profile.outbreakNotification == OutbreakNotificationMode.None)
+        {
+            return;
+        }
+
+        if (resolvedProfile.Profile.outbreakNotification == OutbreakNotificationMode.FirstCase
+            && HasOtherVisibleNotifiableCaseOnMap(map, pawn, diseaseDef))
         {
             return;
         }

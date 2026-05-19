@@ -53,13 +53,21 @@ public static class ContagionArrivalUtility
             return false;
         }
 
+        Contagion_MapTransmissionComponent mapComponent = pawn.Map?.GetComponent<Contagion_MapTransmissionComponent>();
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalAttempted);
 
         List<ArrivalCandidate> applicableCandidates = new List<ArrivalCandidate>();
         for (int i = 0; i < arrivalCandidates.Count; i++)
         {
             ArrivalCandidate candidate = arrivalCandidates[i];
-            if (candidate.ResolvedProfile.Profile.CanAffect(pawn))
+            if ((mapComponent == null || mapComponent.CanRunSeeder(candidate.ResolvedProfile, candidate.Seeder))
+                && ContagionTransmissionUtility.BuildSeederChance(
+                    candidate.Seeder.arrivalChance,
+                    pawn,
+                    candidate.ResolvedProfile,
+                    pawn.Map,
+                    outbreakMultiplier,
+                    out HediffDef _) > 0f)
             {
                 applicableCandidates.Add(candidate);
             }
@@ -74,8 +82,14 @@ public static class ContagionArrivalUtility
         for (int i = 0; i < applicableCandidates.Count; i++)
         {
             ArrivalCandidate candidate = applicableCandidates[i];
-            float arrivalChance = Mathf.Clamp01(candidate.Seeder.arrivalChance * outbreakMultiplier);
-            if (arrivalChance <= 0f || !Rand.Chance(arrivalChance))
+            float arrivalChance = ContagionTransmissionUtility.BuildSeederChance(
+                candidate.Seeder.arrivalChance,
+                pawn,
+                candidate.ResolvedProfile,
+                pawn.Map,
+                outbreakMultiplier,
+                out HediffDef _);
+            if (arrivalChance <= 0f || !Rand.Chance(Mathf.Clamp01(arrivalChance)))
             {
                 continue;
             }
@@ -86,6 +100,7 @@ public static class ContagionArrivalUtility
                 candidate.ResolvedProfile.PartsToAffect,
                 out HediffDef _))
             {
+                mapComponent?.NotifySeederFired(candidate.ResolvedProfile, candidate.Seeder);
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalSeeded);
                 ContagionDiagnostics.Trace($"Arrival seeded: {candidate.ResolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap}.");
                 return true;

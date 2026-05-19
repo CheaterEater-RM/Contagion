@@ -1,41 +1,68 @@
 using System.Collections.Generic;
+using RimWorld;
+using UnityEngine;
 using Verse;
 
 namespace Contagion;
 
+public enum OutbreakNotificationMode
+{
+    None,
+    FirstCase,
+    EveryCase
+}
+
 public sealed class TransmissionProfile : DefModExtension
 {
-    public float contagiousMinSeverity = 0.05f;
-
-    public float contagiousMaxSeverity = 0.8f;
-
-    public bool contagiousDuringIncubation;
-
     public float incubationDays = 1f;
 
     public float immunityDurationDays;
+
+    public HediffDef immunityHediffDef;
+
+    public List<BodyPartDef> targetBodyParts;
+
+    public SimpleCurve incubationInfectivityCurve;
+
+    public SimpleCurve activeInfectivityCurve;
+
+    public SeasonalInfectivity seasonalInfectivity;
+
+    public List<SusceptibilityFactor> susceptibilityFactors;
+
+    public List<SourceInfectivityFactor> sourceInfectivityFactors;
 
     public bool affectsHumans = true;
 
     public bool affectsAnimals;
 
-    public bool crossSpeciesTransmission;
-
-    public List<BodyPartDef> partsToAffect;
+    public float crossSpeciesTransmissionFactor;
 
     public List<TransmissionVector> vectors;
 
     public List<TransmissionSeeder> seeders;
 
-    public bool HasContagiousWindow => contagiousMaxSeverity > contagiousMinSeverity;
+    public int maxActiveCases;
 
-    public bool UsesPartTargeting => !partsToAffect.NullOrEmpty();
+    public OutbreakNotificationMode outbreakNotification = OutbreakNotificationMode.FirstCase;
+
+    public bool corpseContagious;
+
+    public float corpseInfectivityDecayPerDay = 0.5f;
+
+    public float carrierChance;
+
+    public HediffDef carrierHediffDef;
+
+    public bool spreadsDuringCaravan;
+
+    public bool UsesPartTargeting => !targetBodyParts.NullOrEmpty();
 
     public bool HasVectors => !vectors.NullOrEmpty();
 
     public bool HasSeeders => !seeders.NullOrEmpty();
 
-    public bool UsesTemporaryImmunity => immunityDurationDays > 0f;
+    public bool UsesTemporaryImmunity => immunityHediffDef != null || immunityDurationDays > 0f;
 
     public bool CanAffect(Pawn pawn)
     {
@@ -56,10 +83,57 @@ public sealed class TransmissionProfile : DefModExtension
 
         return false;
     }
+
+    public bool CanTransmitBetween(Pawn source, Pawn target, out float speciesFactor)
+    {
+        speciesFactor = 1f;
+        if (target == null)
+        {
+            return false;
+        }
+
+        if (CanAffect(target))
+        {
+            return true;
+        }
+
+        if (source == null || crossSpeciesTransmissionFactor <= 0f || !CrossesHumanAnimalBoundary(source, target))
+        {
+            speciesFactor = 0f;
+            return false;
+        }
+
+        speciesFactor = crossSpeciesTransmissionFactor;
+        return true;
+    }
+
+    private static bool CrossesHumanAnimalBoundary(Pawn first, Pawn second)
+    {
+        return (first.RaceProps.Humanlike && second.RaceProps.Animal)
+            || (first.RaceProps.Animal && second.RaceProps.Humanlike);
+    }
+}
+
+public sealed class SeasonalInfectivity
+{
+    public float spring = 1f;
+
+    public float summer = 1f;
+
+    public float fall = 1f;
+
+    public float winter = 1f;
+
+    public float permanentSummer = 1f;
+
+    public float permanentWinter = 1f;
 }
 
 public abstract class TransmissionVector
 {
+    public SimpleCurve activeInfectivityCurveOverride;
+
+    public SimpleCurve incubationInfectivityCurveOverride;
 }
 
 public sealed class Vector_Airborne : TransmissionVector
@@ -71,6 +145,8 @@ public sealed class Vector_Airborne : TransmissionVector
     public int maxRange = 15;
 
     public float distanceFalloffRate = 0.25f;
+
+    public float obstructedFactor;
 }
 
 public sealed class Vector_Social : TransmissionVector
@@ -91,6 +167,8 @@ public sealed class Vector_Proximity : TransmissionVector
     public float cleanlinessImpact = 1f;
 
     public float outdoorFactor = 0.75f;
+
+    public int outdoorFilthRadius = 4;
 }
 
 public sealed class Vector_Environmental : TransmissionVector
@@ -133,6 +211,9 @@ public sealed class Vector_Lovin : TransmissionVector
 
 public abstract class TransmissionSeeder
 {
+    public float cooldownDays;
+
+    public int maxActiveCases;
 }
 
 public sealed class Seeder_Storyteller : TransmissionSeeder
@@ -162,4 +243,147 @@ public sealed class Seeder_AnimalLinked : TransmissionSeeder
 public sealed class Seeder_Acausal : TransmissionSeeder
 {
     public float mtbDays = 90f;
+}
+
+public abstract class PawnFactor
+{
+    public float factor = 1f;
+
+    public abstract float Evaluate(Pawn pawn);
+}
+
+public abstract class SusceptibilityFactor : PawnFactor
+{
+}
+
+public abstract class SourceInfectivityFactor : PawnFactor
+{
+}
+
+public sealed class Factor_Hediff : SusceptibilityFactor
+{
+    public HediffDef hediff;
+
+    public override float Evaluate(Pawn pawn)
+    {
+        return pawn?.health?.hediffSet != null && hediff != null && pawn.health.hediffSet.HasHediff(hediff)
+            ? factor
+            : 1f;
+    }
+}
+
+public sealed class Factor_Gene : SusceptibilityFactor
+{
+    public GeneDef gene;
+
+    public override float Evaluate(Pawn pawn)
+    {
+        return pawn?.genes != null && gene != null && pawn.genes.HasActiveGene(gene) ? factor : 1f;
+    }
+}
+
+public sealed class Factor_Trait : SusceptibilityFactor
+{
+    public TraitDef trait;
+
+    public override float Evaluate(Pawn pawn)
+    {
+        return pawn?.story?.traits != null && trait != null && pawn.story.traits.HasTrait(trait) ? factor : 1f;
+    }
+}
+
+public sealed class Factor_AgeRange : SusceptibilityFactor
+{
+    public float minAge;
+
+    public float maxAge = float.MaxValue;
+
+    public override float Evaluate(Pawn pawn)
+    {
+        if (pawn?.ageTracker == null)
+        {
+            return 1f;
+        }
+
+        float age = pawn.ageTracker.AgeBiologicalYearsFloat;
+        return age >= minAge && age <= maxAge ? factor : 1f;
+    }
+}
+
+public sealed class Factor_Stat : SusceptibilityFactor
+{
+    public StatDef stat;
+
+    public SimpleCurve curve;
+
+    public override float Evaluate(Pawn pawn)
+    {
+        if (pawn == null || stat == null || curve == null)
+        {
+            return 1f;
+        }
+
+        return Mathf.Max(0f, curve.Evaluate(pawn.GetStatValue(stat)));
+    }
+}
+
+public sealed class Factor_HasInjury : SusceptibilityFactor
+{
+    public override float Evaluate(Pawn pawn)
+    {
+        List<Hediff> hediffs = pawn?.health?.hediffSet?.hediffs;
+        if (hediffs == null)
+        {
+            return 1f;
+        }
+
+        for (int i = 0; i < hediffs.Count; i++)
+        {
+            if (hediffs[i] is Hediff_Injury injury && !injury.IsPermanent())
+            {
+                return factor;
+            }
+        }
+
+        return 1f;
+    }
+}
+
+public sealed class SourceFactor_Hediff : SourceInfectivityFactor
+{
+    public HediffDef hediff;
+
+    public override float Evaluate(Pawn pawn)
+    {
+        return pawn?.health?.hediffSet != null && hediff != null && pawn.health.hediffSet.HasHediff(hediff)
+            ? factor
+            : 1f;
+    }
+}
+
+public sealed class SourceFactor_Gene : SourceInfectivityFactor
+{
+    public GeneDef gene;
+
+    public override float Evaluate(Pawn pawn)
+    {
+        return pawn?.genes != null && gene != null && pawn.genes.HasActiveGene(gene) ? factor : 1f;
+    }
+}
+
+public sealed class SourceFactor_Stat : SourceInfectivityFactor
+{
+    public StatDef stat;
+
+    public SimpleCurve curve;
+
+    public override float Evaluate(Pawn pawn)
+    {
+        if (pawn == null || stat == null || curve == null)
+        {
+            return 1f;
+        }
+
+        return Mathf.Max(0f, curve.Evaluate(pawn.GetStatValue(stat)));
+    }
 }

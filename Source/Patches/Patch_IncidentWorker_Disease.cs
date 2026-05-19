@@ -70,27 +70,65 @@ internal static class Patch_IncidentWorker_Disease_Helper
         return GetStorytellerSeeder(profile) == null && GetEnvironmentalSeeder(profile) != null;
     }
 
-    public static List<Pawn> SeedIncubationToPawns(ResolvedTransmissionProfile resolvedProfile, IEnumerable<Pawn> pawns, out string blockedInfo)
+    public static List<Pawn> SeedIncubationToPawns(
+        ResolvedTransmissionProfile resolvedProfile,
+        IEnumerable<Pawn> pawns,
+        Seeder_Storyteller seeder,
+        Map map,
+        out string blockedInfo)
     {
         List<Pawn> seededPawns = new List<Pawn>();
         Dictionary<HediffDef, List<Pawn>> blockedByImmunity = new Dictionary<HediffDef, List<Pawn>>();
 
         foreach (Pawn pawn in pawns)
         {
-            if (ContagionDiseaseUtility.TrySeedIncubation(pawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out HediffDef immunityCause))
+            float chance = ContagionTransmissionUtility.BuildSeederChance(
+                1f,
+                pawn,
+                resolvedProfile,
+                map,
+                1f,
+                out HediffDef immunityCause);
+            if (chance <= 0f)
+            {
+                if (immunityCause != null)
+                {
+                    if (!blockedByImmunity.TryGetValue(immunityCause, out List<Pawn> blockedPawns))
+                    {
+                        blockedPawns = new List<Pawn>();
+                        blockedByImmunity.Add(immunityCause, blockedPawns);
+                    }
+
+                    blockedPawns.Add(pawn);
+                }
+
+                continue;
+            }
+
+            if (!Rand.Chance(Mathf.Clamp01(chance)))
+            {
+                continue;
+            }
+
+            if (ContagionDiseaseUtility.TrySeedIncubation(pawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out HediffDef seedImmunityCause))
             {
                 seededPawns.Add(pawn);
             }
-            else if (immunityCause != null)
+            else if (seedImmunityCause != null)
             {
-                if (!blockedByImmunity.TryGetValue(immunityCause, out List<Pawn> blockedPawns))
+                if (!blockedByImmunity.TryGetValue(seedImmunityCause, out List<Pawn> blockedPawns))
                 {
                     blockedPawns = new List<Pawn>();
-                    blockedByImmunity.Add(immunityCause, blockedPawns);
+                    blockedByImmunity.Add(seedImmunityCause, blockedPawns);
                 }
 
                 blockedPawns.Add(pawn);
             }
+        }
+
+        if (seededPawns.Count > 0)
+        {
+            map?.GetComponent<Contagion_MapTransmissionComponent>()?.NotifySeederFired(resolvedProfile, seeder);
         }
 
         blockedInfo = string.Empty;
@@ -186,8 +224,17 @@ internal static class Patch_IncidentWorker_Disease_ApplyToPawns
             return true;
         }
 
+        Seeder_Storyteller storytellerSeeder = Patch_IncidentWorker_Disease_Helper.GetStorytellerSeeder(resolvedProfile.Profile);
+        Map map = pawnList[0].Map;
+        if (map?.GetComponent<Contagion_MapTransmissionComponent>()?.CanRunSeeder(resolvedProfile, storytellerSeeder) == false)
+        {
+            blockedInfo = string.Empty;
+            __result = new List<Pawn>();
+            return false;
+        }
+
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.StorytellerAttempted, pawnList.Count);
-        __result = Patch_IncidentWorker_Disease_Helper.SeedIncubationToPawns(resolvedProfile, pawnList, out blockedInfo);
+        __result = Patch_IncidentWorker_Disease_Helper.SeedIncubationToPawns(resolvedProfile, pawnList, storytellerSeeder, map, out blockedInfo);
         if (__result.Count > 0)
         {
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.StorytellerSeeded, __result.Count);
@@ -239,7 +286,14 @@ internal static class Patch_IncidentWorker_Disease_TryExecuteWorker
             return false;
         }
 
+        Map map = (Map)parms.target;
         Seeder_Storyteller storytellerSeeder = Patch_IncidentWorker_Disease_Helper.GetStorytellerSeeder(resolvedProfile.Profile);
+        if (map.GetComponent<Contagion_MapTransmissionComponent>()?.CanRunSeeder(resolvedProfile, storytellerSeeder) == false)
+        {
+            __result = false;
+            return false;
+        }
+
         int seedCount = storytellerSeeder?.seedCountRange.RandomInRange ?? 1;
         seedCount = Mathf.Clamp(seedCount, 1, actualVictims.Count);
 
@@ -249,7 +303,12 @@ internal static class Patch_IncidentWorker_Disease_TryExecuteWorker
             actualVictims.RemoveRange(seedCount, actualVictims.Count - seedCount);
         }
 
-        List<Pawn> seededPawns = __instance.ApplyToPawns(actualVictims, out string blockedInfo);
+        List<Pawn> seededPawns = Patch_IncidentWorker_Disease_Helper.SeedIncubationToPawns(
+            resolvedProfile,
+            actualVictims,
+            storytellerSeeder,
+            map,
+            out string blockedInfo);
         if (seededPawns.Count == 0 && blockedInfo.NullOrEmpty())
         {
             __result = false;

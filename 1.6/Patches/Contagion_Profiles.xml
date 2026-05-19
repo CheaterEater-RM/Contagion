@@ -10,18 +10,41 @@
     <xpath>Defs/HediffDef[defName="Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <contagiousMinSeverity>0.05</contagiousMinSeverity>
-        <contagiousMaxSeverity>0.8</contagiousMaxSeverity>
-        <contagiousDuringIncubation>true</contagiousDuringIncubation>
         <incubationDays>1.5</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
+        <incubationInfectivityCurve>
+          <points>
+            <li>(0.0, 0.0)</li>
+            <li>(0.3, 0.05)</li>
+            <li>(0.7, 0.15)</li>
+            <li>(1.0, 0.3)</li>
+          </points>
+        </incubationInfectivityCurve>
+        <activeInfectivityCurve>
+          <points>
+            <li>(0.00, 0.4)</li>
+            <li>(0.25, 1.0)</li>
+            <li>(0.55, 1.0)</li>
+            <li>(0.80, 0.3)</li>
+            <li>(1.00, 0.0)</li>
+          </points>
+        </activeInfectivityCurve>
+        <seasonalInfectivity>
+          <spring>0.6</spring>
+          <summer>0.3</summer>
+          <fall>0.8</fall>
+          <winter>1.0</winter>
+          <permanentSummer>0.4</permanentSummer>
+          <permanentWinter>0.7</permanentWinter>
+        </seasonalInfectivity>
         <vectors>
           <li Class="Contagion.Vector_Airborne">
             <baseChancePerCheck>0.03</baseChancePerCheck>
             <outdoorFactor>0.15</outdoorFactor>
             <maxRange>15</maxRange>
             <distanceFalloffRate>0.25</distanceFalloffRate>
+            <obstructedFactor>0.0</obstructedFactor>
           </li>
           <li Class="Contagion.Vector_Social">
             <baseChancePerInteraction>0.02</baseChancePerInteraction>
@@ -31,16 +54,28 @@
             <contaminatesVomit>true</contaminatesVomit>
             <baseChancePerContact>0.03</baseChancePerContact>
             <potencyDecayPerHour>0.1</potencyDecayPerHour>
+            <activeInfectivityCurveOverride>
+              <points>
+                <li>(0.50, 0.0)</li>
+                <li>(0.65, 0.5)</li>
+                <li>(0.80, 1.0)</li>
+                <li>(1.00, 0.5)</li>
+              </points>
+            </activeInfectivityCurveOverride>
           </li>
         </vectors>
         <seeders>
           <li Class="Contagion.Seeder_Storyteller">
             <seedCountRange>1~1</seedCountRange>
+            <cooldownDays>10</cooldownDays>
           </li>
           <li Class="Contagion.Seeder_Arrival">
             <arrivalChance>0.01</arrivalChance>
+            <cooldownDays>3</cooldownDays>
           </li>
         </seeders>
+        <maxActiveCases>5</maxActiveCases>
+        <outbreakNotification>FirstCase</outbreakNotification>
       </li>
     </value>
   </Operation>
@@ -55,18 +90,34 @@
     <xpath>Defs/HediffDef[defName="Animal_Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <contagiousMinSeverity>0.05</contagiousMinSeverity>
-        <contagiousMaxSeverity>0.8</contagiousMaxSeverity>
-        <contagiousDuringIncubation>true</contagiousDuringIncubation>
         <incubationDays>1.5</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
+        <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
+        <incubationInfectivityCurve>
+          <points>
+            <li>(0.0, 0.0)</li>
+            <li>(0.3, 0.05)</li>
+            <li>(0.7, 0.15)</li>
+            <li>(1.0, 0.3)</li>
+          </points>
+        </incubationInfectivityCurve>
+        <activeInfectivityCurve>
+          <points>
+            <li>(0.00, 0.4)</li>
+            <li>(0.25, 1.0)</li>
+            <li>(0.55, 1.0)</li>
+            <li>(0.80, 0.3)</li>
+            <li>(1.00, 0.0)</li>
+          </points>
+        </activeInfectivityCurve>
         <vectors>
           <li Class="Contagion.Vector_Airborne">
             <baseChancePerCheck>0.03</baseChancePerCheck>
             <outdoorFactor>0.15</outdoorFactor>
             <maxRange>15</maxRange>
             <distanceFalloffRate>0.25</distanceFalloffRate>
+            <obstructedFactor>0.0</obstructedFactor>
           </li>
           <li Class="Contagion.Vector_Fomite">
             <contaminatesVomit>true</contaminatesVomit>
@@ -77,8 +128,10 @@
         <seeders>
           <li Class="Contagion.Seeder_Storyteller">
             <seedCountRange>1~1</seedCountRange>
+            <cooldownDays>10</cooldownDays>
           </li>
         </seeders>
+        <maxActiveCases>5</maxActiveCases>
       </li>
     </value>
   </Operation>
@@ -93,11 +146,18 @@
     <xpath>Defs/HediffDef[defName="Plague" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <contagiousMinSeverity>0.05</contagiousMinSeverity>
-        <contagiousMaxSeverity>0.9</contagiousMaxSeverity>
         <incubationDays>1.0</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
+        <activeInfectivityCurve>
+          <points>
+            <li>(0.00, 0.2)</li>
+            <li>(0.20, 0.8)</li>
+            <li>(0.60, 1.0)</li>
+            <li>(0.90, 0.4)</li>
+            <li>(1.00, 0.0)</li>
+          </points>
+        </activeInfectivityCurve>
         <vectors>
           <li Class="Contagion.Vector_Proximity">
             <baseChancePerCheck>0.025</baseChancePerCheck>
@@ -105,18 +165,22 @@
             <distanceFalloffRate>0.35</distanceFalloffRate>
             <cleanlinessImpact>1.0</cleanlinessImpact>
             <outdoorFactor>0.75</outdoorFactor>
+            <outdoorFilthRadius>4</outdoorFilthRadius>
           </li>
         </vectors>
         <seeders>
           <li Class="Contagion.Seeder_Storyteller">
             <seedCountRange>1~1</seedCountRange>
+            <cooldownDays>15</cooldownDays>
           </li>
           <li Class="Contagion.Seeder_AnimalLinked">
             <mtbDays>120</mtbDays>
+            <cooldownDays>15</cooldownDays>
             <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
             <handlerBias>2.0</handlerBias>
           </li>
         </seeders>
+        <maxActiveCases>4</maxActiveCases>
       </li>
     </value>
   </Operation>
@@ -131,11 +195,19 @@
     <xpath>Defs/HediffDef[defName="Animal_Plague" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <contagiousMinSeverity>0.05</contagiousMinSeverity>
-        <contagiousMaxSeverity>0.9</contagiousMaxSeverity>
         <incubationDays>1.0</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
+        <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
+        <activeInfectivityCurve>
+          <points>
+            <li>(0.00, 0.2)</li>
+            <li>(0.20, 0.8)</li>
+            <li>(0.60, 1.0)</li>
+            <li>(0.90, 0.4)</li>
+            <li>(1.00, 0.0)</li>
+          </points>
+        </activeInfectivityCurve>
         <vectors>
           <li Class="Contagion.Vector_Proximity">
             <baseChancePerCheck>0.025</baseChancePerCheck>
@@ -143,13 +215,16 @@
             <distanceFalloffRate>0.35</distanceFalloffRate>
             <cleanlinessImpact>1.0</cleanlinessImpact>
             <outdoorFactor>0.75</outdoorFactor>
+            <outdoorFilthRadius>4</outdoorFilthRadius>
           </li>
         </vectors>
         <seeders>
           <li Class="Contagion.Seeder_Storyteller">
             <seedCountRange>1~1</seedCountRange>
+            <cooldownDays>15</cooldownDays>
           </li>
         </seeders>
+        <maxActiveCases>4</maxActiveCases>
       </li>
     </value>
   </Operation>
@@ -164,14 +239,20 @@
     <xpath>Defs/HediffDef[defName="GutWorms" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <contagiousMinSeverity>0.0</contagiousMinSeverity>
-        <contagiousMaxSeverity>1.0</contagiousMaxSeverity>
         <incubationDays>3.0</incubationDays>
         <immunityDurationDays>15</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
-        <partsToAffect>
+        <targetBodyParts>
           <li>Stomach</li>
-        </partsToAffect>
+        </targetBodyParts>
+        <activeInfectivityCurve>
+          <points>
+            <li>(0.00, 0.3)</li>
+            <li>(0.20, 0.7)</li>
+            <li>(0.60, 1.0)</li>
+            <li>(1.00, 1.0)</li>
+          </points>
+        </activeInfectivityCurve>
         <vectors>
           <li Class="Contagion.Vector_Foodborne">
             <baseChancePerMeal>0.08</baseChancePerMeal>
@@ -181,11 +262,14 @@
         <seeders>
           <li Class="Contagion.Seeder_Storyteller">
             <seedCountRange>1~1</seedCountRange>
+            <cooldownDays>20</cooldownDays>
           </li>
           <li Class="Contagion.Seeder_Acausal">
             <mtbDays>90</mtbDays>
+            <cooldownDays>20</cooldownDays>
           </li>
         </seeders>
+        <maxActiveCases>3</maxActiveCases>
       </li>
     </value>
   </Operation>
@@ -200,11 +284,18 @@
     <xpath>Defs/HediffDef[defName="Malaria" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <contagiousMinSeverity>0.0</contagiousMinSeverity>
-        <contagiousMaxSeverity>1.0</contagiousMaxSeverity>
         <incubationDays>2.0</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
+        <outbreakNotification>None</outbreakNotification>
+        <seasonalInfectivity>
+          <spring>0.8</spring>
+          <summer>1.2</summer>
+          <fall>1.0</fall>
+          <winter>0.3</winter>
+          <permanentSummer>1.0</permanentSummer>
+          <permanentWinter>0.1</permanentWinter>
+        </seasonalInfectivity>
         <vectors>
           <li Class="Contagion.Vector_Environmental">
             <baseChancePerCheck>0.0035</baseChancePerCheck>
@@ -219,6 +310,7 @@
         <seeders>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>1.0</baseChanceMultiplier>
+            <cooldownDays>5</cooldownDays>
           </li>
         </seeders>
       </li>
@@ -235,11 +327,18 @@
     <xpath>Defs/HediffDef[defName="SleepingSickness" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <contagiousMinSeverity>0.0</contagiousMinSeverity>
-        <contagiousMaxSeverity>1.0</contagiousMaxSeverity>
         <incubationDays>2.5</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
+        <outbreakNotification>None</outbreakNotification>
+        <seasonalInfectivity>
+          <spring>0.9</spring>
+          <summer>1.2</summer>
+          <fall>1.0</fall>
+          <winter>0.2</winter>
+          <permanentSummer>1.1</permanentSummer>
+          <permanentWinter>0.1</permanentWinter>
+        </seasonalInfectivity>
         <vectors>
           <li Class="Contagion.Vector_Environmental">
             <baseChancePerCheck>0.0025</baseChancePerCheck>
@@ -254,6 +353,7 @@
         <seeders>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>0.75</baseChanceMultiplier>
+            <cooldownDays>5</cooldownDays>
           </li>
         </seeders>
       </li>

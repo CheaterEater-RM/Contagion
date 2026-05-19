@@ -39,8 +39,14 @@ public sealed class Comp_ContaminatedFood : ThingComp
                 continue;
             }
 
+            float sourceInfectivity = ContagionTransmissionUtility.GetSourceInfectivity(pawn, resolvedProfile, foodborneVector);
+            if (sourceInfectivity <= 0f)
+            {
+                continue;
+            }
+
             _contaminatedDiseaseDef = resolvedProfile.DiseaseDef;
-            _contaminationFactor = GetCleanlinessFactor(pawn.GetRoom(), foodborneVector.cleanlinessImpact);
+            _contaminationFactor = sourceInfectivity * GetCleanlinessFactor(pawn.GetRoom(), foodborneVector.cleanlinessImpact);
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
             ContagionDiagnostics.Trace($"Meal contaminated: {_contaminatedDiseaseDef.defName} by {pawn.LabelShortCap}.");
             return;
@@ -102,7 +108,13 @@ public sealed class Comp_ContaminatedFood : ThingComp
 
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneAttempted);
         float transmissionMultiplier = Contagion_Mod.Settings?.transmissionRateMultiplier ?? 1f;
-        float chance = foodborneVector.baseChancePerMeal * _contaminationFactor * transmissionMultiplier;
+        float chance = ContagionTransmissionUtility.BuildSeederChance(
+            foodborneVector.baseChancePerMeal * _contaminationFactor,
+            ingester,
+            resolvedProfile,
+            ingester.MapHeld,
+            transmissionMultiplier,
+            out HediffDef _);
         if (Rand.Chance(Mathf.Clamp01(chance)))
         {
             if (ContagionDiseaseUtility.TrySeedIncubation(ingester, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out HediffDef _))

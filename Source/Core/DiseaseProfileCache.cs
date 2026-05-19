@@ -133,9 +133,9 @@ public static class DiseaseProfileCache
     {
         usesFallbackParts = false;
 
-        if (!profile.partsToAffect.NullOrEmpty())
+        if (!profile.targetBodyParts.NullOrEmpty())
         {
-            return new List<BodyPartDef>(profile.partsToAffect);
+            return new List<BodyPartDef>(profile.targetBodyParts);
         }
 
         if (linkedIncidentDef?.diseasePartsToAffect.NullOrEmpty() == false)
