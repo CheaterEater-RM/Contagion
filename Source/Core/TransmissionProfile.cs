@@ -44,6 +44,11 @@ public sealed class TransmissionProfile : DefModExtension
 
     public int maxActiveCases;
 
+    // Scales how strongly the global spread-suppression exponent applies to this disease.
+    // 1 = normal, 0 = this disease ignores suppression (e.g. environmental diseases with no
+    // person-to-person spread), >1 = suppresses faster than other diseases.
+    public float spreadSuppressionScale = 1f;
+
     public OutbreakNotificationMode outbreakNotification = OutbreakNotificationMode.FirstCase;
 
     public bool corpseContagious;
@@ -136,7 +141,24 @@ public abstract class TransmissionVector
     public SimpleCurve incubationInfectivityCurveOverride;
 }
 
-public sealed class Vector_Airborne : TransmissionVector
+// Vectors that spread through the air / respiration, where face masks can reduce transmission.
+// Effectiveness values are how much of a worn mask's apparel ToxicEnvironmentResistance (0-1)
+// is applied. The final per-side factor is (1 - apparelResistance * effectiveness).
+public abstract class RespiratoryVector : TransmissionVector
+{
+    // How much a mask on the susceptible target blocks inhaling the pathogen.
+    public float maskTargetEffectiveness = 0.7f;
+
+    // How much a mask on the infectious source blocks emitting the pathogen.
+    public float maskSourceEffectiveness = 0.5f;
+
+    // How airway-dependent this vector is, gating gene-based airway immunity (e.g. breathless).
+    // 1 = fully respiratory (airborne, talking); 0 = not airway-based (contact/flea spread), where
+    // airway immunity should not help. Physical masks still apply via the effectiveness fields.
+    public float airwayImmunityFactor = 1f;
+}
+
+public sealed class Vector_Airborne : RespiratoryVector
 {
     public float baseChancePerCheck = 0.03f;
 
@@ -149,14 +171,14 @@ public sealed class Vector_Airborne : TransmissionVector
     public float obstructedFactor;
 }
 
-public sealed class Vector_Social : TransmissionVector
+public sealed class Vector_Social : RespiratoryVector
 {
     public float baseChancePerInteraction = 0.02f;
 
     public float outdoorFactor = 0.5f;
 }
 
-public sealed class Vector_Proximity : TransmissionVector
+public sealed class Vector_Proximity : RespiratoryVector
 {
     public float baseChancePerCheck = 0.025f;
 

@@ -107,7 +107,9 @@ public sealed class Comp_ContaminatedFood : ThingComp
         }
 
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneAttempted);
-        float transmissionMultiplier = Contagion_Mod.Settings?.transmissionRateMultiplier ?? 1f;
+        // No spread suppression here: foodborne infection comes from a contaminated-food source, not
+        // herd transmission between pawns, so it does not scale with the colony infection fraction.
+        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
         float chance = ContagionTransmissionUtility.BuildSeederChance(
             foodborneVector.baseChancePerMeal * _contaminationFactor,
             ingester,

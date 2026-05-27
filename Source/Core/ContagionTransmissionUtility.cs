@@ -167,6 +167,82 @@ public static class ContagionTransmissionUtility
         return maxActiveCases > 0 && CountActiveCases(map, resolvedProfile) >= maxActiveCases;
     }
 
+    // True for pawns the spread-suppression mechanic treats as part of "the colony". The suppression
+    // fraction is measured over player-faction pawns, so it must only be applied when transmitting TO
+    // a player-faction pawn — otherwise a fully-infected colony would wrongly throttle spread among
+    // unrelated visitors or raiders, whose infection counts never entered the fraction.
+    public static bool IsSuppressionTarget(Pawn pawn)
+    {
+        return pawn != null && pawn.Faction == Faction.OfPlayer;
+    }
+
+    // Spread suppression: as a larger share of the colony already carries the disease (active or
+    // incubating), each remaining contagious transmission roll TO a colonist is dampened. This keeps
+    // an outbreak from reliably hitting 100% of the colony and gives the player a window to react.
+    // Factor = (1 - infectedColonyFraction) ^ effectiveStrength, where effectiveStrength comes from
+    // the difficulty setting scaled by the disease's spreadSuppressionScale. A strength of 0
+    // (Harder difficulty, or scale 0) disables suppression entirely.
+    //
+    // Applies to contagious vectors shed by infected colonists into shared space: airborne, social,
+    // proximity, and fomite. It is deliberately NOT applied to foodborne (a contaminated-food source,
+    // not herd transmission) or environmental seeding (sourced by the map, not the colony).
+    public static float GetSpreadSuppressionFactor(Map map, ResolvedTransmissionProfile resolvedProfile)
+    {
+        if (map == null || resolvedProfile?.Profile == null)
+        {
+            return 1f;
+        }
+
+        float strength = (Contagion_Mod.Settings?.SpreadSuppressionStrength ?? 2f) * resolvedProfile.Profile.spreadSuppressionScale;
+        if (strength <= 0f)
+        {
+            return 1f;
+        }
+
+        GetColonyInfectionCounts(map, resolvedProfile, out int infected, out int affectable);
+        if (affectable <= 0 || infected <= 0)
+        {
+            return 1f;
+        }
+
+        float fraction = Mathf.Clamp01((float)infected / affectable);
+        return Mathf.Pow(1f - fraction, strength);
+    }
+
+    // Counts player-faction pawns the disease can affect, and how many already carry it. Restricting
+    // to the player faction keeps the "colony fraction" meaningful when raiders or visitors are present.
+    private static void GetColonyInfectionCounts(Map map, ResolvedTransmissionProfile resolvedProfile, out int infected, out int affectable)
+    {
+        infected = 0;
+        affectable = 0;
+        IReadOnlyList<Pawn> pawns = map?.mapPawns?.AllPawnsSpawned;
+        if (pawns == null || resolvedProfile?.Profile == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < pawns.Count; i++)
+        {
+            Pawn pawn = pawns[i];
+            if (pawn == null || pawn.Dead || pawn.Faction != Faction.OfPlayer || !resolvedProfile.Profile.CanAffect(pawn))
+            {
+                continue;
+            }
+
+            affectable++;
+            if (pawn.health?.hediffSet == null)
+            {
+                continue;
+            }
+
+            if (pawn.health.hediffSet.HasHediff(resolvedProfile.DiseaseDef)
+                || ContagionDiseaseUtility.FindIncubation(pawn, resolvedProfile.DiseaseDef) != null)
+            {
+                infected++;
+            }
+        }
+    }
+
     public static int CountActiveCases(Map map, ResolvedTransmissionProfile resolvedProfile)
     {
         IReadOnlyList<Pawn> pawns = map?.mapPawns?.AllPawnsSpawned;

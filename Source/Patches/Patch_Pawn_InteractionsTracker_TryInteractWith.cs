@@ -34,7 +34,7 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
             return;
         }
 
-        float transmissionMultiplier = Contagion_Mod.Settings?.transmissionRateMultiplier ?? 1f;
+        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
         Map map = sourcePawn.Map;
 
         foreach (ResolvedTransmissionProfile resolvedProfile in ContagionDiseaseUtility.GetContagiousProfiles(sourcePawn))
@@ -50,6 +50,10 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
             bool hasLineOfSight = GenSight.LineOfSight(sourcePawn.Position, targetPawn.Position, map);
             float enclosureFactor = sourceRoofed && targetRoofed ? 1f : socialVector.outdoorFactor;
             float obstructionFactor = hasLineOfSight ? 1f : 0f;
+            float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(sourcePawn, targetPawn, socialVector);
+            float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn)
+                ? ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile)
+                : 1f;
             float chance = ContagionTransmissionUtility.BuildSourceTargetChance(
                 socialVector.baseChancePerInteraction,
                 sourcePawn,
@@ -57,7 +61,7 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
                 resolvedProfile,
                 socialVector,
                 map,
-                enclosureFactor * obstructionFactor,
+                enclosureFactor * obstructionFactor * maskFactor * suppressionFactor,
                 transmissionMultiplier,
                 out HediffDef _);
             if (!Rand.Chance(Mathf.Clamp01(chance)))

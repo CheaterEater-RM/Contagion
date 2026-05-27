@@ -233,8 +233,45 @@ The mod's counterplay is intentionally vanilla:
 - stopping sick cooks from working
 - cleaning vomit and kitchens quickly
 - keeping vulnerable pawns on penoxycyline where vanilla already supports it
+- equipping masks and respiratory protection on exposed pawns (see below)
 
 Players who already use sensible RimWorld colony design should perform better without learning a new ruleset.
+
+## Difficulty And Spread Suppression
+
+Two related controls keep outbreaks dangerous but containable, and let players choose how punishing they want disease to be.
+
+### Spread Suppression
+
+As a larger share of the colony already carries a disease (active or incubating), each remaining person-to-person transmission roll toward a colonist is dampened. The factor is `(1 - infectedColonyFraction) ^ strength`. The intent is to avoid the failure mode where a single outbreak deterministically reaches 100% of the colony, and to give the player a window to react.
+
+Key boundaries that keep the mechanic legible:
+
+- The infected fraction is measured over **player-faction pawns** the disease can affect, and suppression is applied **only when the transmission target is a colonist**. Visitors and raiders neither contribute to the fraction nor receive the benefit, so a fully-infected colony never silently throttles unrelated pawns.
+- It applies to contagious spread shed by infected colonists into shared space: airborne, social, proximity, and fomite.
+- It does **not** apply to foodborne transmission (a contaminated-food source, not herd spread) or environmental seeding (sourced by the map, not the colony).
+- Per-disease `spreadSuppressionScale` tunes or disables it for a specific disease; environmental diseases set it to 0.
+
+### Difficulty Setting
+
+An in-game settings control (Easier / Normal / Harder) presets two things on top of the existing advanced-tuning sliders:
+
+- **Easier** — slower transmission and strong suppression; outbreaks rarely reach the whole colony.
+- **Normal** — balanced transmission and moderate suppression; a well-run colony can usually contain an outbreak.
+- **Harder** — faster, more realistic spread with suppression fully **disabled**; an untreated outbreak can sweep the colony.
+
+Difficulty multiplies the player's transmission-rate slider rather than replacing it, so the two layers compose.
+
+## Mask And Respiratory Protection
+
+Equipment and biology matter for who gets infected. Respiratory vectors (airborne, social, close-contact) are reduced by protection the pawn is actually wearing or carrying, piggybacking on the vanilla `ToxicEnvironmentResistance` stat so that existing gear (gas masks, etc.) is immediately relevant.
+
+The source of the resistance is treated differently on purpose:
+
+- **Worn apparel** and **air-filtering body parts** (detoxifier lung, fleshmass lung) form a physical airway barrier and count at **full effect**, scaled per-vector by how respiratory that vector is (a mask helps airborne flu far more than contact-spread plague). Protection applies to both the susceptible target (less inhaled) and the infectious source (less shed).
+- **Genes are ignored by default**, because most genetic toxic tolerance is metabolic, not a barrier over the airways. Specific genes can be opted back in through a patchable config def (`Contagion_RespiratoryImmunity`) with an explicit protection value — shipping with breathless (a pawn who barely inhales) as effective airway immunity.
+
+This makes equipment choices a real lever against airborne disease without turning masks into a free pass: pawns still remove them to eat and sleep, and the protection is partial for most gear.
 
 ## Scope Boundary For First Implementation
 

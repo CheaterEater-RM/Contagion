@@ -10,6 +10,14 @@ public enum ContagionDiagnosticsMode
     Verbose
 }
 
+// Order is persisted by Scribe as ordinal values. Never reorder; append new values only.
+public enum ContagionDifficulty
+{
+    Easier,
+    Normal,
+    Harder
+}
+
 public sealed class Contagion_Settings : ModSettings
 {
     public const float MinMultiplier = 0.25f;
@@ -22,6 +30,10 @@ public sealed class Contagion_Settings : ModSettings
 
     private const float DefaultIncubationLengthMultiplier = 1f;
 
+    private const ContagionDifficulty DefaultDifficulty = ContagionDifficulty.Normal;
+
+    private const bool DefaultMaskProtection = true;
+
     private const ContagionDiagnosticsMode DefaultDiagnosticsMode = ContagionDiagnosticsMode.Off;
 
     private const bool DefaultShowPerformanceStats = false;
@@ -32,6 +44,10 @@ public sealed class Contagion_Settings : ModSettings
 
     public float incubationLengthMultiplier = DefaultIncubationLengthMultiplier;
 
+    public ContagionDifficulty difficulty = DefaultDifficulty;
+
+    public bool maskProtection = DefaultMaskProtection;
+
     public ContagionDiagnosticsMode diagnosticsMode = DefaultDiagnosticsMode;
 
     public bool showPerformanceStats = DefaultShowPerformanceStats;
@@ -40,11 +56,33 @@ public sealed class Contagion_Settings : ModSettings
 
     public bool VerboseDiagnosticsEnabled => diagnosticsMode == ContagionDiagnosticsMode.Verbose && Prefs.DevMode;
 
+    // Difficulty scales person-to-person transmission on top of the user slider.
+    public float DifficultyTransmissionScale => difficulty switch
+    {
+        ContagionDifficulty.Easier => 0.7f,
+        ContagionDifficulty.Harder => 1.35f,
+        _ => 1f
+    };
+
+    // Suppression exponent: chance is multiplied by (1 - infectedColonyFraction)^strength.
+    // Easier slows spread hard as the colony fills up; Harder disables suppression entirely.
+    public float SpreadSuppressionStrength => difficulty switch
+    {
+        ContagionDifficulty.Easier => 3.5f,
+        ContagionDifficulty.Harder => 0f,
+        _ => 2f
+    };
+
+    // Effective multiplier applied at every person-to-person transmission roll.
+    public float EffectiveTransmissionMultiplier => transmissionRateMultiplier * DifficultyTransmissionScale;
+
     public void Reset()
     {
         transmissionRateMultiplier = DefaultTransmissionRateMultiplier;
         outbreakFrequencyMultiplier = DefaultOutbreakFrequencyMultiplier;
         incubationLengthMultiplier = DefaultIncubationLengthMultiplier;
+        difficulty = DefaultDifficulty;
+        maskProtection = DefaultMaskProtection;
         diagnosticsMode = DefaultDiagnosticsMode;
         showPerformanceStats = DefaultShowPerformanceStats;
     }
@@ -55,6 +93,8 @@ public sealed class Contagion_Settings : ModSettings
         Scribe_Values.Look(ref transmissionRateMultiplier, "transmissionRateMultiplier", DefaultTransmissionRateMultiplier);
         Scribe_Values.Look(ref outbreakFrequencyMultiplier, "outbreakFrequencyMultiplier", DefaultOutbreakFrequencyMultiplier);
         Scribe_Values.Look(ref incubationLengthMultiplier, "incubationLengthMultiplier", DefaultIncubationLengthMultiplier);
+        Scribe_Values.Look(ref difficulty, "difficulty", DefaultDifficulty);
+        Scribe_Values.Look(ref maskProtection, "maskProtection", DefaultMaskProtection);
         Scribe_Values.Look(ref diagnosticsMode, "diagnosticsMode", DefaultDiagnosticsMode);
         Scribe_Values.Look(ref showPerformanceStats, "showPerformanceStats", DefaultShowPerformanceStats);
 
@@ -91,6 +131,41 @@ public sealed class Contagion_Mod : Mod
         listing.Begin(inRect);
 
         listing.Label("Contagion_SettingsGameplayHeader".Translate());
+        listing.Gap();
+
+        listing.Label("Contagion_SettingDifficulty".Translate());
+        if (listing.RadioButton(
+            "Contagion_DifficultyEasier".Translate().Resolve(),
+            settings.difficulty == ContagionDifficulty.Easier,
+            tooltip: "Contagion_DifficultyEasierTooltip".Translate().Resolve()))
+        {
+            settings.difficulty = ContagionDifficulty.Easier;
+        }
+
+        if (listing.RadioButton(
+            "Contagion_DifficultyNormal".Translate().Resolve(),
+            settings.difficulty == ContagionDifficulty.Normal,
+            tooltip: "Contagion_DifficultyNormalTooltip".Translate().Resolve()))
+        {
+            settings.difficulty = ContagionDifficulty.Normal;
+        }
+
+        if (listing.RadioButton(
+            "Contagion_DifficultyHarder".Translate().Resolve(),
+            settings.difficulty == ContagionDifficulty.Harder,
+            tooltip: "Contagion_DifficultyHarderTooltip".Translate().Resolve()))
+        {
+            settings.difficulty = ContagionDifficulty.Harder;
+        }
+
+        listing.Gap(6f);
+        listing.CheckboxLabeled(
+            "Contagion_SettingMaskProtection".Translate().Resolve(),
+            ref settings.maskProtection,
+            "Contagion_SettingMaskProtectionTooltip".Translate().Resolve());
+
+        listing.Gap(12f);
+        listing.Label("Contagion_SettingsTuningHeader".Translate());
         listing.Gap();
         settings.transmissionRateMultiplier = listing.SliderLabeled(
             "Contagion_SettingTransmissionRate".Translate(settings.transmissionRateMultiplier.ToString("0.00x")).Resolve(),

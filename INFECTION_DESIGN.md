@@ -333,7 +333,9 @@ The mod adds no quarantine mechanics. Instead, existing systems naturally produc
 
 **Room layout** becomes meaningful: doors between rooms block airborne transmission (different enclosed rooms = zero airborne chance). A colony with separate bedrooms contains disease better than open barracks. Players learn this through consequences.
 
-**The design goal:** A player who has never heard of this mod but follows RimWorld common sense (put sick pawns in medical beds, have a dedicated hospital, keep the base clean) will naturally contain most outbreaks. The mod rewards good colony design rather than requiring new learned behaviors.
+**Masks and respiratory protection** reduce airborne, social, and close-contact transmission for both the wearer and people around them, keyed on the vanilla `ToxicEnvironmentResistance` stat. Worn apparel (gas masks) and air-filtering body parts (detoxifier/fleshmass lung) count at full effect; genes are off by default and opted in via the `Contagion_RespiratoryImmunity` config def (shipping with breathless as airway immunity). Outfitting a caregiver or a sick pawn with a mask is meaningful counterplay using existing gear, not a new system.
+
+**The design goal:** A player who has never heard of this mod but follows RimWorld common sense (put sick pawns in medical beds, have a dedicated hospital, keep the base clean, mask up around the sick) will naturally contain most outbreaks. The mod rewards good colony design rather than requiring new learned behaviors.
 
 ---
 
@@ -349,18 +351,30 @@ No changes to penoxycyline's scope, duration, or availability.
 
 ## Mod Settings
 
-Accessible through the standard `ModSettings` page. No in-game UI.
+Accessible through the standard `ModSettings` page.
 
-| Setting | Range | Default | Effect |
+### Difficulty (preset)
+
+A single Easier / Normal / Harder control that presets the spread feel on top of the advanced sliders:
+
+| Difficulty | Transmission scale | Spread suppression |
+|---|---|---|
+| Easier | 0.7× | Strong (outbreaks rarely reach the whole colony) |
+| Normal | 1.0× | Moderate (a well-run colony can usually contain it) |
+| Harder | 1.35× | **Disabled** (an untreated outbreak can sweep the colony) |
+
+Difficulty multiplies the Transmission Rate slider rather than replacing it, so the two compose. **Spread suppression** dampens contagious person-to-person/fomite transmission toward colonists as more of the colony is already infected — `(1 - infectedColonyFraction) ^ strength` — preventing deterministic 100% saturation. It is measured over and applied only to player-faction pawns, and excludes foodborne and environmental seeding.
+
+### Toggles and advanced tuning
+
+| Setting | Range / values | Default | Effect |
 |---|---|---|---|
-| Transmission Rate | 0.25× – 2.0× | 1.0× | Global multiplier on all vector base chances |
+| Masks reduce spread | on / off | on | Apparel and air-filtering body parts reduce respiratory transmission via `ToxicEnvironmentResistance` |
+| Transmission Rate | 0.25× – 2.0× | 1.0× | Global multiplier on all vector base chances (composed with difficulty scale) |
 | Outbreak Frequency | 0.25× – 2.0× | 1.0× | Multiplier on all seeder MTB timers |
-| Incubation Length | 0.5× – 2.0× | 1.0× | Multiplier on incubation durations |
+| Incubation Length | 0.25× – 2.0× | 1.0× | Multiplier on incubation durations |
 
-**Presets:**
-- **Relaxed** — 0.5× transmission, 1.5× incubation (longer quarantine window, slower spread)
-- **Standard** — 1.0× / 1.0× (designed baseline)
-- **Harsh** — 1.5× transmission, 0.75× incubation (faster spread, shorter warning)
+Per-disease behavior (e.g. `spreadSuppressionScale`, per-vector mask effectiveness) and the gene airway-immunity whitelist (`Contagion_RespiratoryImmunity`) live in XML so players and modders can tune or patch them directly.
 
 ---
 

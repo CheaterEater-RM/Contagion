@@ -2,6 +2,16 @@
 <LanguageData>
   <Contagion_SettingsCategory>Contagion</Contagion_SettingsCategory>
   <Contagion_SettingsGameplayHeader>Gameplay</Contagion_SettingsGameplayHeader>
+  <Contagion_SettingDifficulty>Difficulty</Contagion_SettingDifficulty>
+  <Contagion_DifficultyEasier>Easier</Contagion_DifficultyEasier>
+  <Contagion_DifficultyEasierTooltip>Diseases spread more slowly and spread suppression is stronger, so outbreaks rarely reach the whole colony. Good for a more forgiving game.</Contagion_DifficultyEasierTooltip>
+  <Contagion_DifficultyNormal>Normal</Contagion_DifficultyNormal>
+  <Contagion_DifficultyNormalTooltip>Balanced transmission with moderate spread suppression: outbreaks are dangerous but a well-run colony can usually contain them.</Contagion_DifficultyNormalTooltip>
+  <Contagion_DifficultyHarder>Harder</Contagion_DifficultyHarder>
+  <Contagion_DifficultyHarderTooltip>Faster, more realistic spread with NO spread suppression. An untreated outbreak can sweep through the entire colony. For experienced players.</Contagion_DifficultyHarderTooltip>
+  <Contagion_SettingMaskProtection>Masks and lungs reduce airborne spread</Contagion_SettingMaskProtection>
+  <Contagion_SettingMaskProtectionTooltip>When enabled, worn masks (e.g. gas masks) and air-filtering body parts (detoxifier/fleshmass lungs) reduce airborne, social, and close-contact transmission for the wearer and those nearby, based on their Toxic Environment Resistance. Genes are ignored by default; specific genes (like breathless) can grant airway immunity via the Contagion_RespiratoryImmunity def.</Contagion_SettingMaskProtectionTooltip>
+  <Contagion_SettingsTuningHeader>Advanced tuning</Contagion_SettingsTuningHeader>
   <Contagion_SettingTransmissionRate>Transmission rate: {0}</Contagion_SettingTransmissionRate>
   <Contagion_SettingTransmissionRateTooltip>Global multiplier applied to transmission vector chances.</Contagion_SettingTransmissionRateTooltip>
   <Contagion_SettingOutbreakFrequency>Outbreak frequency: {0}</Contagion_SettingOutbreakFrequency>

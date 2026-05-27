@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Respiratory protection whitelist for genes.
+
+    By default, only WORN APPAREL (gas masks, etc.) and BODY-PART HEDIFFS (detoxifier lung,
+    fleshmass lung) reduce airborne / social / close-contact disease transmission, via their
+    ToxicEnvironmentResistance. Genes are ignored, because most genetic toxic resistance is
+    metabolic tolerance rather than a barrier over the airways.
+
+    Genes listed below are opted back in with an explicit protection value (0-1):
+      1.0 = effectively immune to airway-based transmission
+      0.5 = halves it
+    Protection is further scaled per-disease by each respiratory vector's airwayImmunityFactor,
+    so these genes block airborne flu but do nothing against contact-spread plague.
+
+    Genes are referenced by defName as plain text, so listing a gene from a DLC you do not have
+    loaded is harmless - it is simply skipped. Players can PatchOperation this def to add or
+    remove entries.
+  -->
+  <Contagion.RespiratoryImmunityDef>
+    <defName>Contagion_RespiratoryImmunity</defName>
+    <geneProtections>
+      <!-- Breathless (Odyssey): stores oxygen, barely breathes -> cannot inhale a pathogen. -->
+      <li>
+        <gene>VacuumResistance_Total</gene>
+        <protection>1.0</protection>
+      </li>
+      <!-- Total antitoxic lungs (Biotech): fully sealed antitoxic lungs. -->
+      <li>
+        <gene>ToxicEnvironmentResistance_Total</gene>
+        <protection>1.0</protection>
+      </li>
+      <!-- Partial antitoxic lungs (Biotech): partial filtering. -->
+      <li>
+        <gene>ToxicEnvironmentResistance_Partial</gene>
+        <protection>0.5</protection>
+      </li>
+    </geneProtections>
+  </Contagion.RespiratoryImmunityDef>
+
+</Defs>

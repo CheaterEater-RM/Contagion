@@ -38,6 +38,7 @@
           <permanentSummer>0.4</permanentSummer>
           <permanentWinter>0.7</permanentWinter>
         </seasonalInfectivity>
+        <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <vectors>
           <li Class="Contagion.Vector_Airborne">
             <baseChancePerCheck>0.03</baseChancePerCheck>
@@ -45,10 +46,14 @@
             <maxRange>15</maxRange>
             <distanceFalloffRate>0.25</distanceFalloffRate>
             <obstructedFactor>0.0</obstructedFactor>
+            <maskTargetEffectiveness>0.7</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
           </li>
           <li Class="Contagion.Vector_Social">
             <baseChancePerInteraction>0.02</baseChancePerInteraction>
             <outdoorFactor>0.5</outdoorFactor>
+            <maskTargetEffectiveness>0.6</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
           </li>
           <li Class="Contagion.Vector_Fomite">
             <contaminatesVomit>true</contaminatesVomit>
@@ -149,6 +154,7 @@
         <incubationDays>1.0</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
+        <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <activeInfectivityCurve>
           <points>
             <li>(0.00, 0.2)</li>
@@ -166,6 +172,10 @@
             <cleanlinessImpact>1.0</cleanlinessImpact>
             <outdoorFactor>0.75</outdoorFactor>
             <outdoorFilthRadius>4</outdoorFilthRadius>
+            <maskTargetEffectiveness>0.4</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.3</maskSourceEffectiveness>
+            <!-- Plague spreads by contact/fleas, not the airways, so gene airway immunity (breathless) does not help. -->
+            <airwayImmunityFactor>0</airwayImmunityFactor>
           </li>
         </vectors>
         <seeders>
@@ -216,6 +226,10 @@
             <cleanlinessImpact>1.0</cleanlinessImpact>
             <outdoorFactor>0.75</outdoorFactor>
             <outdoorFilthRadius>4</outdoorFilthRadius>
+            <maskTargetEffectiveness>0.4</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.3</maskSourceEffectiveness>
+            <!-- Plague spreads by contact/fleas, not the airways, so gene airway immunity (breathless) does not help. -->
+            <airwayImmunityFactor>0</airwayImmunityFactor>
           </li>
         </vectors>
         <seeders>
@@ -288,6 +302,8 @@
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>None</outbreakNotification>
+        <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
+        <spreadSuppressionScale>0</spreadSuppressionScale>
         <seasonalInfectivity>
           <spring>0.8</spring>
           <summer>1.2</summer>
@@ -331,6 +347,8 @@
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>None</outbreakNotification>
+        <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
+        <spreadSuppressionScale>0</spreadSuppressionScale>
         <seasonalInfectivity>
           <spring>0.9</spring>
           <summer>1.2</summer>

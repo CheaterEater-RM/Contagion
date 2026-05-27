@@ -44,6 +44,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         public Pawn Pawn { get; }
 
         public ResolvedTransmissionProfile ResolvedProfile { get; }
+
+        public float SuppressionFactor { get; set; } = 1f;
     }
 
     private sealed class EnvironmentalProfile
@@ -203,6 +205,21 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return;
         }
 
+        // Suppression depends only on (map, disease), so compute it once per disease for the pass.
+        Dictionary<HediffDef, float> suppressionByDisease = new Dictionary<HediffDef, float>();
+        for (int i = 0; i < sources.Count; i++)
+        {
+            TransmissionSource source = sources[i];
+            HediffDef diseaseDef = source.ResolvedProfile.DiseaseDef;
+            if (!suppressionByDisease.TryGetValue(diseaseDef, out float suppression))
+            {
+                suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, source.ResolvedProfile);
+                suppressionByDisease[diseaseDef] = suppression;
+            }
+
+            source.SuppressionFactor = suppression;
+        }
+
         for (int sourceIndex = 0; sourceIndex < sources.Count; sourceIndex++)
         {
             TransmissionSource source = sources[sourceIndex];
@@ -261,7 +278,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
 
         float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
-        float transmissionMultiplier = Contagion_Mod.Settings?.transmissionRateMultiplier ?? 1f;
+        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
 
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
@@ -288,7 +305,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return;
         }
 
-        float transmissionMultiplier = Contagion_Mod.Settings?.transmissionRateMultiplier ?? 1f;
+        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
+        Dictionary<HediffDef, float> suppressionByDisease = new Dictionary<HediffDef, float>();
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
             Pawn pawn = spawnedPawns[pawnIndex];
@@ -317,9 +335,19 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
                     continue;
                 }
 
+                float suppression = 1f;
+                if (ContagionTransmissionUtility.IsSuppressionTarget(pawn))
+                {
+                    if (!suppressionByDisease.TryGetValue(resolvedProfile.DiseaseDef, out suppression))
+                    {
+                        suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile);
+                        suppressionByDisease[resolvedProfile.DiseaseDef] = suppression;
+                    }
+                }
+
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteAttempted);
                 float chance = ContagionTransmissionUtility.BuildSeederChance(
-                    fomiteVector.baseChancePerContact * potencyFactor,
+                    fomiteVector.baseChancePerContact * potencyFactor * suppression,
                     pawn,
                     resolvedProfile,
                     map,
@@ -368,7 +396,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return false;
         }
 
-        float transmissionMultiplier = Contagion_Mod.Settings?.transmissionRateMultiplier ?? 1f;
+        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
 
         for (int vectorIndex = 0; vectorIndex < source.ResolvedProfile.Profile.vectors.Count; vectorIndex++)
         {
@@ -458,6 +486,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         bool hasLineOfSight = GenSight.LineOfSight(source.Pawn.Position, targetPawn.Position, map);
         float enclosureFactor = sourceRoofed && targetRoofed ? 1f : vector.outdoorFactor;
         float obstructionFactor = hasLineOfSight ? 1f : vector.obstructedFactor;
+        float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
+        float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn) ? source.SuppressionFactor : 1f;
         float chance = ContagionTransmissionUtility.BuildSourceTargetChance(
             vector.baseChancePerCheck,
             source.Pawn,
@@ -465,7 +495,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             source.ResolvedProfile,
             vector,
             map,
-            GetDistanceFactor(distance, vector.distanceFalloffRate) * enclosureFactor * obstructionFactor,
+            GetDistanceFactor(distance, vector.distanceFalloffRate) * enclosureFactor * obstructionFactor * maskFactor * suppressionFactor,
             transmissionMultiplier,
             out HediffDef _);
 
@@ -505,6 +535,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         Room targetRoom = targetPawn.Position.GetRoom(map);
         float outdoorFactor = IsOutdoors(sourceRoom) || IsOutdoors(targetRoom) ? vector.outdoorFactor : 1f;
         float cleanlinessFactor = GetLocalCleanlinessFactor(targetPawn.Position, targetRoom, vector.cleanlinessImpact, vector.outdoorFilthRadius);
+        float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
+        float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn) ? source.SuppressionFactor : 1f;
         float chance = ContagionTransmissionUtility.BuildSourceTargetChance(
             vector.baseChancePerCheck,
             source.Pawn,
@@ -512,7 +544,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             source.ResolvedProfile,
             vector,
             map,
-            GetDistanceFactor(distance, vector.distanceFalloffRate) * outdoorFactor * cleanlinessFactor,
+            GetDistanceFactor(distance, vector.distanceFalloffRate) * outdoorFactor * cleanlinessFactor * maskFactor * suppressionFactor,
             transmissionMultiplier,
             out HediffDef _);
 

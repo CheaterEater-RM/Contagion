@@ -36,12 +36,14 @@ The current implementation has a working skeleton: `TransmissionProfile`, seven 
 - `carrierChance` (float, reserved)
 - `carrierHediffDef` (HediffDef, reserved)
 - `spreadsDuringCaravan` (bool, reserved)
+- `spreadSuppressionScale` (float, default 1.0 — per-disease scaling of colony spread suppression; see Spread Suppression)
 
 ### Fields added to vectors
 
 - `obstructedFactor` on `Vector_Airborne` (LOS-blocked transmission multiplier)
 - `outdoorFilthRadius` on `Vector_Proximity` (local filth check when outdoors)
 - Optional per-vector `activeInfectivityCurveOverride` and `incubationInfectivityCurveOverride`
+- `maskTargetEffectiveness`, `maskSourceEffectiveness`, `airwayImmunityFactor` on the shared `RespiratoryVector` base (`Vector_Airborne`, `Vector_Social`, `Vector_Proximity`); see Respiratory Protection
 
 ### Fields added to seeders
 
@@ -371,6 +373,80 @@ Custom vectors receive this context. The design steers toward local data by maki
 
 ---
 
+## Spread Suppression
+
+A colony-scoped balancing term layered on top of the per-candidate equation, controlling how completely an outbreak can saturate the colony.
+
+### Mechanic
+
+For a contagious roll toward a colonist, the chance is multiplied by:
+
+```
+suppression = (1 - infectedColonyFraction) ^ effectiveStrength
+```
+
+- `infectedColonyFraction` = (player-faction pawns the profile can affect that already carry the disease, active or incubating) ÷ (all player-faction pawns the profile can affect). Computed once per disease per transmission pass.
+- `effectiveStrength` = the difficulty setting's suppression strength × the profile's `spreadSuppressionScale`. A strength of 0 yields a factor of 1 (no suppression).
+
+### Scope rules (important for correctness)
+
+- **Target-gated**: applied only when the transmission target is a player-faction pawn, matching the population the fraction is measured over. Visitors/prisoners-of-other-factions/raiders are unaffected and uncounted. Without this gate, a fully-infected colony would wrongly throttle spread among unrelated pawns.
+- **Vectors covered**: airborne, social, proximity, fomite — contagious spread shed by infected colonists into shared space.
+- **Vectors excluded**: foodborne (a contaminated-food source, not herd transmission) and environmental seeding (sourced by the map). These never apply suppression.
+
+### `spreadSuppressionScale` (per disease)
+
+`1.0` = normal, `0` = this disease ignores suppression (used by environmental diseases, which have no person-to-person vectors anyway), `>1` = suppresses faster than other diseases. Default `1.0`.
+
+### Difficulty coupling
+
+The suppression strength is supplied by the player's difficulty setting (Easier = strong, Normal = moderate, Harder = 0/disabled), and difficulty also scales the global transmission multiplier. These are engine/settings concerns, not schema fields, but they determine `effectiveStrength`.
+
+---
+
+## Respiratory Protection (Masks, Lungs, Genes)
+
+Respiratory vectors share a `RespiratoryVector` base that reduces transmission based on protection the source and target are actually wearing or carrying, keyed on the vanilla `ToxicEnvironmentResistance` stat. The contribution is decomposed by source so that equipment and biology are treated correctly.
+
+### Two protection terms
+
+Per side (source and target), the vector chance is multiplied by:
+
+```
+sideFactor = (1 - airwayBarrierResistance × maskEffectiveness)   ← physical barrier (apparel + body parts)
+           × (1 - geneAirwayImmunity      × airwayImmunityFactor) ← whitelisted gene immunity
+```
+
+- `airwayBarrierResistance` = sum of `ToxicEnvironmentResistance` from **worn apparel** (`equippedStatOffsets`) plus **body-part / implant hediffs** (`CurStage.statOffsets`, restricted to `Hediff_AddedPart` / `countsAsAddedPartOrImplant` / `addedPartProps`), clamped 0–1. Genes are deliberately excluded here — most genetic toxic tolerance is metabolic, not an airway barrier. A transient drug/disease hediff that happens to offset the stat is also excluded.
+- `geneAirwayImmunity` = highest protection among the pawn's active genes that are explicitly whitelisted (see below).
+
+### Vector fields
+
+- `maskTargetEffectiveness` (default 0.7) — fraction of the target's barrier resistance applied (inhalation side).
+- `maskSourceEffectiveness` (default 0.5) — fraction of the source's barrier resistance applied (emission side).
+- `airwayImmunityFactor` (default 1.0) — how airway-dependent this vector is, gating gene immunity. `1.0` for airborne/social; set `0` for contact/flea vectors like plague proximity so breathless does not wrongly confer plague immunity.
+
+A whole respiratory protection layer can be disabled by the player via the "masks reduce spread" setting.
+
+### Gene whitelist: `RespiratoryImmunityDef`
+
+A standalone, fully patchable `Def` (shipped as `Contagion_RespiratoryImmunity`) lists genes that grant airway immunity, since genes are off by default:
+
+```xml
+<Contagion.RespiratoryImmunityDef>
+  <defName>Contagion_RespiratoryImmunity</defName>
+  <geneProtections>
+    <li><gene>VacuumResistance_Total</gene><protection>1.0</protection></li> <!-- breathless (Odyssey) -->
+    <li><gene>ToxicEnvironmentResistance_Total</gene><protection>1.0</protection></li>
+    <li><gene>ToxicEnvironmentResistance_Partial</gene><protection>0.5</protection></li>
+  </geneProtections>
+</Contagion.RespiratoryImmunityDef>
+```
+
+Genes are referenced by `defName` **as plain text**, not as a `GeneDef` cross-reference, so listing a Biotech/Odyssey gene is harmless when that DLC is absent — the entry is silently skipped at resolve time. Multiple defs are merged; players can `PatchOperation` the shipped def to add or remove entries. `protection` is clamped 0–1, where 1 is effectively immune to airway-based transmission (still scaled per-vector by `airwayImmunityFactor`).
+
+---
+
 ## Transmission Equation
 
 The complete per-candidate probability for any vector:
@@ -383,7 +459,9 @@ effectiveChance = vectorBaseChance
                 × susceptibilityProduct(target)           ← target factor list
                 × vanillaContractFactor(target)           ← DiseaseContractChanceFactor
                 × vectorContextModifiers(...)             ← distance, LOS, cleanliness, etc.
-                × globalSettingsMultiplier                ← player's transmission rate slider
+                × respiratoryMaskFactor(source, target)   ← respiratory vectors only (apparel/lung barrier + gene immunity)
+                × spreadSuppression(disease, target)      ← colonist targets only, contagious vectors only
+                × globalSettingsMultiplier                ← player's transmission rate slider × difficulty scale
 ```
 
 Each term is independently tunable via XML. The engine multiplies them. A zero in any term blocks transmission.
@@ -614,6 +692,7 @@ These are C# implementation concerns, not schema fields, but they inform the sch
 | `vectors` | List\<TransmissionVector\> | required | Spread mechanisms |
 | `seeders` | List\<TransmissionSeeder\> | required | Outbreak initiation mechanisms |
 | `maxActiveCases` | int | 0 (= no limit) | Suppress seeding above this count |
+| `spreadSuppressionScale` | float | 1.0 | Per-disease scaling of colony spread suppression (0 = exempt) |
 | `outbreakNotification` | enum | FirstCase | Player notification on transmission events |
 | `corpseContagious` | bool | false | Dead pawns as contagion sources |
 | `corpseInfectivityDecayPerDay` | float | 0.5 | Daily decay of corpse infectivity |
