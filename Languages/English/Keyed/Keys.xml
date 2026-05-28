@@ -9,20 +9,25 @@
   <Contagion_DifficultyNormalTooltip>Balanced transmission with moderate spread suppression: outbreaks are dangerous but a well-run colony can usually contain them.</Contagion_DifficultyNormalTooltip>
   <Contagion_DifficultyHarder>Harder</Contagion_DifficultyHarder>
   <Contagion_DifficultyHarderTooltip>Faster, more realistic spread with NO spread suppression. An untreated outbreak can sweep through the entire colony. For experienced players.</Contagion_DifficultyHarderTooltip>
+  <Contagion_SettingSeedingMode>Seeding mode</Contagion_SettingSeedingMode>
+  <Contagion_SeedingModeStoryteller>Storyteller-driven</Contagion_SeedingModeStoryteller>
+  <Contagion_SeedingModeStorytellerTooltip>Vanilla storyteller disease picks are intercepted and converted into Contagion start requests that resolve through arrivals, animal contact, environmental windows, or an acausal fallback.</Contagion_SeedingModeStorytellerTooltip>
+  <Contagion_SeedingModeContagion>Contagion-driven</Contagion_SeedingModeContagion>
+  <Contagion_SeedingModeContagionTooltip>Contagion owns disease pacing directly. Storyteller disease incidents for profiled diseases are cancelled and continuous start chances are tuned by the disease director.</Contagion_SeedingModeContagionTooltip>
   <Contagion_SettingMaskProtection>Masks and lungs reduce airborne spread</Contagion_SettingMaskProtection>
   <Contagion_SettingMaskProtectionTooltip>When enabled, worn masks (e.g. gas masks) and air-filtering body parts (detoxifier/fleshmass lungs) reduce airborne, social, and close-contact transmission for the wearer and those nearby, based on their Toxic Environment Resistance. Genes are ignored by default; specific genes (like breathless) can grant airway immunity via the Contagion_RespiratoryImmunity def.</Contagion_SettingMaskProtectionTooltip>
   <Contagion_SettingsTuningHeader>Advanced tuning</Contagion_SettingsTuningHeader>
   <Contagion_SettingTransmissionRate>Transmission rate: {0}</Contagion_SettingTransmissionRate>
   <Contagion_SettingTransmissionRateTooltip>Global multiplier applied to transmission vector chances.</Contagion_SettingTransmissionRateTooltip>
   <Contagion_SettingOutbreakFrequency>Outbreak frequency: {0}</Contagion_SettingOutbreakFrequency>
-  <Contagion_SettingOutbreakFrequencyTooltip>Global multiplier applied to storyteller and other seeding pressures.</Contagion_SettingOutbreakFrequencyTooltip>
+  <Contagion_SettingOutbreakFrequencyTooltip>Global multiplier applied to continuous seeding timers and arrival-seeding chances where the current mode uses them.</Contagion_SettingOutbreakFrequencyTooltip>
   <Contagion_SettingIncubationLength>Incubation length: {0}</Contagion_SettingIncubationLength>
   <Contagion_SettingIncubationLengthTooltip>Global multiplier applied to incubation duration before the real disease appears.</Contagion_SettingIncubationLengthTooltip>
   <Contagion_SettingsDiagnosticsHeader>Diagnostics</Contagion_SettingsDiagnosticsHeader>
   <Contagion_DiagnosticsModeOff>Off</Contagion_DiagnosticsModeOff>
   <Contagion_DiagnosticsModeOffTooltip>Disable Contagion runtime counters and optional tracing.</Contagion_DiagnosticsModeOffTooltip>
   <Contagion_DiagnosticsModeSummary>Summary</Contagion_DiagnosticsModeSummary>
-  <Contagion_DiagnosticsModeSummaryTooltip>Collect lightweight counters for seeding, transmission, and blocking outcomes.</Contagion_DiagnosticsModeSummaryTooltip>
+  <Contagion_DiagnosticsModeSummaryTooltip>Collect lightweight counters for disease incidence, spread, and blocked application outcomes.</Contagion_DiagnosticsModeSummaryTooltip>
   <Contagion_DiagnosticsModeVerbose>Verbose</Contagion_DiagnosticsModeVerbose>
   <Contagion_DiagnosticsModeVerboseTooltip>Enable event-level tracing for debugging. Traces should remain gated behind dev mode.</Contagion_DiagnosticsModeVerboseTooltip>
   <Contagion_ShowPerformanceStats>Collect performance stats</Contagion_ShowPerformanceStats>
@@ -30,11 +35,18 @@
   <Contagion_DiagnosticsPending>Runtime counters and trace summaries will appear here once the contagion engine is implemented.</Contagion_DiagnosticsPending>
   <Contagion_DiagnosticsRuntimeHeader>Runtime summary</Contagion_DiagnosticsRuntimeHeader>
   <Contagion_DiagnosticsPerformanceHeader>Performance</Contagion_DiagnosticsPerformanceHeader>
-  <Contagion_DiagnosticsNoEvents>No runtime contagion events recorded yet.</Contagion_DiagnosticsNoEvents>
-  <Contagion_DiagnosticsSummaryIncubation>Incubation: {0} seeded, {1} blocked, {2} immunity-blocked.</Contagion_DiagnosticsSummaryIncubation>
-  <Contagion_DiagnosticsSummarySeeding>Seeding success/attempts: storyteller {0}, arrivals {1}, environment {2}.</Contagion_DiagnosticsSummarySeeding>
-  <Contagion_DiagnosticsSummarySpread>Spread success/attempts: airborne {0}, proximity {1}, social {2}.</Contagion_DiagnosticsSummarySpread>
-  <Contagion_DiagnosticsSummaryContamination>Contamination: meals tagged {0}, foodborne {1}, vomit tagged {2}, fomite {3}.</Contagion_DiagnosticsSummaryContamination>
+  <Contagion_DiagnosticsIncidenceHeader>Disease incidence</Contagion_DiagnosticsIncidenceHeader>
+  <Contagion_DiagnosticsSpreadHeader>Disease spread</Contagion_DiagnosticsSpreadHeader>
+  <Contagion_DiagnosticsNoIncidence>No disease introductions recorded yet.</Contagion_DiagnosticsNoIncidence>
+  <Contagion_DiagnosticsNoSpread>No disease spread recorded yet.</Contagion_DiagnosticsNoSpread>
+  <Contagion_DiagnosticsIncidenceApplications>Incidence application: {0} seeded, {1} blocked, {2} immunity-blocked.</Contagion_DiagnosticsIncidenceApplications>
+  <Contagion_DiagnosticsIncidenceIntroductions>Introductions success/attempts: trait/direct {0}, arrivals {1}, environment {2}, continuous {3}; storyteller cancelled {4}.</Contagion_DiagnosticsIncidenceIntroductions>
+  <Contagion_DiagnosticsIncidencePending>Pending events: queued {0}, cap-dropped {1}, duplicates {2}, resolved arrival {3}, animal {4}, acausal {5}, windows opened {6}, closed {7}.</Contagion_DiagnosticsIncidencePending>
+  <Contagion_DiagnosticsIncidenceArrivals>Arrivals: groups {0}, empty {1}, no disease {2}, no carriers {3}, carriers {4} ({5} latent, {6} mild).</Contagion_DiagnosticsIncidenceArrivals>
+  <Contagion_DiagnosticsSpreadApplications>Spread application: {0} seeded, {1} blocked, {2} immunity-blocked.</Contagion_DiagnosticsSpreadApplications>
+  <Contagion_DiagnosticsSpreadVectors>Spread success/attempts: airborne {0}, proximity {1}, social {2}, foodborne {3}, fomite {4}.</Contagion_DiagnosticsSpreadVectors>
+  <Contagion_DiagnosticsSpreadContamination>Contamination: meals tagged {0}, vomit tagged {1}.</Contagion_DiagnosticsSpreadContamination>
+  <Contagion_DiagnosticsSummaryDirector>Director: debt human {0}, animal {1}; burden human {2}, animal {3}; recent {4}; mult {5}.</Contagion_DiagnosticsSummaryDirector>
   <Contagion_DiagnosticsNoPerformanceData>No performance samples recorded yet.</Contagion_DiagnosticsNoPerformanceData>
   <Contagion_DiagnosticsPerformanceTransmission>Transmission pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceTransmission>
   <Contagion_DiagnosticsPerformanceEnvironmental>Environmental pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceEnvironmental>

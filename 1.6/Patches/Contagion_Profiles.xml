@@ -11,6 +11,7 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.5</incubationDays>
+        <pendingWindowDays>15</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <incubationInfectivityCurve>
@@ -86,6 +87,10 @@
             <arrivalChance>0.01</arrivalChance>
             <cooldownDays>3</cooldownDays>
           </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>10</cooldownDays>
+          </li>
         </seeders>
         <maxActiveCases>5</maxActiveCases>
         <outbreakNotification>FirstCase</outbreakNotification>
@@ -104,6 +109,7 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.5</incubationDays>
+        <pendingWindowDays>15</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
@@ -143,6 +149,14 @@
             <seedCountRange>1~1</seedCountRange>
             <cooldownDays>10</cooldownDays>
           </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.01</arrivalChance>
+            <cooldownDays>3</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>10</cooldownDays>
+          </li>
         </seeders>
         <maxActiveCases>5</maxActiveCases>
       </li>
@@ -160,6 +174,7 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
+        <pendingWindowDays>5</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
@@ -203,6 +218,14 @@
             <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
             <handlerBias>2.0</handlerBias>
           </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.01</arrivalChance>
+            <cooldownDays>3</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>15</cooldownDays>
+          </li>
         </seeders>
         <maxActiveCases>4</maxActiveCases>
       </li>
@@ -220,6 +243,7 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
+        <pendingWindowDays>5</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
@@ -251,6 +275,20 @@
             <seedCountRange>1~1</seedCountRange>
             <cooldownDays>15</cooldownDays>
           </li>
+          <li Class="Contagion.Seeder_AnimalLinked">
+            <mtbDays>120</mtbDays>
+            <cooldownDays>15</cooldownDays>
+            <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
+            <handlerBias>2.0</handlerBias>
+          </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.01</arrivalChance>
+            <cooldownDays>3</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>15</cooldownDays>
+          </li>
         </seeders>
         <maxActiveCases>4</maxActiveCases>
       </li>
@@ -268,6 +306,7 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>3.0</incubationDays>
+        <pendingWindowDays>0</pendingWindowDays>
         <immunityDurationDays>15</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <targetBodyParts>
@@ -346,6 +385,8 @@
         <seeders>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>1.0</baseChanceMultiplier>
+            <windowDays>14</windowDays>
+            <infectionBudget>2~5</infectionBudget>
             <cooldownDays>5</cooldownDays>
           </li>
         </seeders>
@@ -391,6 +432,8 @@
         <seeders>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>0.75</baseChanceMultiplier>
+            <windowDays>14</windowDays>
+            <infectionBudget>2~5</infectionBudget>
             <cooldownDays>5</cooldownDays>
           </li>
         </seeders>

@@ -119,7 +119,12 @@ public sealed class Comp_ContaminatedFood : ThingComp
             out HediffDef _);
         if (Rand.Chance(Mathf.Clamp01(chance)))
         {
-            if (ContagionDiseaseUtility.TrySeedIncubation(ingester, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out HediffDef _))
+            if (ContagionDiseaseUtility.TrySeedIncubation(
+                ingester,
+                resolvedProfile.DiseaseDef,
+                resolvedProfile.PartsToAffect,
+                ContagionDiagnosticOrigin.Spread,
+                out HediffDef _))
             {
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneSeeded);
                 ContagionDiagnostics.Trace($"Foodborne transmission: {resolvedProfile.DiseaseDef.defName} to {ingester.LabelShortCap}.");

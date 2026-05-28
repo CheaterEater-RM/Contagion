@@ -11,27 +11,43 @@ public static class ContagionDiseaseUtility
 
     public static bool TrySeedIncubation(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, out HediffDef immunityCause)
     {
-        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, null, out immunityCause);
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, ContagionDiagnosticOrigin.Unknown, out immunityCause);
+    }
+
+    public static bool TrySeedIncubation(
+        Pawn pawn,
+        HediffDef diseaseDef,
+        List<BodyPartDef> partsToAffect,
+        ContagionDiagnosticOrigin origin,
+        out HediffDef immunityCause)
+    {
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, null, origin, out immunityCause);
     }
 
     public static bool TrySeedIncubation(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, Pawn sourcePawn, out HediffDef immunityCause)
+    {
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, sourcePawn, ContagionDiagnosticOrigin.Unknown, out immunityCause);
+    }
+
+    public static bool TrySeedIncubation(
+        Pawn pawn,
+        HediffDef diseaseDef,
+        List<BodyPartDef> partsToAffect,
+        Pawn sourcePawn,
+        ContagionDiagnosticOrigin origin,
+        out HediffDef immunityCause)
     {
         immunityCause = null;
 
         if (!CanContractDiseaseNow(pawn, diseaseDef, partsToAffect, sourcePawn, out immunityCause, null))
         {
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.IncubationBlocked);
-            if (immunityCause != null)
-            {
-                ContagionDiagnostics.Record(ContagionDiagnosticCounter.IncubationBlockedByImmunity);
-            }
-
+            ContagionDiagnostics.RecordApplicationResult(origin, seeded: false, immunityCause);
             return false;
         }
 
         if (FindIncubation(pawn, diseaseDef) != null)
         {
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.IncubationBlocked);
+            ContagionDiagnostics.RecordApplicationResult(origin, seeded: false, immunityCause: null);
             return false;
         }
 
@@ -52,8 +68,8 @@ public static class ContagionDiseaseUtility
         List<BodyPartDef> resolvedParts = partsToAffect.NullOrEmpty() ? resolvedProfile.PartsToAffect : partsToAffect;
         incubation.Configure(diseaseDef, resolvedParts, activationTick);
         pawn.health.AddHediff(incubation);
-        ContagionDiagnostics.Record(ContagionDiagnosticCounter.IncubationSeeded);
-        ContagionDiagnostics.Trace($"Incubation seeded: {diseaseDef.defName} on {pawn.LabelShortCap}.");
+        ContagionDiagnostics.RecordApplicationResult(origin, seeded: true, immunityCause: null);
+        ContagionDiagnostics.Trace($"Incubation seeded ({origin}): {diseaseDef.defName} on {pawn.LabelShortCap}.");
         return true;
     }
 

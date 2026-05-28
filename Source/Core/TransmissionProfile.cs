@@ -16,6 +16,10 @@ public sealed class TransmissionProfile : DefModExtension
 {
     public float incubationDays = 1f;
 
+    // Storyteller mode: how long a queued disease-start request waits for fulfillment
+    // before falling back to an acausal seed. Environmental windows use Seeder_Environmental.windowDays.
+    public float pendingWindowDays = 5f;
+
     public float immunityDurationDays;
 
     public HediffDef immunityHediffDef;
@@ -251,6 +255,10 @@ public sealed class Seeder_Arrival : TransmissionSeeder
 public sealed class Seeder_Environmental : TransmissionSeeder
 {
     public float baseChanceMultiplier = 1f;
+
+    public float windowDays = 14f;
+
+    public IntRange infectionBudget = new IntRange(2, 5);
 }
 
 public sealed class Seeder_AnimalLinked : TransmissionSeeder

@@ -18,6 +18,13 @@ public enum ContagionDifficulty
     Harder
 }
 
+// Order is persisted by Scribe as ordinal values. Never reorder; append new values only.
+public enum ContagionSeedingMode
+{
+    Storyteller,
+    Contagion
+}
+
 public sealed class Contagion_Settings : ModSettings
 {
     public const float MinMultiplier = 0.25f;
@@ -32,6 +39,8 @@ public sealed class Contagion_Settings : ModSettings
 
     private const ContagionDifficulty DefaultDifficulty = ContagionDifficulty.Normal;
 
+    private const ContagionSeedingMode DefaultSeedingMode = ContagionSeedingMode.Storyteller;
+
     private const bool DefaultMaskProtection = true;
 
     private const ContagionDiagnosticsMode DefaultDiagnosticsMode = ContagionDiagnosticsMode.Off;
@@ -45,6 +54,8 @@ public sealed class Contagion_Settings : ModSettings
     public float incubationLengthMultiplier = DefaultIncubationLengthMultiplier;
 
     public ContagionDifficulty difficulty = DefaultDifficulty;
+
+    public ContagionSeedingMode seedingMode = DefaultSeedingMode;
 
     public bool maskProtection = DefaultMaskProtection;
 
@@ -82,6 +93,7 @@ public sealed class Contagion_Settings : ModSettings
         outbreakFrequencyMultiplier = DefaultOutbreakFrequencyMultiplier;
         incubationLengthMultiplier = DefaultIncubationLengthMultiplier;
         difficulty = DefaultDifficulty;
+        seedingMode = DefaultSeedingMode;
         maskProtection = DefaultMaskProtection;
         diagnosticsMode = DefaultDiagnosticsMode;
         showPerformanceStats = DefaultShowPerformanceStats;
@@ -94,6 +106,7 @@ public sealed class Contagion_Settings : ModSettings
         Scribe_Values.Look(ref outbreakFrequencyMultiplier, "outbreakFrequencyMultiplier", DefaultOutbreakFrequencyMultiplier);
         Scribe_Values.Look(ref incubationLengthMultiplier, "incubationLengthMultiplier", DefaultIncubationLengthMultiplier);
         Scribe_Values.Look(ref difficulty, "difficulty", DefaultDifficulty);
+        Scribe_Values.Look(ref seedingMode, "seedingMode", DefaultSeedingMode);
         Scribe_Values.Look(ref maskProtection, "maskProtection", DefaultMaskProtection);
         Scribe_Values.Look(ref diagnosticsMode, "diagnosticsMode", DefaultDiagnosticsMode);
         Scribe_Values.Look(ref showPerformanceStats, "showPerformanceStats", DefaultShowPerformanceStats);
@@ -156,6 +169,24 @@ public sealed class Contagion_Mod : Mod
             tooltip: "Contagion_DifficultyHarderTooltip".Translate().Resolve()))
         {
             settings.difficulty = ContagionDifficulty.Harder;
+        }
+
+        listing.Gap(6f);
+        listing.Label("Contagion_SettingSeedingMode".Translate());
+        if (listing.RadioButton(
+            "Contagion_SeedingModeStoryteller".Translate().Resolve(),
+            settings.seedingMode == ContagionSeedingMode.Storyteller,
+            tooltip: "Contagion_SeedingModeStorytellerTooltip".Translate().Resolve()))
+        {
+            settings.seedingMode = ContagionSeedingMode.Storyteller;
+        }
+
+        if (listing.RadioButton(
+            "Contagion_SeedingModeContagion".Translate().Resolve(),
+            settings.seedingMode == ContagionSeedingMode.Contagion,
+            tooltip: "Contagion_SeedingModeContagionTooltip".Translate().Resolve()))
+        {
+            settings.seedingMode = ContagionSeedingMode.Contagion;
         }
 
         listing.Gap(6f);
@@ -223,7 +254,11 @@ public sealed class Contagion_Mod : Mod
         {
             listing.Gap(6f);
             listing.Label("Contagion_DiagnosticsRuntimeHeader".Translate());
-            listing.SubLabel(ContagionDiagnostics.BuildSummaryReport(), 1f);
+            listing.Label("Contagion_DiagnosticsIncidenceHeader".Translate());
+            listing.SubLabel(ContagionDiagnostics.BuildIncidenceReport(), 1f);
+            listing.Gap(4f);
+            listing.Label("Contagion_DiagnosticsSpreadHeader".Translate());
+            listing.SubLabel(ContagionDiagnostics.BuildSpreadReport(), 1f);
 
             if (settings.showPerformanceStats)
             {

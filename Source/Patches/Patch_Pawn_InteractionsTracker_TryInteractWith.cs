@@ -69,7 +69,13 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
                 continue;
             }
 
-            if (ContagionDiseaseUtility.TrySeedIncubation(targetPawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, sourcePawn, out HediffDef _))
+            if (ContagionDiseaseUtility.TrySeedIncubation(
+                targetPawn,
+                resolvedProfile.DiseaseDef,
+                resolvedProfile.PartsToAffect,
+                sourcePawn,
+                ContagionDiagnosticOrigin.Spread,
+                out HediffDef _))
             {
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.SocialSeeded);
                 ContagionDiagnostics.Trace($"Social transmission: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap} to {targetPawn.LabelShortCap}.");
