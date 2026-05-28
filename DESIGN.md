@@ -1,6 +1,6 @@
 # Contagion — Design
 
-*Single source of truth for the Contagion mod's design. Last consolidated 2026-05-27, seeding model revised 2026-05-28. Active implementation handoff lives in [`SEEDING_REDESIGN.md`](SEEDING_REDESIGN.md).*
+*Single source of truth for the Contagion mod's design. Last updated 2026-05-28.*
 
 For vanilla code paths and hook points, see the engineering companion `IMPLEMENTATION.md`. For agent rules and repo conventions, see `CLAUDE.md`.
 
@@ -529,11 +529,11 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 ## Implementation Status & Known Gaps
 
-*As of 2026-05-28. Transmission engine and vector implementations are complete and stable; the build is clean (0 warnings, 0 errors). The seeding model documented above is the post-revision target — the seeding-system implementation is in flight. See [`SEEDING_REDESIGN.md`](SEEDING_REDESIGN.md) for the active handoff.*
+*As of 2026-05-28. All vectors, seeding orchestration, and arrival hooks are complete and stable; the build is clean (0 warnings, 0 errors).*
 
-**Implemented and stable (no redesign needed):** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns) and contaminated-meal comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`).
+**Implemented and stable:** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns, pending events, director state) and contaminated-meal comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`); Mode 1 (pending events with per-disease fulfillment chains) and Mode 2 (Contagion-driven with the disease director) seeding orchestration; seeding mode settings UI and translation keys; XML profiles updated with `pendingWindowDays`, `windowDays`, and `infectionBudget`.
 
-**Being redesigned (Mode 1 / Mode 2 split):** the seeding wrapper around all of the above. The old implementation ran four parallel seeders independently (storyteller intercept → 1 case immediately, arrival → flat per-pawn chance, environmental → continuous, animal-linked + acausal → MTB). The new model collapses these into a single scheduler-and-fulfillment-chain (Mode 1) or a continuous director-paced system (Mode 2). The vectors, hooks, and transmission engine are not touched — only the orchestration layer above them changes.
+**Pending — tuning pass.** Starting numbers for pending windows, director parameters, and group arrival exposure policies are first-pass guesses. Play-testing and adjustment are needed before v1 ships.
 
 **Reserved — see below.** Corpse contagion, carrier state, caravan spread, and `Vector_Lovin` are intentionally schema-only with no engine implementation in v1.
 
