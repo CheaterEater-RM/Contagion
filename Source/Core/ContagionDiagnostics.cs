@@ -24,7 +24,6 @@ public enum ContagionDiagnosticCounter
     EnvironmentalWindowOpened,
     EnvironmentalWindowClosedBudget,
     EnvironmentalWindowClosedExpiry,
-    PressureIncremented,
     AirborneAttempted,
     AirborneSeeded,
     ProximityAttempted,
@@ -57,6 +56,20 @@ public static class ContagionDiagnostics
 
     private static readonly double[] PerformanceMaxMilliseconds = new double[(int)ContagionPerformanceMetric.Count];
 
+    private static bool HasDirectorSummary;
+
+    private static float DirectorHumanPressureDebt;
+
+    private static float DirectorAnimalPressureDebt;
+
+    private static float DirectorRecentSeeding;
+
+    private static float DirectorHumanBurden;
+
+    private static float DirectorAnimalBurden;
+
+    private static float DirectorMultiplier;
+
     public static bool Enabled => Contagion_Mod.Settings?.DiagnosticsEnabled ?? false;
 
     public static bool PerformanceEnabled => Enabled && (Contagion_Mod.Settings?.showPerformanceStats ?? false);
@@ -69,6 +82,7 @@ public static class ContagionDiagnostics
         System.Array.Clear(PerformanceCounts, 0, PerformanceCounts.Length);
         System.Array.Clear(PerformanceTotalMilliseconds, 0, PerformanceTotalMilliseconds.Length);
         System.Array.Clear(PerformanceMaxMilliseconds, 0, PerformanceMaxMilliseconds.Length);
+        HasDirectorSummary = false;
     }
 
     public static void Record(ContagionDiagnosticCounter counter, int amount = 1)
@@ -113,6 +127,28 @@ public static class ContagionDiagnostics
         Log.Message($"[Contagion] {message}");
     }
 
+    public static void UpdateDirectorSummary(
+        float humanPressureDebt,
+        float animalPressureDebt,
+        float recentSeeding,
+        float humanBurden,
+        float animalBurden,
+        float multiplier)
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        HasDirectorSummary = true;
+        DirectorHumanPressureDebt = humanPressureDebt;
+        DirectorAnimalPressureDebt = animalPressureDebt;
+        DirectorRecentSeeding = recentSeeding;
+        DirectorHumanBurden = humanBurden;
+        DirectorAnimalBurden = animalBurden;
+        DirectorMultiplier = multiplier;
+    }
+
     public static string BuildSummaryReport()
     {
         if (!Enabled)
@@ -120,29 +156,34 @@ public static class ContagionDiagnostics
             return string.Empty;
         }
 
-        if (!HasAnyRecordedCounters())
+        if (!HasAnyRecordedCounters() && !HasDirectorSummary)
         {
             return "Contagion_DiagnosticsNoEvents".Translate().Resolve();
         }
 
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.AppendLine("Contagion_DiagnosticsSummaryIncubation".Translate(
-            GetCounter(ContagionDiagnosticCounter.IncubationSeeded),
-            GetCounter(ContagionDiagnosticCounter.IncubationBlocked),
-            GetCounter(ContagionDiagnosticCounter.IncubationBlockedByImmunity)).Resolve());
-        stringBuilder.AppendLine("Contagion_DiagnosticsSummarySeeding".Translate(
-            FormatSuccessAttempts(ContagionDiagnosticCounter.StorytellerSeeded, ContagionDiagnosticCounter.StorytellerAttempted),
-            FormatSuccessAttempts(ContagionDiagnosticCounter.ArrivalSeeded, ContagionDiagnosticCounter.ArrivalAttempted),
-            FormatSuccessAttempts(ContagionDiagnosticCounter.EnvironmentalSeeded, ContagionDiagnosticCounter.EnvironmentalAttempted)).Resolve());
-        stringBuilder.AppendLine("Contagion_DiagnosticsSummarySpread".Translate(
-            FormatSuccessAttempts(ContagionDiagnosticCounter.AirborneSeeded, ContagionDiagnosticCounter.AirborneAttempted),
-            FormatSuccessAttempts(ContagionDiagnosticCounter.ProximitySeeded, ContagionDiagnosticCounter.ProximityAttempted),
-            FormatSuccessAttempts(ContagionDiagnosticCounter.SocialSeeded, ContagionDiagnosticCounter.SocialAttempted)).Resolve());
-        stringBuilder.Append("Contagion_DiagnosticsSummaryContamination".Translate(
-            GetCounter(ContagionDiagnosticCounter.MealsContaminated),
-            FormatSuccessAttempts(ContagionDiagnosticCounter.FoodborneSeeded, ContagionDiagnosticCounter.FoodborneAttempted),
-            GetCounter(ContagionDiagnosticCounter.VomitFilthContaminated),
-            FormatSuccessAttempts(ContagionDiagnosticCounter.FomiteSeeded, ContagionDiagnosticCounter.FomiteAttempted)).Resolve());
+        if (HasAnyRecordedCounters())
+        {
+            stringBuilder.AppendLine("Contagion_DiagnosticsSummaryIncubation".Translate(
+                GetCounter(ContagionDiagnosticCounter.IncubationSeeded),
+                GetCounter(ContagionDiagnosticCounter.IncubationBlocked),
+                GetCounter(ContagionDiagnosticCounter.IncubationBlockedByImmunity)).Resolve());
+            stringBuilder.AppendLine("Contagion_DiagnosticsSummarySeeding".Translate(
+                FormatSuccessAttempts(ContagionDiagnosticCounter.StorytellerSeeded, ContagionDiagnosticCounter.StorytellerAttempted),
+                FormatSuccessAttempts(ContagionDiagnosticCounter.ArrivalSeeded, ContagionDiagnosticCounter.ArrivalAttempted),
+                FormatSuccessAttempts(ContagionDiagnosticCounter.EnvironmentalSeeded, ContagionDiagnosticCounter.EnvironmentalAttempted)).Resolve());
+            stringBuilder.AppendLine("Contagion_DiagnosticsSummarySpread".Translate(
+                FormatSuccessAttempts(ContagionDiagnosticCounter.AirborneSeeded, ContagionDiagnosticCounter.AirborneAttempted),
+                FormatSuccessAttempts(ContagionDiagnosticCounter.ProximitySeeded, ContagionDiagnosticCounter.ProximityAttempted),
+                FormatSuccessAttempts(ContagionDiagnosticCounter.SocialSeeded, ContagionDiagnosticCounter.SocialAttempted)).Resolve());
+            stringBuilder.AppendLine("Contagion_DiagnosticsSummaryContamination".Translate(
+                GetCounter(ContagionDiagnosticCounter.MealsContaminated),
+                FormatSuccessAttempts(ContagionDiagnosticCounter.FoodborneSeeded, ContagionDiagnosticCounter.FoodborneAttempted),
+                GetCounter(ContagionDiagnosticCounter.VomitFilthContaminated),
+                FormatSuccessAttempts(ContagionDiagnosticCounter.FomiteSeeded, ContagionDiagnosticCounter.FomiteAttempted)).Resolve());
+        }
+
+        AppendDirectorSummary(stringBuilder);
         return stringBuilder.ToString();
     }
 
@@ -187,6 +228,22 @@ public static class ContagionDiagnostics
         }
 
         return false;
+    }
+
+    private static void AppendDirectorSummary(StringBuilder stringBuilder)
+    {
+        if (!HasDirectorSummary)
+        {
+            return;
+        }
+
+        stringBuilder.Append("Contagion_DiagnosticsSummaryDirector".Translate(
+            DirectorHumanPressureDebt.ToString("0.##"),
+            DirectorAnimalPressureDebt.ToString("0.##"),
+            DirectorHumanBurden.ToString("0.###"),
+            DirectorAnimalBurden.ToString("0.###"),
+            DirectorRecentSeeding.ToString("0.##"),
+            DirectorMultiplier.ToString("0.##")).Resolve());
     }
 
     private static string FormatSuccessAttempts(ContagionDiagnosticCounter successCounter, ContagionDiagnosticCounter attemptCounter)

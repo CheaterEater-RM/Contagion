@@ -53,12 +53,6 @@ public sealed class TransmissionProfile : DefModExtension
     // person-to-person spread), >1 = suppresses faster than other diseases.
     public float spreadSuppressionScale = 1f;
 
-    // Contagion mode: each successful disease start increases pressure, which damps later
-    // start chances for the same disease until it decays back to zero.
-    public float pressureGain = 1f;
-
-    public float pressureDecayDays = 5f;
-
     public OutbreakNotificationMode outbreakNotification = OutbreakNotificationMode.FirstCase;
 
     public bool corpseContagious;

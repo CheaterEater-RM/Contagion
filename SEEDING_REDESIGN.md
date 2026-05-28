@@ -16,7 +16,7 @@ The existing seeding code runs four independent paths in parallel:
 These paths mostly do not collide, but the mental model is muddled and they don't compose. The redesign collapses them into **two clean modes** the player chooses in mod settings:
 
 - **Mode 1 — Storyteller-driven (default).** The vanilla storyteller still picks diseases on its biome-aware schedule. Each pick becomes a *pending event* with a per-disease window; fulfillment strategies (arrival, animal-contact, environmental window, acausal) resolve it.
-- **Mode 2 — Contagion-driven.** Contagion runs all pacing. Continuous low-rate seeding from all source paths. Storyteller picks for profiled diseases are cancelled outright. A per-disease *pressure* value decays after each disease introduction, dampening follow-up rolls.
+- **Mode 2 — Contagion-driven.** Contagion runs all pacing. Continuous low-rate seeding from all source paths. Storyteller picks for profiled diseases are cancelled outright. A map-level disease director raises chance after quiet stretches and suppresses it after recent introductions or active sickness.
 
 **The transmission engine, vectors, incubation, immunity, masks, suppression — none of these change.** Only the orchestration layer above them changes.
 
@@ -54,12 +54,12 @@ The conversation reached lock-in on these points. Implementer should treat them 
 - **Continuous environmental exposure.** Same engine as the current `RunEnvironmentalExposurePass`. Gated by biome commonality, season, temperature, water proximity, indoor sheltering.
 - **`Seeder_AnimalLinked` MTB stays.** Periodic animal-linked seeding when animals present, biased to handlers. Current implementation is correct for Mode 2.
 - **`Seeder_Acausal` MTB stays.** Isolated-colony backstop, especially for gut worms (no other path).
-- **Per-disease pressure.**
-  - Every successful disease introduction adds to a `pressure` value tracked per `(map, disease)`. A group exposure increments pressure once, even if it seeds several carriers.
-  - Pressure multiplies *down* subsequent seed chances for the same disease.
-  - Pressure decays linearly back to 0 over `pressureDecayDays` (proposed default: ~5 days).
-  - Independent per disease — a flu wave doesn't dampen a malaria event.
-  - **Cooloff acts on chance, not on the calendar.** A bad roll early doesn't freeze seeding; it makes the immediate follow-up rolls quieter.
+- **Disease director.**
+  - Mode 2 owns a `ContagionDiseaseDirector` per map; Mode 1 never consults it.
+  - The director tracks quiet-time pressure debt, recent disease introductions, and normalized human/animal sickness burden.
+  - Successful seeding spends pressure once per exposed group or continuous seeder fire, even when a group seeds several carriers.
+  - Human profiles use the human burden/debt channel; animal-only profiles use the animal channel.
+  - Current colonist/prisoner sickness and recent seeding suppress future introductions, so good quarantine still buys breathing room.
 
 ### Hostile raid hook (both modes)
 
@@ -119,10 +119,6 @@ Add to [`Source/Core/TransmissionProfile.cs`](Source/Core/TransmissionProfile.cs
 // diseases ignore this — they use Seeder_Environmental.windowDays instead.
 public float pendingWindowDays = 5f;
 
-// Mode 2: per-disease pressure tuning. After each successful disease introduction, pressure increases by
-// `pressureGain` and dampens future rolls. Decays linearly to 0 over `pressureDecayDays`.
-public float pressureGain = 1f;
-public float pressureDecayDays = 5f;
 ```
 
 ### New `Seeder_Environmental` fields
@@ -172,39 +168,20 @@ private List<PendingDiseaseEvent> _pendingEvents = new List<PendingDiseaseEvent>
 
 `Scribe_Collections.Look(ref _pendingEvents, "pendingEvents", LookMode.Deep)`. Re-init to empty in `PostLoadInit` if null (back-compat with saves made before the redesign — the field is just absent, which Scribe handles by leaving the default).
 
-### Per-disease pressure
+### Mode 2 disease director
 
 ```csharp
-// Parallel lists, scribed flat — mirrors the existing seeder-cooldown pattern in the
-// component for save-compat consistency.
-private List<HediffDef> _pressureDiseases = new List<HediffDef>();
-private List<float> _pressureValues = new List<float>();
-private List<int> _pressureLastUpdatedTicks = new List<int>();
+private ContagionDiseaseDirector _diseaseDirector = new ContagionDiseaseDirector();
 ```
 
-On every read, decay first:
+The director is scribed on the map component and updated daily only when `seedingMode == Contagion`. Its tuning lives in one class:
 
 ```csharp
-private float GetPressure(HediffDef disease, float decayDays)
-{
-    int index = _pressureDiseases.IndexOf(disease);
-    if (index < 0) return 0f;
-
-    int ticksGame = Find.TickManager.TicksGame;
-    int elapsedTicks = ticksGame - _pressureLastUpdatedTicks[index];
-    float decayedAmount = (elapsedTicks / 60000f) * (1f / Mathf.Max(0.01f, decayDays));
-    float newPressure = Mathf.Max(0f, _pressureValues[index] - decayedAmount);
-
-    _pressureValues[index] = newPressure;
-    _pressureLastUpdatedTicks[index] = ticksGame;
-    return newPressure;
-}
-
-private float GetPressureMultiplier(HediffDef disease, float decayDays)
-{
-    // Maps pressure 0..N to a multiplier 1..min. Tune curve in §8.
-    return 1f / (1f + GetPressure(disease, decayDays));
-}
+chanceMultiplier =
+    difficultyChanceMult
+    * (1f + pressureDebt)
+    * (1f / (1f + burdenScale * normalizedBurden))
+    * (1f / sqrt(1f + recentSeeding));
 ```
 
 ---
@@ -215,22 +192,22 @@ private float GetPressureMultiplier(HediffDef disease, float decayDays)
 
 - **[`DESIGN.md`](DESIGN.md)** — already revised in the same commit as this handoff doc (see "How Outbreaks Begin," "Fulfillment Strategies," "Implementation Status," "Decisions Log").
 
-- **[`Source/Core/TransmissionProfile.cs`](Source/Core/TransmissionProfile.cs)** — add `pendingWindowDays`, `pressureGain`, `pressureDecayDays`; add `Seeder_Environmental.windowDays` and `infectionBudget`.
+- **[`Source/Core/TransmissionProfile.cs`](Source/Core/TransmissionProfile.cs)** — add `pendingWindowDays`; add `Seeder_Environmental.windowDays` and `infectionBudget`.
 
 - **[`Source/Settings.cs`](Source/Settings.cs)** — `ContagionSeedingMode` enum, `seedingMode` field, settings UI radio group, `ExposeData` line. Translation keys.
 
-- **[`Source/Core/Contagion_MapTransmissionComponent.cs`](Source/Core/Contagion_MapTransmissionComponent.cs)** — add pending-events list and pressure tracking; scribe them; mode branching in `MapComponentTick`:
+- **[`Source/Core/Contagion_MapTransmissionComponent.cs`](Source/Core/Contagion_MapTransmissionComponent.cs)** — add pending-events list and the Mode 2 disease director; scribe them; mode branching in `MapComponentTick`:
   - **Mode 1.** `RunGeneralSeederPass` becomes a pending-event resolver. For each pending event, evaluate strategies in disease-specific order (you'll need a small dispatch table or per-disease ranking field — `pendingWindowDays > 0` is the gate that says "this is a Mode 1 strategy-driven event"). Animal-contact, arrival-await, and environmental-window strategies all read from `_pendingEvents`. Acausal expiry runs when `Find.TickManager.TicksGame >= expiryTick`.
-  - **Mode 2.** `RunGeneralSeederPass` runs the existing MTB seeders (acausal + animal-linked) but multiplies their chances by the pressure multiplier. `RunEnvironmentalExposurePass` similarly multiplies by pressure. `NotifySeederFired` calls into a new `IncrementPressure(disease, profile.pressureGain)` helper.
+  - **Mode 2.** `RunGeneralSeederPass` runs the existing MTB seeders (acausal + animal-linked) but multiplies their chances by the director multiplier. `RunEnvironmentalExposurePass` similarly multiplies by director output. Successful seeding calls `DiseaseDirector.NotifySeeded(...)` once per introduction.
 
 - **[`Source/Core/ContagionArrivalUtility.cs`](Source/Core/ContagionArrivalUtility.cs)** — branch on `Contagion_Mod.Settings.seedingMode`:
   - **Mode 1.** For each arriving group, check the map's pending events. The first pending arrival-fulfillable disease that the group can carry seeds a capped carrier payload and clears the pending entry. First match wins (don't seed one group with two pending diseases).
-  - **Mode 2.** Compute one group exposure roll from `arrivalChance`, group policy, outbreak frequency, pressure, and season. If exposed, choose one disease weighted by chance and seed a capped carrier payload.
+  - **Mode 2.** Compute one group exposure roll from `arrivalChance`, group policy, outbreak frequency, director output, and season. If exposed, choose one disease weighted by chance and seed a capped carrier payload.
 - **[`Source/Patches/Patch_IncidentWorker_Disease.cs`](Source/Patches/Patch_IncidentWorker_Disease.cs)** — redirect storyteller fires:
   - **Mode 1.** `TryExecuteWorker` prefix builds a `PendingDiseaseEvent` instead of calling `SeedIncubationToPawns`. For environmental diseases (`UsesEnvironmentalSeedingOnly`), build an environmental window event from `Seeder_Environmental.windowDays` and `infectionBudget`. For diseases with `pendingWindowDays == 0` (gut worms), call the acausal resolver immediately instead of queuing. The trait-driven `ApplyToPawns` path is unchanged in both modes (trait MTB still produces a direct seed).
   - **Mode 2.** `TryExecuteWorker` prefix sets `__result = false` and returns false for any profiled disease — full cancel. `ApplyToPawns` (trait path) is unchanged.
 
-- **[`1.6/Patches/Contagion_Profiles.xml`](1.6/Patches/Contagion_Profiles.xml)** — for each disease, add `<pendingWindowDays>` matching the table in §2; for Malaria/SleepingSickness, add `<windowDays>` and `<infectionBudget>` on their `Seeder_Environmental`; for Flu/Plague/GutWorms/etc., add `<pressureGain>` and `<pressureDecayDays>` if non-default.
+- **[`1.6/Patches/Contagion_Profiles.xml`](1.6/Patches/Contagion_Profiles.xml)** — for each disease, add `<pendingWindowDays>` matching the table in §2; for Malaria/SleepingSickness, add `<windowDays>` and `<infectionBudget>` on their `Seeder_Environmental`.
 
 - **Languages files** — new translation keys for the seeding-mode setting.
 
@@ -250,17 +227,17 @@ Suggested phases, each independently testable:
 
 1. Add `ContagionSeedingMode` enum and `seedingMode` field to settings, default Storyteller.
 2. Add settings UI radio + translation keys.
-3. Add `PendingDiseaseEvent` type, `pendingWindowDays` / `pressureGain` / `pressureDecayDays` profile fields, `Seeder_Environmental.windowDays` / `infectionBudget`.
-4. Add pending-events list and pressure tracker to the map component, with scribe. Don't read from them yet.
+3. Add `PendingDiseaseEvent` type, `pendingWindowDays` profile field, `Seeder_Environmental.windowDays` / `infectionBudget`.
+4. Add pending-events list and the disease director to the map component, with scribe. Don't read from them yet.
 5. Build clean. Diagnostics should show no behavior change.
 
 ### Phase B — Mode 2 (simpler — closer to current behavior)
 
-1. Add `IncrementPressure` / `GetPressureMultiplier` helpers on the map component.
-2. Multiply pressure into the group exposure roll in `ContagionArrivalUtility` (gated on `seedingMode == Contagion`).
-3. Multiply pressure into `RunGeneralSeederPass` and `RunEnvironmentalExposurePass` chances.
+1. Add `ContagionDiseaseDirector` and expose its chance multiplier through the map component.
+2. Multiply director output into the group exposure roll in `ContagionArrivalUtility` (gated on `seedingMode == Contagion`).
+3. Multiply director output into `RunGeneralSeederPass` and `RunEnvironmentalExposurePass` chances.
 4. Change `Patch_IncidentWorker_Disease.TryExecuteWorker` Mode-2 branch to full cancel for any profiled disease.
-5. Test: switch to Mode 2 in settings, confirm storyteller flu incidents are silently dropped, arrival/environmental seeds happen at expected rates, multiple seeds in quick succession dampen further rolls.
+5. Test: switch to Mode 2 in settings, confirm storyteller flu incidents are silently dropped, arrival/environmental seeds happen at expected rates, recent successful seeding and active sickness suppress follow-up rolls.
 
 ### Phase C — Mode 1 pending events
 
@@ -324,19 +301,20 @@ These are first-pass guesses. Expect tuning during Phase E.
 | Malaria | 14 | 2~5 |
 | SleepingSickness | 14 | 2~5 |
 
-### Pressure (Mode 2)
+### Disease director (Mode 2)
 
 | Field | Default | Notes |
 |---|---|---|
-| `pressureGain` | 1.0 | Per successful disease introduction |
-| `pressureDecayDays` | 5 | Linear decay back to 0 |
-| Multiplier curve | `1 / (1 + pressure)` | After 1 seed: 0.5×; 2 seeds: 0.33×; decays back |
+| Human/animal pressure debt | 0..5 normal | Quiet maps accumulate debt daily; active burden drains it |
+| Recent seeding | daily decay 0.92 | Successful seeding adds `1 + 0.25 * carrierCount` |
+| Burden suppression | `1 / (1 + burdenScale * burden)` | Colonists count fully; prisoners count at half weight |
+| Chance clamp | 0.1%..10% for arrival candidates | Zero remains zero |
 
-Per-disease overrides on contagious diseases (Flu, Plague) can use a stronger gain (1.5) so a single seed produces a more obvious cooloff before transmission kicks in. Environmental diseases should use a weaker gain (0.5) so the player can still get a steady trickle.
+Normal tuning starts at debt gain `0.03/day`, max debt `5`, burden scale `4`, and chance multiplier `1`. Easier slows debt gain and strengthens suppression; Harder raises debt gain and relaxes suppression.
 
 ### Group arrival exposure
 
-Keep the existing `Seeder_Arrival.arrivalChance = 0.01` as the disease's base group exposure chance. Mode 2 multiplies it by group policy, outbreak frequency, pressure, and season, then rolls exposure once for the whole group. If more than one disease candidate is valid, one disease is chosen weighted by exposure chance.
+Keep the existing `Seeder_Arrival.arrivalChance = 0.01` as the disease's base group exposure chance. Mode 2 multiplies it by group policy, outbreak frequency, director output, and season, then rolls exposure once for the whole group. If more than one disease candidate is valid, one disease is chosen weighted by exposure chance.
 
 Carrier count is `1 + Poisson(groupCarrierSqrtScale * diseaseClusterFactor * sqrt(eligiblePawnCount))`, clamped by group policy, active-case cap, and eligible pawn count. Disease cluster factor is derived from vectors: airborne/social/fomite diseases cluster more than proximity-only plague. Carriers are 70% latent incubation and 30% mild visible disease by default; group policies can override the mild-visible share.
 
@@ -373,9 +351,9 @@ Run each in dev mode. Check `Player.log` is clean. Check diagnostics counters in
 
 1. **Storyteller flu fire.** Confirm fully cancelled — `__result = false`, no seed, no pending event.
 2. **Arrivals over a season.** Confirm flu seeds accumulate at the expected rate.
-3. **Pressure cooloff.** Force two flu seeds within a day. Confirm subsequent arrival rolls are dampened (compare with verbose diagnostics).
-4. **Pressure decay.** Wait 5+ days post-seed. Confirm pressure decays back to 0 and rolls return to baseline.
-5. **Independent pressure.** Seed flu and confirm malaria's pressure is unaffected.
+3. **Recent-seeding cooloff.** Force two flu seeds within a day. Confirm subsequent arrival rolls are dampened (compare with verbose diagnostics).
+4. **Debt recovery.** Wait through a quiet period. Confirm pressure debt rises and rolls return toward or above baseline.
+5. **Burden suppression.** Seed flu into colonists/prisoners and confirm active sickness suppresses new introductions.
 6. **Environmental continuous.** On a tropical map, malaria seeds happen continuously through summer with no event window.
 
 ### Mode switch mid-save
@@ -386,7 +364,7 @@ Run each in dev mode. Check `Player.log` is clean. Check diagnostics counters in
 ### Save / load / mod removal
 
 1. Mode 1, save with pending events → reload → events still tracked.
-2. Mode 2, save with non-zero pressure → reload → pressure preserved and continues to decay.
+2. Mode 2, save with non-zero director debt/recent seeding → reload → director state is preserved and continues updating.
 3. Save with pending events + mod removed → save loads (Hard Rule #1 — `PendingDiseaseEvent` is our class, silently dropped, no crash).
 
 ### New hooks
@@ -422,7 +400,7 @@ Not blockers — implementer can ship Phase A–E with reasonable defaults and t
 | Profile schema | [`Source/Core/TransmissionProfile.cs`](Source/Core/TransmissionProfile.cs) | `TransmissionProfile`, `Seeder_*` classes |
 | Settings | [`Source/Settings.cs`](Source/Settings.cs) | `Contagion_Settings`, `DoSettingsWindowContents` |
 | Disease XML | [`1.6/Patches/Contagion_Profiles.xml`](1.6/Patches/Contagion_Profiles.xml) | Per-disease `<Operation>` blocks |
-| Cooldown bookkeeping pattern (mirror this for pressure) | [`Source/Core/Contagion_MapTransmissionComponent.cs`](Source/Core/Contagion_MapTransmissionComponent.cs) | `_seederCooldownDiseases` / `_seederCooldownKeys` / `_seederCooldownTicks` parallel lists + `NotifySeederFired` |
+| Cooldown bookkeeping pattern | [`Source/Core/Contagion_MapTransmissionComponent.cs`](Source/Core/Contagion_MapTransmissionComponent.cs) | `_seederCooldownDiseases` / `_seederCooldownKeys` / `_seederCooldownTicks` parallel lists + `NotifySeederFired` |
 
 ---
 

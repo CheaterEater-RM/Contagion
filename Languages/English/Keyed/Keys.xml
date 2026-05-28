@@ -40,6 +40,7 @@
   <Contagion_DiagnosticsSummarySeeding>Seeding success/attempts: storyteller {0}, arrivals {1}, environment {2}.</Contagion_DiagnosticsSummarySeeding>
   <Contagion_DiagnosticsSummarySpread>Spread success/attempts: airborne {0}, proximity {1}, social {2}.</Contagion_DiagnosticsSummarySpread>
   <Contagion_DiagnosticsSummaryContamination>Contamination: meals tagged {0}, foodborne {1}, vomit tagged {2}, fomite {3}.</Contagion_DiagnosticsSummaryContamination>
+  <Contagion_DiagnosticsSummaryDirector>Director: debt human {0}, animal {1}; burden human {2}, animal {3}; recent {4}; mult {5}.</Contagion_DiagnosticsSummaryDirector>
   <Contagion_DiagnosticsNoPerformanceData>No performance samples recorded yet.</Contagion_DiagnosticsNoPerformanceData>
   <Contagion_DiagnosticsPerformanceTransmission>Transmission pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceTransmission>
   <Contagion_DiagnosticsPerformanceEnvironmental>Environmental pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceEnvironmental>

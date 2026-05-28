@@ -13,8 +13,6 @@
         <incubationDays>1.5</incubationDays>
         <pendingWindowDays>15</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
-        <pressureGain>1.5</pressureGain>
-        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <incubationInfectivityCurve>
           <points>
@@ -113,8 +111,6 @@
         <incubationDays>1.5</incubationDays>
         <pendingWindowDays>15</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
-        <pressureGain>1.5</pressureGain>
-        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
         <incubationInfectivityCurve>
@@ -180,8 +176,6 @@
         <incubationDays>1.0</incubationDays>
         <pendingWindowDays>5</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
-        <pressureGain>1.5</pressureGain>
-        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <sourceInfectivityFactors>
@@ -251,8 +245,6 @@
         <incubationDays>1.0</incubationDays>
         <pendingWindowDays>5</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
-        <pressureGain>1.5</pressureGain>
-        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
         <activeInfectivityCurve>
@@ -316,8 +308,6 @@
         <incubationDays>3.0</incubationDays>
         <pendingWindowDays>0</pendingWindowDays>
         <immunityDurationDays>15</immunityDurationDays>
-        <pressureGain>1.0</pressureGain>
-        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <targetBodyParts>
           <li>Stomach</li>
@@ -369,8 +359,6 @@
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>2.0</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
-        <pressureGain>0.5</pressureGain>
-        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>None</outbreakNotification>
         <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
@@ -418,8 +406,6 @@
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>2.5</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
-        <pressureGain>0.5</pressureGain>
-        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>None</outbreakNotification>
         <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->

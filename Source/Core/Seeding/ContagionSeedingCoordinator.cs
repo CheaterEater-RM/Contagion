@@ -236,7 +236,7 @@ public static class ContagionSeedingCoordinator
         }
 
         chanceMultiplier = (Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f)
-            * component.GetPressureMultiplier(resolvedProfile.DiseaseDef, resolvedProfile.Profile.pressureDecayDays);
+            * component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile);
         return true;
     }
 
@@ -270,7 +270,7 @@ public static class ContagionSeedingCoordinator
         }
 
         component.NotifySeederFired(resolvedProfile, seeder);
-        IncrementPressure(component, resolvedProfile);
+        component.DiseaseDirector.NotifySeeded(resolvedProfile.Profile, 1);
     }
 
     private static bool TryOpenEnvironmentalWindow(Contagion_MapTransmissionComponent component, ResolvedTransmissionProfile resolvedProfile)
@@ -422,14 +422,12 @@ public static class ContagionSeedingCoordinator
                 continue;
             }
 
-            float pressureMultiplier = component.GetPressureMultiplier(
-                arrivalCandidate.ResolvedProfile.DiseaseDef,
-                arrivalCandidate.ResolvedProfile.Profile.pressureDecayDays);
-            float exposureChance = Mathf.Clamp01(
+            float directorMultiplier = component.DiseaseDirector.GetChanceMultiplier(arrivalCandidate.ResolvedProfile.Profile);
+            float exposureChance = component.DiseaseDirector.ClampChance(
                 arrivalCandidate.Seeder.arrivalChance
                 * policy.ExposureMultiplier
                 * outbreakMultiplier
-                * pressureMultiplier
+                * directorMultiplier
                 * ContagionTransmissionUtility.GetSeasonalMultiplier(map, arrivalCandidate.ResolvedProfile.Profile));
             if (exposureChance <= 0f)
             {
@@ -477,7 +475,7 @@ public static class ContagionSeedingCoordinator
         }
 
         component.NotifySeederFired(selectedExposure.ArrivalCandidate.ResolvedProfile, selectedExposure.ArrivalCandidate.Seeder);
-        IncrementPressure(component, selectedExposure.ArrivalCandidate.ResolvedProfile);
+        component.DiseaseDirector.NotifySeeded(selectedExposure.ArrivalCandidate.ResolvedProfile.Profile, seededCount);
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalSeeded, seededCount);
         ContagionDiagnostics.Trace($"Arrival group exposure seeded {selectedExposure.ArrivalCandidate.ResolvedProfile.DiseaseDef.defName} on {seededCount} pawn(s) from a {groupKind} group.");
         return seededCount;
@@ -983,16 +981,10 @@ public static class ContagionSeedingCoordinator
             return;
         }
 
-        float adjustedMtbDays = mtbDays / Mathf.Max(0.01f, outbreakMultiplier);
+        float directorMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile);
+        float adjustedMtbDays = mtbDays / Mathf.Max(0.01f, outbreakMultiplier * directorMultiplier);
         if (!Rand.MTBEventOccurs(adjustedMtbDays, 60000f, 2500f))
         {
-            return;
-        }
-
-        float pressureMultiplier = component.GetPressureMultiplier(resolvedProfile.DiseaseDef, resolvedProfile.Profile.pressureDecayDays);
-        if (!Rand.Chance(Mathf.Clamp01(pressureMultiplier)))
-        {
-            ContagionDiagnostics.Trace($"Continuous seeder roll damped by pressure for {resolvedProfile.DiseaseDef.defName}: {pressureMultiplier:0.###}.");
             return;
         }
 
@@ -1005,17 +997,8 @@ public static class ContagionSeedingCoordinator
         }
 
         component.NotifySeederFired(resolvedProfile, seeder);
-        IncrementPressure(component, resolvedProfile);
+        component.DiseaseDirector.NotifySeeded(resolvedProfile.Profile, 1);
         ContagionDiagnostics.Trace($"{seeder.GetType().Name} seeded {resolvedProfile.DiseaseDef.defName} on {seededPawn.LabelShortCap}.");
-    }
-
-    private static void IncrementPressure(Contagion_MapTransmissionComponent component, ResolvedTransmissionProfile resolvedProfile)
-    {
-        component.IncrementPressure(
-            resolvedProfile.DiseaseDef,
-            resolvedProfile.Profile.pressureGain,
-            resolvedProfile.Profile.pressureDecayDays);
-        ContagionDiagnostics.Record(ContagionDiagnosticCounter.PressureIncremented);
     }
 
     private static float GetAnimalLinkedWeight(Pawn pawn, Seeder_AnimalLinked seeder)

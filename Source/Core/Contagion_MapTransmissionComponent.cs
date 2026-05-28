@@ -11,6 +11,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private const int EnvironmentalCheckInterval = 2500;
 
+    private const int DirectorUpdateInterval = 60000;
+
     private const int TicksPerHour = 2500;
 
     private const float MinCleanlinessFactor = 0.1f;
@@ -35,11 +37,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private List<PendingDiseaseEvent> _pendingEvents = new List<PendingDiseaseEvent>();
 
-    private List<HediffDef> _pressureDiseases = new List<HediffDef>();
-
-    private List<float> _pressureValues = new List<float>();
-
-    private List<int> _pressureLastUpdatedTicks = new List<int>();
+    private ContagionDiseaseDirector _diseaseDirector = new ContagionDiseaseDirector();
 
     private sealed class TransmissionSource
     {
@@ -88,6 +86,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     public IReadOnlyList<PendingDiseaseEvent> PendingEvents => _pendingEvents;
 
+    public ContagionDiseaseDirector DiseaseDirector => _diseaseDirector;
+
     public override void ExposeData()
     {
         base.ExposeData();
@@ -98,9 +98,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         Scribe_Collections.Look(ref _seederCooldownKeys, "seederCooldownKeys", LookMode.Value);
         Scribe_Collections.Look(ref _seederCooldownTicks, "seederCooldownTicks", LookMode.Value);
         Scribe_Collections.Look(ref _pendingEvents, "pendingEvents", LookMode.Deep);
-        Scribe_Collections.Look(ref _pressureDiseases, "pressureDiseases", LookMode.Def);
-        Scribe_Collections.Look(ref _pressureValues, "pressureValues", LookMode.Value);
-        Scribe_Collections.Look(ref _pressureLastUpdatedTicks, "pressureLastUpdatedTicks", LookMode.Value);
+        Scribe_Deep.Look(ref _diseaseDirector, "diseaseDirector");
 
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
@@ -111,9 +109,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             _seederCooldownKeys ??= new List<string>();
             _seederCooldownTicks ??= new List<int>();
             _pendingEvents ??= new List<PendingDiseaseEvent>();
-            _pressureDiseases ??= new List<HediffDef>();
-            _pressureValues ??= new List<float>();
-            _pressureLastUpdatedTicks ??= new List<int>();
+            _diseaseDirector ??= new ContagionDiseaseDirector();
             CleanupContaminatedVomit();
         }
     }
@@ -198,51 +194,6 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         _pendingEvents.Remove(pendingEvent);
     }
 
-    public float GetPressure(HediffDef disease, float decayDays)
-    {
-        int index = _pressureDiseases.IndexOf(disease);
-        if (index < 0)
-        {
-            return 0f;
-        }
-
-        int ticksGame = Find.TickManager.TicksGame;
-        int elapsedTicks = ticksGame - _pressureLastUpdatedTicks[index];
-        float decayedAmount = (elapsedTicks / 60000f) * (1f / Mathf.Max(0.01f, decayDays));
-        float newPressure = Mathf.Max(0f, _pressureValues[index] - decayedAmount);
-
-        _pressureValues[index] = newPressure;
-        _pressureLastUpdatedTicks[index] = ticksGame;
-        return newPressure;
-    }
-
-    public float GetPressureMultiplier(HediffDef disease, float decayDays)
-    {
-        return 1f / (1f + GetPressure(disease, decayDays));
-    }
-
-    public void IncrementPressure(HediffDef disease, float amount, float decayDays)
-    {
-        if (disease == null || amount <= 0f)
-        {
-            return;
-        }
-
-        int currentTick = Find.TickManager.TicksGame;
-        int index = _pressureDiseases.IndexOf(disease);
-        if (index >= 0)
-        {
-            float currentPressure = GetPressure(disease, decayDays);
-            _pressureValues[index] = currentPressure + amount;
-            _pressureLastUpdatedTicks[index] = currentTick;
-            return;
-        }
-
-        _pressureDiseases.Add(disease);
-        _pressureValues.Add(amount);
-        _pressureLastUpdatedTicks.Add(currentTick);
-    }
-
     public void NotifySeederFired(ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)
     {
         if (resolvedProfile?.DiseaseDef == null || seeder == null || seeder.cooldownDays <= 0f)
@@ -273,13 +224,25 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         int ticksGame = Find.TickManager.TicksGame;
         bool runTransmission = ticksGame % TransmissionCheckInterval == 0;
         bool runEnvironmental = ticksGame % EnvironmentalCheckInterval == 0;
-        if (!runTransmission && !runEnvironmental)
+        bool runDirector = ContagionSeedingCoordinator.CurrentMode == ContagionSeedingMode.Contagion
+            && ticksGame % DirectorUpdateInterval == 0;
+        if (!runTransmission && !runEnvironmental && !runDirector)
         {
             return;
         }
 
         IReadOnlyList<Pawn> spawnedPawns = map?.mapPawns?.AllPawnsSpawned;
         if (spawnedPawns == null || spawnedPawns.Count == 0)
+        {
+            return;
+        }
+
+        if (runDirector)
+        {
+            _diseaseDirector.DailyTick(map);
+        }
+
+        if (!runTransmission && !runEnvironmental)
         {
             return;
         }

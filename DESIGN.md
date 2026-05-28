@@ -100,7 +100,7 @@ The mod owns short-term reinfection protection because vanilla `HediffComp_Immun
 Contagion has two seeding modes the player chooses in mod settings. Both share the same source paths and transmission engine — only the question of *when an outbreak starts* differs.
 
 - **Mode 1 — Storyteller-driven (default).** The vanilla storyteller still picks diseases on its biome-aware schedule. Contagion intercepts each pick, turns it into a *pending disease event* with a per-disease expiry window, and fulfils it through whichever source path fits the disease best (arrival, animal contact, environmental window, etc.). On expiry, an acausal seed lands silently. The storyteller stops being a vector and becomes the scheduler.
-- **Mode 2 — Contagion-driven.** Contagion runs all pacing itself. Arrivals carry continuous low-rate risk, environmental exposure is continuous, an MTB acausal fallback covers isolated colonies, and a per-disease *pressure* cooloff dampens follow-up rolls after each disease introduction so a bad streak does not sweep the colony. Storyteller disease incidents for profiled diseases are cancelled outright; unprofiled diseases (mechanites, other-mod additions) pass through to vanilla untouched.
+- **Mode 2 — Contagion-driven.** Contagion runs all pacing itself. Arrivals carry continuous low-rate risk, environmental exposure is continuous, an MTB acausal fallback covers isolated colonies, and a map-level disease director raises or suppresses future introductions based on quiet time, recent seeding, and current colony sickness. Storyteller disease incidents for profiled diseases are cancelled outright; unprofiled diseases (mechanites, other-mod additions) pass through to vanilla untouched.
 
 Mode 1 is the default because the storyteller cadence matches most players' mental model and minimises mod-conflict surface area. Mode 2 is the opt-in for sim-leaning players who want continuous, legible pressure.
 
@@ -135,7 +135,7 @@ The 5-day plague window is deliberately tight. The goal is for the storyteller's
 
 **Acausal fulfillment.** Silent single-pawn incubation on a random eligible pawn. Used as the final expiry fallback, or as the immediate resolution for diseases with no outside path (gut worms).
 
-### Mode 2: Contagion-Driven Pacing with Per-Disease Pressure
+### Mode 2: Contagion-Driven Pacing with the Disease Director
 
 Mode 2 disregards the storyteller for profiled diseases and runs continuous, low-rate seeding:
 
@@ -144,9 +144,9 @@ Mode 2 disregards the storyteller for profiled diseases and runs continuous, low
 - **Animal-linked seeding** runs as an MTB process when animals are present, biased toward handlers.
 - **Acausal MTB** is the isolated-colony backstop (long MTB, used mainly for gut worms).
 
-**Per-disease pressure.** Every successful disease introduction adds to a `pressure` value tracked per `(map, disease)` on the map component. A group exposure counts once, even if it seeds several carriers. Pressure multiplies *down* subsequent seed chances for the same disease and decays back to baseline over several days. Pressure is independent per disease: a flu wave does not dampen a malaria event. The cooloff acts on *chance*, not on the calendar — a bad roll early does not freeze seeding; it just makes the immediate follow-up rolls quieter.
+**Disease director.** Mode 2 owns a `ContagionDiseaseDirector` per map. It tracks human and animal pressure debt, current normalized sickness burden, recent disease introductions, and ticks since the last seeded incident. Quiet colonies accumulate pressure debt; active colonist/prisoner sickness and recent successful seeding suppress new introductions. Animal-only profiles use the animal burden/debt channel, while human profiles use the human channel. A group exposure spends director pressure once, even if it seeds several carriers.
 
-Mode 2's storyteller intercept is simpler than Mode 1's: cancel the incident for any profiled disease, do nothing else. Pressure and continuous seeding produce the cadence on their own.
+Mode 2's storyteller intercept is simpler than Mode 1's: cancel the incident for any profiled disease, do nothing else. The director and continuous seeding produce the cadence on their own.
 
 ### Source Path Hooks (shared by both modes)
 
@@ -457,7 +457,7 @@ Difficulty *multiplies* the Transmission Rate slider rather than replacing it, s
 
 | Setting | Range | Default | Effect |
 |---|---|---|---|
-| Seeding Mode | Storyteller / Contagion | Storyteller | Storyteller mode (Mode 1) intercepts storyteller picks into pending events; Contagion mode (Mode 2) cancels storyteller disease and runs continuous low-rate seeding with per-disease pressure |
+| Seeding Mode | Storyteller / Contagion | Storyteller | Storyteller mode (Mode 1) intercepts storyteller picks into pending events; Contagion mode (Mode 2) cancels storyteller disease and runs continuous low-rate seeding with the disease director |
 | Masks reduce spread | on/off | on | Apparel + air-filtering body parts reduce respiratory transmission |
 | Transmission Rate | 0.25×–2.0× | 1.0× | Global multiplier on vector base chances (composed with difficulty) |
 | Outbreak Frequency | 0.25×–2.0× | 1.0× | Multiplier on seeder MTB timers (Mode 2) and pending-event arrival chances (both modes) |
@@ -531,7 +531,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 **Implemented and stable (no redesign needed):** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns) and contaminated-meal comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`).
 
-**Being redesigned (Mode 1 / Mode 2 split):** the seeding wrapper around all of the above. The old implementation ran four parallel seeders independently (storyteller intercept → 1 case immediately, arrival → flat per-pawn chance, environmental → continuous, animal-linked + acausal → MTB). The new model collapses these into a single scheduler-and-fulfillment-chain (Mode 1) or a continuous-with-pressure-cooloff system (Mode 2). The vectors, hooks, and transmission engine are not touched — only the orchestration layer above them changes.
+**Being redesigned (Mode 1 / Mode 2 split):** the seeding wrapper around all of the above. The old implementation ran four parallel seeders independently (storyteller intercept → 1 case immediately, arrival → flat per-pawn chance, environmental → continuous, animal-linked + acausal → MTB). The new model collapses these into a single scheduler-and-fulfillment-chain (Mode 1) or a continuous director-paced system (Mode 2). The vectors, hooks, and transmission engine are not touched — only the orchestration layer above them changes.
 
 **Reserved — see below.** Corpse contagion, carrier state, caravan spread, and `Vector_Lovin` are intentionally schema-only with no engine implementation in v1.
 
@@ -569,9 +569,9 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Mode 1 plague window 5 days, gut worms 0 days | Tight windows preserve storyteller event-spacing — a long pending window would let a disease event collide with raids the storyteller deliberately spaced apart. Gut worms have no outside vector, so immediate acausal resolution is correct |
 | Mode 1 arrival fulfillment = next eligible group (deterministic exposure) | Avoids unbounded pending-event growth on low-traffic maps while allowing large groups to carry a capped, sublinear payload |
 | Mode 1 environmental: time-bounded window with infection budget | Event-scoped budget is distinct from colony-wide `maxActiveCases` — matches vanilla's "outbreak happens then ends" feel rather than turning environmental disease into a permanent biome hazard |
-| Mode 2: storyteller incidents cancelled for profiled diseases | Mode 2 owns pacing; letting the storyteller inject extra events would undermine the pressure-cooloff invariant the player is learning to read |
-| Mode 2: per-disease pressure that decays | Spring-like pullback — dampens chance after each seed, decays back to baseline. Bad rolls don't sweep the colony, but the calendar isn't frozen |
-| Group arrival exposure | Per-pawn chance on large groups would saturate arrivals with disease. Exposure is incident-level, carrier count is group-size-aware but capped, and pressure increments once per exposed group |
+| Mode 2: storyteller incidents cancelled for profiled diseases | Mode 2 owns pacing; letting the storyteller inject extra events would undermine the director cadence the player is learning to read |
+| Mode 2: map-level disease director | Quiet periods raise pressure, active sickness and recent successful seeding suppress new introductions. Good quarantine still buys breathing room because an attempted threat counts even if colonists avoid infection |
+| Group arrival exposure | Per-pawn chance on large groups would saturate arrivals with disease. Exposure is incident-level, carrier count is group-size-aware but capped, and director pressure is spent once per exposed group |
 
 ---
 
