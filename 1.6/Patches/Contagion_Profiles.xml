@@ -11,7 +11,10 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.5</incubationDays>
+        <pendingWindowDays>15</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
+        <pressureGain>1.5</pressureGain>
+        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <incubationInfectivityCurve>
           <points>
@@ -86,6 +89,10 @@
             <arrivalChance>0.01</arrivalChance>
             <cooldownDays>3</cooldownDays>
           </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>10</cooldownDays>
+          </li>
         </seeders>
         <maxActiveCases>5</maxActiveCases>
         <outbreakNotification>FirstCase</outbreakNotification>
@@ -104,7 +111,10 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.5</incubationDays>
+        <pendingWindowDays>15</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
+        <pressureGain>1.5</pressureGain>
+        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
         <incubationInfectivityCurve>
@@ -143,6 +153,14 @@
             <seedCountRange>1~1</seedCountRange>
             <cooldownDays>10</cooldownDays>
           </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.01</arrivalChance>
+            <cooldownDays>3</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>10</cooldownDays>
+          </li>
         </seeders>
         <maxActiveCases>5</maxActiveCases>
       </li>
@@ -160,7 +178,10 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
+        <pendingWindowDays>5</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
+        <pressureGain>1.5</pressureGain>
+        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <sourceInfectivityFactors>
@@ -203,6 +224,14 @@
             <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
             <handlerBias>2.0</handlerBias>
           </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.01</arrivalChance>
+            <cooldownDays>3</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>15</cooldownDays>
+          </li>
         </seeders>
         <maxActiveCases>4</maxActiveCases>
       </li>
@@ -220,7 +249,10 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
+        <pendingWindowDays>5</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
+        <pressureGain>1.5</pressureGain>
+        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
         <activeInfectivityCurve>
@@ -251,6 +283,16 @@
             <seedCountRange>1~1</seedCountRange>
             <cooldownDays>15</cooldownDays>
           </li>
+          <li Class="Contagion.Seeder_AnimalLinked">
+            <mtbDays>120</mtbDays>
+            <cooldownDays>15</cooldownDays>
+            <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
+            <handlerBias>2.0</handlerBias>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>15</cooldownDays>
+          </li>
         </seeders>
         <maxActiveCases>4</maxActiveCases>
       </li>
@@ -268,7 +310,10 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>3.0</incubationDays>
+        <pendingWindowDays>0</pendingWindowDays>
         <immunityDurationDays>15</immunityDurationDays>
+        <pressureGain>1.0</pressureGain>
+        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <targetBodyParts>
           <li>Stomach</li>
@@ -320,6 +365,8 @@
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>2.0</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
+        <pressureGain>0.5</pressureGain>
+        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>None</outbreakNotification>
         <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
@@ -346,6 +393,8 @@
         <seeders>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>1.0</baseChanceMultiplier>
+            <windowDays>14</windowDays>
+            <infectionBudget>2~5</infectionBudget>
             <cooldownDays>5</cooldownDays>
           </li>
         </seeders>
@@ -365,6 +414,8 @@
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>2.5</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
+        <pressureGain>0.5</pressureGain>
+        <pressureDecayDays>5</pressureDecayDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>None</outbreakNotification>
         <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
@@ -391,6 +442,8 @@
         <seeders>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>0.75</baseChanceMultiplier>
+            <windowDays>14</windowDays>
+            <infectionBudget>2~5</infectionBudget>
             <cooldownDays>5</cooldownDays>
           </li>
         </seeders>

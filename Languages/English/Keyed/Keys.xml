@@ -9,13 +9,18 @@
   <Contagion_DifficultyNormalTooltip>Balanced transmission with moderate spread suppression: outbreaks are dangerous but a well-run colony can usually contain them.</Contagion_DifficultyNormalTooltip>
   <Contagion_DifficultyHarder>Harder</Contagion_DifficultyHarder>
   <Contagion_DifficultyHarderTooltip>Faster, more realistic spread with NO spread suppression. An untreated outbreak can sweep through the entire colony. For experienced players.</Contagion_DifficultyHarderTooltip>
+  <Contagion_SettingSeedingMode>Seeding mode</Contagion_SettingSeedingMode>
+  <Contagion_SeedingModeStoryteller>Storyteller-driven</Contagion_SeedingModeStoryteller>
+  <Contagion_SeedingModeStorytellerTooltip>Vanilla storyteller disease picks are intercepted and converted into Contagion start requests that resolve through arrivals, animal contact, environmental windows, or an acausal fallback.</Contagion_SeedingModeStorytellerTooltip>
+  <Contagion_SeedingModeContagion>Contagion-driven</Contagion_SeedingModeContagion>
+  <Contagion_SeedingModeContagionTooltip>Contagion owns disease pacing directly. Storyteller disease incidents for profiled diseases are cancelled and continuous start chances are damped by per-disease pressure.</Contagion_SeedingModeContagionTooltip>
   <Contagion_SettingMaskProtection>Masks and lungs reduce airborne spread</Contagion_SettingMaskProtection>
   <Contagion_SettingMaskProtectionTooltip>When enabled, worn masks (e.g. gas masks) and air-filtering body parts (detoxifier/fleshmass lungs) reduce airborne, social, and close-contact transmission for the wearer and those nearby, based on their Toxic Environment Resistance. Genes are ignored by default; specific genes (like breathless) can grant airway immunity via the Contagion_RespiratoryImmunity def.</Contagion_SettingMaskProtectionTooltip>
   <Contagion_SettingsTuningHeader>Advanced tuning</Contagion_SettingsTuningHeader>
   <Contagion_SettingTransmissionRate>Transmission rate: {0}</Contagion_SettingTransmissionRate>
   <Contagion_SettingTransmissionRateTooltip>Global multiplier applied to transmission vector chances.</Contagion_SettingTransmissionRateTooltip>
   <Contagion_SettingOutbreakFrequency>Outbreak frequency: {0}</Contagion_SettingOutbreakFrequency>
-  <Contagion_SettingOutbreakFrequencyTooltip>Global multiplier applied to storyteller and other seeding pressures.</Contagion_SettingOutbreakFrequencyTooltip>
+  <Contagion_SettingOutbreakFrequencyTooltip>Global multiplier applied to continuous seeding timers and arrival-seeding chances where the current mode uses them.</Contagion_SettingOutbreakFrequencyTooltip>
   <Contagion_SettingIncubationLength>Incubation length: {0}</Contagion_SettingIncubationLength>
   <Contagion_SettingIncubationLengthTooltip>Global multiplier applied to incubation duration before the real disease appears.</Contagion_SettingIncubationLengthTooltip>
   <Contagion_SettingsDiagnosticsHeader>Diagnostics</Contagion_SettingsDiagnosticsHeader>

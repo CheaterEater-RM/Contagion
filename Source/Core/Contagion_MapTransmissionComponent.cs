@@ -33,6 +33,14 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private List<int> _seederCooldownTicks = new List<int>();
 
+    private List<PendingDiseaseEvent> _pendingEvents = new List<PendingDiseaseEvent>();
+
+    private List<HediffDef> _pressureDiseases = new List<HediffDef>();
+
+    private List<float> _pressureValues = new List<float>();
+
+    private List<int> _pressureLastUpdatedTicks = new List<int>();
+
     private sealed class TransmissionSource
     {
         public TransmissionSource(Pawn pawn, ResolvedTransmissionProfile resolvedProfile)
@@ -76,6 +84,10 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     {
     }
 
+    public Map Map => map;
+
+    public IReadOnlyList<PendingDiseaseEvent> PendingEvents => _pendingEvents;
+
     public override void ExposeData()
     {
         base.ExposeData();
@@ -85,6 +97,10 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         Scribe_Collections.Look(ref _seederCooldownDiseases, "seederCooldownDiseases", LookMode.Def);
         Scribe_Collections.Look(ref _seederCooldownKeys, "seederCooldownKeys", LookMode.Value);
         Scribe_Collections.Look(ref _seederCooldownTicks, "seederCooldownTicks", LookMode.Value);
+        Scribe_Collections.Look(ref _pendingEvents, "pendingEvents", LookMode.Deep);
+        Scribe_Collections.Look(ref _pressureDiseases, "pressureDiseases", LookMode.Def);
+        Scribe_Collections.Look(ref _pressureValues, "pressureValues", LookMode.Value);
+        Scribe_Collections.Look(ref _pressureLastUpdatedTicks, "pressureLastUpdatedTicks", LookMode.Value);
 
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
@@ -94,8 +110,23 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             _seederCooldownDiseases ??= new List<HediffDef>();
             _seederCooldownKeys ??= new List<string>();
             _seederCooldownTicks ??= new List<int>();
+            _pendingEvents ??= new List<PendingDiseaseEvent>();
+            _pressureDiseases ??= new List<HediffDef>();
+            _pressureValues ??= new List<float>();
+            _pressureLastUpdatedTicks ??= new List<int>();
             CleanupContaminatedVomit();
         }
+    }
+
+    public bool IsAtActiveCaseLimit(ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)
+    {
+        if (resolvedProfile?.Profile == null)
+        {
+            return false;
+        }
+
+        int activeCaseLimit = seeder?.maxActiveCases > 0 ? seeder.maxActiveCases : resolvedProfile.Profile.maxActiveCases;
+        return ContagionTransmissionUtility.IsProfileActiveOnMap(map, resolvedProfile, activeCaseLimit);
     }
 
     public bool CanRunSeeder(ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)
@@ -105,8 +136,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return false;
         }
 
-        int activeCaseLimit = seeder.maxActiveCases > 0 ? seeder.maxActiveCases : resolvedProfile.Profile.maxActiveCases;
-        if (ContagionTransmissionUtility.IsProfileActiveOnMap(map, resolvedProfile, activeCaseLimit))
+        if (IsAtActiveCaseLimit(resolvedProfile, seeder))
         {
             return false;
         }
@@ -128,6 +158,89 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
 
         return true;
+    }
+
+    public PendingDiseaseEvent GetPendingEvent(HediffDef diseaseDef)
+    {
+        if (diseaseDef == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < _pendingEvents.Count; i++)
+        {
+            if (_pendingEvents[i]?.diseaseDef == diseaseDef)
+            {
+                return _pendingEvents[i];
+            }
+        }
+
+        return null;
+    }
+
+    public void AddPendingEvent(PendingDiseaseEvent pendingEvent)
+    {
+        if (pendingEvent == null)
+        {
+            return;
+        }
+
+        _pendingEvents.Add(pendingEvent);
+    }
+
+    public void RemovePendingEvent(PendingDiseaseEvent pendingEvent)
+    {
+        if (pendingEvent == null)
+        {
+            return;
+        }
+
+        _pendingEvents.Remove(pendingEvent);
+    }
+
+    public float GetPressure(HediffDef disease, float decayDays)
+    {
+        int index = _pressureDiseases.IndexOf(disease);
+        if (index < 0)
+        {
+            return 0f;
+        }
+
+        int ticksGame = Find.TickManager.TicksGame;
+        int elapsedTicks = ticksGame - _pressureLastUpdatedTicks[index];
+        float decayedAmount = (elapsedTicks / 60000f) * (1f / Mathf.Max(0.01f, decayDays));
+        float newPressure = Mathf.Max(0f, _pressureValues[index] - decayedAmount);
+
+        _pressureValues[index] = newPressure;
+        _pressureLastUpdatedTicks[index] = ticksGame;
+        return newPressure;
+    }
+
+    public float GetPressureMultiplier(HediffDef disease, float decayDays)
+    {
+        return 1f / (1f + GetPressure(disease, decayDays));
+    }
+
+    public void IncrementPressure(HediffDef disease, float amount, float decayDays)
+    {
+        if (disease == null || amount <= 0f)
+        {
+            return;
+        }
+
+        int currentTick = Find.TickManager.TicksGame;
+        int index = _pressureDiseases.IndexOf(disease);
+        if (index >= 0)
+        {
+            float currentPressure = GetPressure(disease, decayDays);
+            _pressureValues[index] = currentPressure + amount;
+            _pressureLastUpdatedTicks[index] = currentTick;
+            return;
+        }
+
+        _pressureDiseases.Add(disease);
+        _pressureValues.Add(amount);
+        _pressureLastUpdatedTicks.Add(currentTick);
     }
 
     public void NotifySeederFired(ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)
@@ -277,7 +390,6 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return;
         }
 
-        float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
         float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
 
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
@@ -290,7 +402,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
             for (int profileIndex = 0; profileIndex < environmentalProfiles.Count; profileIndex++)
             {
-                if (TryApplyEnvironmentalExposure(pawn, environmentalProfiles[profileIndex], outbreakMultiplier, transmissionMultiplier))
+                if (TryApplyEnvironmentalExposure(pawn, environmentalProfiles[profileIndex], transmissionMultiplier))
                 {
                     break;
                 }
@@ -418,10 +530,14 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     private bool TryApplyEnvironmentalExposure(
         Pawn pawn,
         EnvironmentalProfile environmentalProfile,
-        float outbreakMultiplier,
         float transmissionMultiplier)
     {
-        if (!CanRunSeeder(environmentalProfile.ResolvedProfile, environmentalProfile.Seeder))
+        if (!ContagionSeedingCoordinator.TryGetEnvironmentalSeedingContext(
+            this,
+            environmentalProfile.ResolvedProfile,
+            environmentalProfile.Seeder,
+            out PendingDiseaseEvent windowEvent,
+            out float seedingMultiplier))
         {
             return false;
         }
@@ -432,7 +548,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         float chance = environmentalProfile.Vector.baseChancePerCheck
             * environmentalProfile.Seeder.baseChanceMultiplier
             * environmentalProfile.BiomeCommonality
-            * outbreakMultiplier;
+            * seedingMultiplier;
         chance *= GetEnvironmentalTemperatureFactor(ambientTemperature, environmentalProfile.Vector);
         if (chance <= 0f)
         {
@@ -460,7 +576,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             out HediffDef _);
         if (seeded)
         {
-            NotifySeederFired(environmentalProfile.ResolvedProfile, environmentalProfile.Seeder);
+            ContagionSeedingCoordinator.NotifyEnvironmentalSeeded(this, environmentalProfile.ResolvedProfile, environmentalProfile.Seeder, windowEvent);
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalSeeded);
             ContagionDiagnostics.Trace($"Environmental transmission: {environmentalProfile.ResolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap}.");
         }
@@ -737,98 +853,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private void RunGeneralSeederPass(IReadOnlyList<Pawn> spawnedPawns)
     {
-        float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
-        foreach (ResolvedTransmissionProfile resolvedProfile in DiseaseProfileCache.AllProfiles)
-        {
-            if (resolvedProfile.Profile.seeders == null)
-            {
-                continue;
-            }
-
-            for (int i = 0; i < resolvedProfile.Profile.seeders.Count; i++)
-            {
-                TransmissionSeeder seeder = resolvedProfile.Profile.seeders[i];
-                if (seeder is Seeder_Acausal acausal)
-                {
-                    TryRunMtbSeeder(resolvedProfile, acausal, acausal.mtbDays, spawnedPawns, outbreakMultiplier);
-                }
-                else if (seeder is Seeder_AnimalLinked animalLinked)
-                {
-                    if (!animalLinked.requiresAnimalsOnMap || HasAnimalsOnMap(spawnedPawns))
-                    {
-                        TryRunMtbSeeder(resolvedProfile, animalLinked, animalLinked.mtbDays / Mathf.Max(0.01f, animalLinked.handlerBias), spawnedPawns, outbreakMultiplier);
-                    }
-                }
-            }
-        }
-    }
-
-    private void TryRunMtbSeeder(
-        ResolvedTransmissionProfile resolvedProfile,
-        TransmissionSeeder seeder,
-        float mtbDays,
-        IReadOnlyList<Pawn> spawnedPawns,
-        float outbreakMultiplier)
-    {
-        if (!CanRunSeeder(resolvedProfile, seeder))
-        {
-            return;
-        }
-
-        float adjustedMtbDays = mtbDays / Mathf.Max(0.01f, outbreakMultiplier);
-        if (!Rand.MTBEventOccurs(adjustedMtbDays, 60000f, EnvironmentalCheckInterval))
-        {
-            return;
-        }
-
-        List<Pawn> candidates = new List<Pawn>();
-        for (int i = 0; i < spawnedPawns.Count; i++)
-        {
-            Pawn pawn = spawnedPawns[i];
-            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != map)
-            {
-                continue;
-            }
-
-            float chance = ContagionTransmissionUtility.BuildSeederChance(
-                1f,
-                pawn,
-                resolvedProfile,
-                map,
-                1f,
-                out HediffDef _);
-            if (chance > 0f)
-            {
-                candidates.Add(pawn);
-            }
-        }
-
-        if (candidates.Count == 0)
-        {
-            return;
-        }
-
-        candidates.Shuffle();
-        Pawn target = candidates[0];
-        if (ContagionDiseaseUtility.TrySeedIncubation(target, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out HediffDef _))
-        {
-            NotifySeederFired(resolvedProfile, seeder);
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.StorytellerSeeded);
-            ContagionDiagnostics.Trace($"{seeder.GetType().Name} seeded {resolvedProfile.DiseaseDef.defName} on {target.LabelShortCap}.");
-        }
-    }
-
-    private static bool HasAnimalsOnMap(IReadOnlyList<Pawn> spawnedPawns)
-    {
-        for (int i = 0; i < spawnedPawns.Count; i++)
-        {
-            if (spawnedPawns[i]?.RaceProps?.Animal == true)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        ContagionSeedingCoordinator.RunGeneralSeeding(this, spawnedPawns);
     }
 
     private int GetCellsFromUnroofed(IntVec3 center, int maxRadius)

@@ -16,6 +16,10 @@ public sealed class TransmissionProfile : DefModExtension
 {
     public float incubationDays = 1f;
 
+    // Storyteller mode: how long a queued disease-start request waits for fulfillment
+    // before falling back to an acausal seed. Environmental windows use Seeder_Environmental.windowDays.
+    public float pendingWindowDays = 5f;
+
     public float immunityDurationDays;
 
     public HediffDef immunityHediffDef;
@@ -48,6 +52,12 @@ public sealed class TransmissionProfile : DefModExtension
     // 1 = normal, 0 = this disease ignores suppression (e.g. environmental diseases with no
     // person-to-person spread), >1 = suppresses faster than other diseases.
     public float spreadSuppressionScale = 1f;
+
+    // Contagion mode: each successful disease start increases pressure, which damps later
+    // start chances for the same disease until it decays back to zero.
+    public float pressureGain = 1f;
+
+    public float pressureDecayDays = 5f;
 
     public OutbreakNotificationMode outbreakNotification = OutbreakNotificationMode.FirstCase;
 
@@ -251,6 +261,10 @@ public sealed class Seeder_Arrival : TransmissionSeeder
 public sealed class Seeder_Environmental : TransmissionSeeder
 {
     public float baseChanceMultiplier = 1f;
+
+    public float windowDays = 14f;
+
+    public IntRange infectionBudget = new IntRange(2, 5);
 }
 
 public sealed class Seeder_AnimalLinked : TransmissionSeeder
