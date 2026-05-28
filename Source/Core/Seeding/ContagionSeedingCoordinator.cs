@@ -137,13 +137,41 @@ public static class ContagionSeedingCoordinator
         int seededCount = 0;
         foreach (Pawn pawn in pawns)
         {
-            if (TrySeedContinuousArrivalDisease(pawn, arrivalCandidates, outbreakMultiplier))
+            if (TryHandleSingleArrival(pawn, arrivalCandidates, outbreakMultiplier))
             {
                 seededCount++;
             }
         }
 
         return seededCount;
+    }
+
+    public static bool HandleRaidArrival(Pawn pawn)
+    {
+        if (pawn == null || pawn.Dead || !pawn.Spawned)
+        {
+            return false;
+        }
+
+        Contagion_MapTransmissionComponent component = pawn.Map?.GetComponent<Contagion_MapTransmissionComponent>();
+        if (component == null)
+        {
+            return false;
+        }
+
+        if (CurrentMode == ContagionSeedingMode.Storyteller)
+        {
+            return TryResolvePendingArrival(pawn);
+        }
+
+        List<ArrivalCandidate> arrivalCandidates = BuildArrivalCandidates();
+        if (arrivalCandidates.Count == 0)
+        {
+            return false;
+        }
+
+        float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
+        return TryHandleSingleArrival(pawn, arrivalCandidates, outbreakMultiplier);
     }
 
     public static void RunGeneralSeeding(Contagion_MapTransmissionComponent component, IReadOnlyList<Pawn> spawnedPawns)
@@ -350,6 +378,16 @@ public static class ContagionSeedingCoordinator
         }
 
         return false;
+    }
+
+    private static bool TryHandleSingleArrival(Pawn pawn, List<ArrivalCandidate> arrivalCandidates, float outbreakMultiplier)
+    {
+        if (CurrentMode == ContagionSeedingMode.Storyteller)
+        {
+            return TryResolvePendingArrival(pawn);
+        }
+
+        return TrySeedContinuousArrivalDisease(pawn, arrivalCandidates, outbreakMultiplier);
     }
 
     private static bool CanResolvePendingEventViaArrival(

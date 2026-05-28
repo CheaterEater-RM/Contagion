@@ -9,4 +9,9 @@ public static class ContagionArrivalUtility
     {
         return ContagionSeedingCoordinator.HandleArrivals(pawns);
     }
+
+    public static bool TrySeedRaidPawn(Pawn pawn)
+    {
+        return ContagionSeedingCoordinator.HandleRaidArrival(pawn);
+    }
 }
