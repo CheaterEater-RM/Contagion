@@ -48,5 +48,7 @@
   <Contagion_LetterExposureSingle>{0} has been exposed to {1}. Symptoms may appear after an incubation period.</Contagion_LetterExposureSingle>
   <Contagion_LetterExposureMultiple>{0} pawns have been exposed to {1}. Symptoms may appear after an incubation period</Contagion_LetterExposureMultiple>
   <Contagion_LetterExposureBlocked>Exposure to {0} was prevented.</Contagion_LetterExposureBlocked>
+  <Contagion_LetterLabelTraitDisease>{0} feels unwell</Contagion_LetterLabelTraitDisease>
+  <Contagion_LetterTraitDisease>{0} is feeling unwell. Their poor immune system has caught something, and symptoms may appear after an incubation period. Consider isolating them as a precaution.</Contagion_LetterTraitDisease>
   <Contagion_ResetDefaults>Reset to defaults</Contagion_ResetDefaults>
 </LanguageData>

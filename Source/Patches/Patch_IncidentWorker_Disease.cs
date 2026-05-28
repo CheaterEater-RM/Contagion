@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -197,8 +198,16 @@ internal static class Patch_IncidentWorker_Disease_Helper
 [HarmonyPatch(typeof(IncidentWorker_Disease), nameof(IncidentWorker_Disease.ApplyToPawns))]
 internal static class Patch_IncidentWorker_Disease_ApplyToPawns
 {
-    // This must cancel the vanilla path because Contagion replaces immediate disease application
-    // with incubation for profiled storyteller-seeded diseases.
+    // Because Patch_IncidentWorker_Disease_TryExecuteWorker cancels the storyteller's outer call,
+    // any call that reaches this prefix is by elimination the trait-driven path (vanilla
+    // Pawn_HealthTracker.HealthTickInterval invokes ApplyToPawns directly when a trait's
+    // randomDiseaseMtbDays MTB fires — e.g. Sickly). Treat it accordingly: per-pawn cooldown
+    // before seeding, vanilla-style trait letter after seeding so the player has a quarantine
+    // window even though the storyteller letter is suppressed.
+    private const int TraitSeedCooldownDays = 10;
+
+    private const int TicksPerDay = 60000;
+
     public static bool Prefix(IncidentWorker_Disease __instance, IEnumerable<Pawn> pawns, ref string blockedInfo, ref List<Pawn> __result)
     {
         if (!Patch_IncidentWorker_Disease_Helper.TryGetProfile(__instance, out ResolvedTransmissionProfile resolvedProfile))
@@ -224,6 +233,15 @@ internal static class Patch_IncidentWorker_Disease_ApplyToPawns
             return true;
         }
 
+        // Trait-driven path: skip pawns who are still on cooldown from a previous trait seed.
+        pawnList.RemoveAll(pawn => ContagionDiseaseUtility.HasTraitSeedCooldown(pawn));
+        if (pawnList.Count == 0)
+        {
+            blockedInfo = string.Empty;
+            __result = new List<Pawn>();
+            return false;
+        }
+
         Seeder_Storyteller storytellerSeeder = Patch_IncidentWorker_Disease_Helper.GetStorytellerSeeder(resolvedProfile.Profile);
         Map map = pawnList[0].Map;
         if (map?.GetComponent<Contagion_MapTransmissionComponent>()?.CanRunSeeder(resolvedProfile, storytellerSeeder) == false)
@@ -238,16 +256,64 @@ internal static class Patch_IncidentWorker_Disease_ApplyToPawns
         if (__result.Count > 0)
         {
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.StorytellerSeeded, __result.Count);
-            ContagionDiagnostics.Trace($"Storyteller seeded {resolvedProfile.DiseaseDef.defName} on {__result.Count} pawn(s).");
+            ContagionDiagnostics.Trace($"Trait-driven seed of {resolvedProfile.DiseaseDef.defName} on {__result.Count} pawn(s).");
+
+            int cooldownTicks = TraitSeedCooldownDays * TicksPerDay;
+            for (int i = 0; i < __result.Count; i++)
+            {
+                Pawn seededPawn = __result[i];
+                ContagionDiseaseUtility.GiveTraitSeedCooldown(seededPawn, cooldownTicks);
+                SendTraitDiseaseLetter(seededPawn);
+            }
         }
 
         return false;
+    }
+
+    private static void SendTraitDiseaseLetter(Pawn pawn)
+    {
+        if (pawn == null || !PawnUtility.ShouldSendNotificationAbout(pawn))
+        {
+            return;
+        }
+
+        Find.LetterStack.ReceiveLetter(
+            "Contagion_LetterLabelTraitDisease".Translate(pawn.LabelShortCap),
+            "Contagion_LetterTraitDisease".Translate(pawn.LabelShortCap),
+            LetterDefOf.NegativeEvent,
+            pawn);
     }
 }
 
 [HarmonyPatch(typeof(IncidentWorker_Disease), "TryExecuteWorker")]
 internal static class Patch_IncidentWorker_Disease_TryExecuteWorker
 {
+    // Vanilla `ActualVictims(IncidentParms)` is a private instance method on IncidentWorker_Disease
+    // subclasses (IncidentWorker_DiseaseHuman, IncidentWorker_DiseaseAnimal, mod subclasses).
+    // Reflecting it on every fire is wasteful, and the more important issue is failure semantics:
+    // if Ludeon renames the method in a future RimWorld update, the un-cached path spams Log.Error
+    // once per incident. Caching per Type lets us log the "could not resolve" error exactly once
+    // per worker type, then fall back to vanilla silently after that. The sentinel for
+    // "resolved-and-missing" is a null value with the key present in the dictionary.
+    private static readonly Dictionary<Type, MethodInfo> ActualVictimsByType = new Dictionary<Type, MethodInfo>();
+
+    private static MethodInfo ResolveActualVictims(Type workerType)
+    {
+        if (ActualVictimsByType.TryGetValue(workerType, out MethodInfo cached))
+        {
+            return cached;
+        }
+
+        MethodInfo method = AccessTools.Method(workerType, "ActualVictims", new[] { typeof(IncidentParms) });
+        if (method == null)
+        {
+            Log.Error($"[Contagion] Could not resolve {workerType.FullName}.ActualVictims(IncidentParms). Storyteller disease incidents for this worker will fall back to vanilla behavior. This usually indicates a RimWorld update renamed the method; check for a Contagion update.");
+        }
+
+        ActualVictimsByType[workerType] = method;
+        return method;
+    }
+
     // This must cancel the vanilla path because the original letter flow assumes the real disease
     // hediff already exists, while Contagion seeds incubation first.
     public static bool Prefix(IncidentWorker_Disease __instance, IncidentParms parms, ref bool __result)
@@ -257,10 +323,9 @@ internal static class Patch_IncidentWorker_Disease_TryExecuteWorker
             return true;
         }
 
-        MethodInfo actualVictimsMethod = AccessTools.Method(__instance.GetType(), "ActualVictims");
+        MethodInfo actualVictimsMethod = ResolveActualVictims(__instance.GetType());
         if (actualVictimsMethod == null)
         {
-            Log.Error($"[Contagion] Could not resolve ActualVictims() for storyteller disease worker {__instance.GetType().FullName}.");
             return true;
         }
 
@@ -271,12 +336,12 @@ internal static class Patch_IncidentWorker_Disease_TryExecuteWorker
         }
         catch (TargetInvocationException ex)
         {
-            Log.Error($"[Contagion] ActualVictims() threw while resolving storyteller disease targets for {__instance.GetType().FullName}: {ex}");
+            Log.Error($"[Contagion] ActualVictims(IncidentParms) threw while resolving storyteller disease targets for {__instance.GetType().FullName}: {ex}");
             return true;
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
-            Log.Error($"[Contagion] Failed to invoke ActualVictims() for storyteller disease worker {__instance.GetType().FullName}: {ex}");
+            Log.Error($"[Contagion] Failed to invoke ActualVictims(IncidentParms) for storyteller disease worker {__instance.GetType().FullName}: {ex}");
             return true;
         }
 

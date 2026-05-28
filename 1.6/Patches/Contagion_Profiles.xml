@@ -39,6 +39,14 @@
           <permanentWinter>0.7</permanentWinter>
         </seasonalInfectivity>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
+        <!-- Sickly pawns shed less: vanilla amplifies their disease rate (randomDiseaseMtbDays),
+             so reducing outward spread keeps them from becoming a constant colony outbreak source. -->
+        <sourceInfectivityFactors>
+          <li Class="Contagion.SourceFactor_Trait">
+            <trait>Sickly</trait>
+            <factor>0.5</factor>
+          </li>
+        </sourceInfectivityFactors>
         <vectors>
           <li Class="Contagion.Vector_Airborne">
             <baseChancePerCheck>0.03</baseChancePerCheck>
@@ -155,6 +163,12 @@
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
+        <sourceInfectivityFactors>
+          <li Class="Contagion.SourceFactor_Trait">
+            <trait>Sickly</trait>
+            <factor>0.5</factor>
+          </li>
+        </sourceInfectivityFactors>
         <activeInfectivityCurve>
           <points>
             <li>(0.00, 0.2)</li>
@@ -259,6 +273,12 @@
         <targetBodyParts>
           <li>Stomach</li>
         </targetBodyParts>
+        <sourceInfectivityFactors>
+          <li Class="Contagion.SourceFactor_Trait">
+            <trait>Sickly</trait>
+            <factor>0.5</factor>
+          </li>
+        </sourceInfectivityFactors>
         <activeInfectivityCurve>
           <points>
             <li>(0.00, 0.3)</li>

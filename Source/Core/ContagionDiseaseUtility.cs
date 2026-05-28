@@ -234,6 +234,53 @@ public static class ContagionDiseaseUtility
         return null;
     }
 
+    public static bool HasTraitSeedCooldown(Pawn pawn)
+    {
+        return FindTraitSeedCooldown(pawn) != null;
+    }
+
+    public static void GiveTraitSeedCooldown(Pawn pawn, int durationTicks)
+    {
+        if (pawn?.health == null || durationTicks <= 0)
+        {
+            return;
+        }
+
+        Hediff_ContagionTraitSeedCooldown cooldown = FindTraitSeedCooldown(pawn);
+        if (cooldown == null)
+        {
+            cooldown = HediffMaker.MakeHediff(ContagionDefOf.Contagion_TraitSeedCooldown, pawn) as Hediff_ContagionTraitSeedCooldown;
+            if (cooldown == null)
+            {
+                Log.Error("[Contagion] Failed to create trait-seed cooldown hediff.");
+                return;
+            }
+
+            pawn.health.AddHediff(cooldown);
+        }
+
+        cooldown.Configure(Find.TickManager.TicksGame + durationTicks);
+    }
+
+    public static Hediff_ContagionTraitSeedCooldown FindTraitSeedCooldown(Pawn pawn)
+    {
+        if (pawn?.health?.hediffSet == null)
+        {
+            return null;
+        }
+
+        List<Hediff> hediffs = pawn.health.hediffSet.hediffs;
+        for (int i = 0; i < hediffs.Count; i++)
+        {
+            if (hediffs[i] is Hediff_ContagionTraitSeedCooldown cooldown)
+            {
+                return cooldown;
+            }
+        }
+
+        return null;
+    }
+
     public static Hediff_ContagionTemporaryImmunity FindTemporaryImmunity(Pawn pawn, HediffDef diseaseDef)
     {
         if (pawn?.health?.hediffSet == null || diseaseDef == null)

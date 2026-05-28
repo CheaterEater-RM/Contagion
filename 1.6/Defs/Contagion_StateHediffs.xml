@@ -21,4 +21,15 @@
     <isBad>false</isBad>
     <scenarioCanAdd>false</scenarioCanAdd>
   </HediffDef>
+
+  <HediffDef>
+    <defName>Contagion_TraitSeedCooldown</defName>
+    <hediffClass>Contagion.Hediff_ContagionTraitSeedCooldown</hediffClass>
+    <label>recovering</label>
+    <description>Hidden per-pawn cooldown applied after a trait-driven disease seed (e.g. Sickly) to prevent back-to-back random illnesses on the same pawn.</description>
+    <initialSeverity>1.0</initialSeverity>
+    <maxSeverity>1.0</maxSeverity>
+    <isBad>false</isBad>
+    <scenarioCanAdd>false</scenarioCanAdd>
+  </HediffDef>
 </Defs>

@@ -125,6 +125,22 @@ Refugees deserve a footnote: in RimWorld 1.6 there is no `IncidentWorker_Refugee
 
 The hooks themselves apply no faction or species filter — disease profiles gate that via `CanAffect`. In practice, of the shipped diseases only Flu has a `Seeder_Arrival`, so the new hooks are inert for the others by design. Adding a `Seeder_Arrival` to animal-disease profiles (and patching row 8) would be the natural extension.
 
+### Trait Interactions (Sickly and friends)
+
+Vanilla `TraitDegreeData.randomDiseaseMtbDays` lets a trait roll a random biome-weighted disease on a per-pawn MTB, separate from the storyteller's colony-wide disease cycle. **Sickly** is the canonical user — that field is literally how Sickly catches diseases more often than other colonists. Other mods can use the same field for custom traits and genes.
+
+This path calls `IncidentWorker_Disease.ApplyToPawns` directly, bypassing `TryExecuteWorker`. Contagion's `TryExecuteWorker` prefix cancels the storyteller path entirely, so any call that reaches the `ApplyToPawns` prefix is, by elimination, trait-driven. That gives a free, reliable discriminator with no extra state.
+
+**The amplification problem.** In vanilla, Sickly is contained: that one pawn gets sick, recovers, colony untouched. Under Contagion, a Sickly pawn becomes a recurring patient-zero — they catch flu via the trait MTB, then shed it via airborne/social/fomite vectors. That's a real behavior change for a trait the player may have picked without knowing the mod amplifies it.
+
+**Compensating mechanics ship with the trait.** Rather than carve a special "this incubation doesn't spread" case (which would break the mod's core contract that any active profiled disease can transmit), Contagion adds three things:
+
+- A **per-pawn cooldown** (`Hediff_ContagionTraitSeedCooldown`, 10 days) applied after any successful trait-driven seed. While active, further trait-driven seeds on that pawn are skipped, preventing back-to-back random illnesses.
+- A **reduced outward-shedding factor** for Sickly pawns — every shipped human-contagious profile (Flu, Plague, GutWorms) carries a `SourceFactor_Trait` entry that halves Sickly's source infectivity. Sickly catches more, but spreads less; the trait identity becomes "more random misfortune, less of a spreader." Justified in fiction by the trait's boosted Medical skill (hygiene awareness).
+- A **vanilla-style "feels unwell" letter** when a trait-driven seed succeeds. The storyteller path stays silent on success (incubation is meant to be a hidden window), but the trait path preserves the vanilla "Sickly Bob caught something" notification — vague about *what* they have, so the player still has the discovery moment, but visible enough to act on with a quarantine.
+
+**Cooldown bucket conflation (known seam).** Trait events currently consume the `Seeder_Storyteller` cooldown and count against the profile's `maxActiveCases` — pragmatic, but it conflates "the storyteller picked this disease for the colony" with "this pawn's trait rolled disease for themselves." If trait-driven events ever need independent tuning (different cooldown, different per-disease frequency), the right move is a new `Seeder_Trait` type rather than special-casing inside the storyteller seeder.
+
 ---
 
 ## Core Data Model

@@ -393,6 +393,16 @@ public sealed class SourceFactor_Gene : SourceInfectivityFactor
     }
 }
 
+public sealed class SourceFactor_Trait : SourceInfectivityFactor
+{
+    public TraitDef trait;
+
+    public override float Evaluate(Pawn pawn)
+    {
+        return pawn?.story?.traits != null && trait != null && pawn.story.traits.HasTrait(trait) ? factor : 1f;
+    }
+}
+
 public sealed class SourceFactor_Stat : SourceInfectivityFactor
 {
     public StatDef stat;
