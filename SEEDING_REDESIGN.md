@@ -334,7 +334,7 @@ Default code policies:
 
 ## 9. Test Plan
 
-Run each in dev mode. Check `Player.log` is clean. Check diagnostics counters increment correctly.
+Run each in dev mode. Check `Player.log` is clean. Check diagnostics counters increment correctly. Incidence diagnostics should cover disease introductions and pending/director lifecycle; spread diagnostics should cover secondary vector transmission and contamination.
 
 ### Mode 1
 

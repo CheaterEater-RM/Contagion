@@ -433,7 +433,12 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
                     continue;
                 }
 
-                if (ContagionDiseaseUtility.TrySeedIncubation(pawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out HediffDef _))
+                if (ContagionDiseaseUtility.TrySeedIncubation(
+                    pawn,
+                    resolvedProfile.DiseaseDef,
+                    resolvedProfile.PartsToAffect,
+                    ContagionDiagnosticOrigin.Spread,
+                    out HediffDef _))
                 {
                     ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteSeeded);
                     ContagionDiagnostics.Trace($"Fomite transmission: {resolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap} from vomit filth.");
@@ -536,6 +541,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             pawn,
             environmentalProfile.ResolvedProfile.DiseaseDef,
             environmentalProfile.ResolvedProfile.PartsToAffect,
+            ContagionDiagnosticOrigin.Incidence,
             out HediffDef _);
         if (seeded)
         {
@@ -588,6 +594,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             source.ResolvedProfile.DiseaseDef,
             source.ResolvedProfile.PartsToAffect,
             source.Pawn,
+            ContagionDiagnosticOrigin.Spread,
             out HediffDef _);
         if (seeded)
         {
@@ -637,6 +644,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             source.ResolvedProfile.DiseaseDef,
             source.ResolvedProfile.PartsToAffect,
             source.Pawn,
+            ContagionDiagnosticOrigin.Spread,
             out HediffDef _);
         if (seeded)
         {

@@ -254,7 +254,11 @@ public sealed class Contagion_Mod : Mod
         {
             listing.Gap(6f);
             listing.Label("Contagion_DiagnosticsRuntimeHeader".Translate());
-            listing.SubLabel(ContagionDiagnostics.BuildSummaryReport(), 1f);
+            listing.Label("Contagion_DiagnosticsIncidenceHeader".Translate());
+            listing.SubLabel(ContagionDiagnostics.BuildIncidenceReport(), 1f);
+            listing.Gap(4f);
+            listing.Label("Contagion_DiagnosticsSpreadHeader".Translate());
+            listing.SubLabel(ContagionDiagnostics.BuildSpreadReport(), 1f);
 
             if (settings.showPerformanceStats)
             {

@@ -98,6 +98,7 @@ public static class ContagionSeedingCoordinator
 
         if (CurrentMode == ContagionSeedingMode.Contagion)
         {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.StorytellerCancelled);
             ContagionDiagnostics.Trace($"Storyteller disease cancelled by Contagion mode: {resolvedProfile.DiseaseDef.defName}.");
             result = false;
             return true;
@@ -156,13 +157,15 @@ public static class ContagionSeedingCoordinator
 
     public static int HandleArrivalGroup(IEnumerable<Pawn> pawns, ContagionArrivalGroupKind groupKind)
     {
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalGroupChecked);
         List<Pawn> groupPawns = BuildSpawnedGroupPawns(pawns, out Map map);
         if (groupPawns.Count == 0 || map == null)
         {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalGroupSkippedEmpty);
+            ContagionDiagnostics.Trace($"Arrival group skipped ({groupKind}): no spawned pawns on a single map.");
             return 0;
         }
 
-        ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalAttempted);
         if (CurrentMode == ContagionSeedingMode.Storyteller)
         {
             return TryResolvePendingArrivalGroup(groupPawns, map, groupKind);
@@ -370,11 +373,14 @@ public static class ContagionSeedingCoordinator
             int seededCount = SeedCarrierPayload(carrierCandidates, resolvedProfile, policy, carrierCount);
             if (seededCount <= 0)
             {
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalNoEligibleCarriers);
+                ContagionDiagnostics.Trace($"Pending arrival request could not seed {resolvedProfile.DiseaseDef.defName} from a {groupKind} group: no carrier payload was eligible.");
                 continue;
             }
 
             component.RemovePendingEvent(pendingEvent);
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingResolvedArrival);
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalExposureSucceeded);
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalSeeded, seededCount);
             ContagionDiagnostics.Trace($"Pending arrival request resolved {resolvedProfile.DiseaseDef.defName} onto {seededCount} pawn(s) from a {groupKind} group.");
             return seededCount;
@@ -394,6 +400,8 @@ public static class ContagionSeedingCoordinator
         List<ArrivalCandidate> arrivalCandidates = BuildArrivalCandidates();
         if (arrivalCandidates.Count == 0)
         {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalNoDiseaseCandidates);
+            ContagionDiagnostics.Trace($"Arrival group skipped ({groupKind}): no diseases have arrival seeders.");
             return 0;
         }
 
@@ -401,6 +409,8 @@ public static class ContagionSeedingCoordinator
         float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
         List<GroupExposureCandidate> exposureCandidates = new List<GroupExposureCandidate>();
         float exposureFailureChance = 1f;
+        bool sawRunnableDiseaseCandidate = false;
+        bool sawEligibleCarrierCandidate = false;
 
         for (int i = 0; i < arrivalCandidates.Count; i++)
         {
@@ -416,12 +426,14 @@ public static class ContagionSeedingCoordinator
                 continue;
             }
 
+            sawRunnableDiseaseCandidate = true;
             List<CarrierCandidate> carrierCandidates = BuildCarrierCandidates(groupPawns, arrivalCandidate.ResolvedProfile, map);
             if (carrierCandidates.Count == 0)
             {
                 continue;
             }
 
+            sawEligibleCarrierCandidate = true;
             float directorMultiplier = component.DiseaseDirector.GetChanceMultiplier(arrivalCandidate.ResolvedProfile.Profile);
             float exposureChance = component.DiseaseDirector.ClampChance(
                 arrivalCandidate.Seeder.arrivalChance
@@ -440,6 +452,17 @@ public static class ContagionSeedingCoordinator
 
         if (exposureCandidates.Count == 0)
         {
+            if (sawRunnableDiseaseCandidate && !sawEligibleCarrierCandidate)
+            {
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalNoEligibleCarriers);
+                ContagionDiagnostics.Trace($"Arrival group skipped ({groupKind}): no eligible carrier pawns for runnable disease candidates.");
+            }
+            else
+            {
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalNoDiseaseCandidates);
+                ContagionDiagnostics.Trace($"Arrival group skipped ({groupKind}): no runnable disease candidates.");
+            }
+
             return 0;
         }
 
@@ -455,6 +478,7 @@ public static class ContagionSeedingCoordinator
             return 0;
         }
 
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalExposureSucceeded);
         int selectedRemainingCapacity = GetRemainingActiveCaseCapacity(
             component,
             selectedExposure.ArrivalCandidate.ResolvedProfile,
@@ -471,6 +495,8 @@ public static class ContagionSeedingCoordinator
             carrierCount);
         if (seededCount <= 0)
         {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalNoEligibleCarriers);
+            ContagionDiagnostics.Trace($"Arrival exposure for {selectedExposure.ArrivalCandidate.ResolvedProfile.DiseaseDef.defName} from a {groupKind} group seeded no carriers.");
             return 0;
         }
 
@@ -626,6 +652,10 @@ public static class ContagionSeedingCoordinator
                 out bool visibleDisease))
             {
                 seededCount++;
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalCarrierSeeded);
+                ContagionDiagnostics.Record(visibleDisease
+                    ? ContagionDiagnosticCounter.ArrivalCarrierMildVisible
+                    : ContagionDiagnosticCounter.ArrivalCarrierLatent);
                 ContagionDiagnostics.Trace($"Arrival carrier seeded: {resolvedProfile.DiseaseDef.defName} on {selectedCandidate.Pawn.LabelShortCap} ({(visibleDisease ? "mild visible" : "latent")}).");
             }
         }
@@ -988,16 +1018,20 @@ public static class ContagionSeedingCoordinator
             return;
         }
 
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.ContinuousSeederAttempted);
         bool seeded = weightSelector == null
             ? ContagionSeedingExecutionUtility.TrySeedRandomEligiblePawn(spawnedPawns, resolvedProfile, component.Map, out Pawn seededPawn)
             : ContagionSeedingExecutionUtility.TrySeedWeightedEligiblePawn(spawnedPawns, resolvedProfile, component.Map, weightSelector, out seededPawn);
         if (!seeded)
         {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ContinuousSeederNoEligiblePawn);
+            ContagionDiagnostics.Trace($"{seeder.GetType().Name} fired for {resolvedProfile.DiseaseDef.defName} but found no eligible pawn.");
             return;
         }
 
         component.NotifySeederFired(resolvedProfile, seeder);
         component.DiseaseDirector.NotifySeeded(resolvedProfile.Profile, 1);
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.ContinuousSeederSeeded);
         ContagionDiagnostics.Trace($"{seeder.GetType().Name} seeded {resolvedProfile.DiseaseDef.defName} on {seededPawn.LabelShortCap}.");
     }
 

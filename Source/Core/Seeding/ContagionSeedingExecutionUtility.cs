@@ -32,6 +32,7 @@ public static class ContagionSeedingExecutionUtility
                 out HediffDef immunityCause);
             if (chance <= 0f)
             {
+                ContagionDiagnostics.RecordApplicationResult(ContagionDiagnosticOrigin.Incidence, seeded: false, immunityCause);
                 if (immunityCause != null)
                 {
                     if (!blockedByImmunity.TryGetValue(immunityCause, out List<Pawn> blockedPawns))
@@ -51,7 +52,12 @@ public static class ContagionSeedingExecutionUtility
                 continue;
             }
 
-            if (ContagionDiseaseUtility.TrySeedIncubation(pawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out HediffDef seedImmunityCause))
+            if (ContagionDiseaseUtility.TrySeedIncubation(
+                pawn,
+                resolvedProfile.DiseaseDef,
+                resolvedProfile.PartsToAffect,
+                ContagionDiagnosticOrigin.Incidence,
+                out HediffDef seedImmunityCause))
             {
                 seededPawns.Add(pawn);
             }
@@ -107,29 +113,52 @@ public static class ContagionSeedingExecutionUtility
 
     public static bool TrySeedExactPawn(Pawn pawn, ResolvedTransmissionProfile resolvedProfile, out HediffDef immunityCause)
     {
+        return TrySeedExactPawn(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out immunityCause);
+    }
+
+    public static bool TrySeedExactPawn(
+        Pawn pawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        ContagionDiagnosticOrigin origin,
+        out HediffDef immunityCause)
+    {
         immunityCause = null;
         if (pawn == null || resolvedProfile?.DiseaseDef == null)
         {
             return false;
         }
 
-        return ContagionDiseaseUtility.TrySeedIncubation(pawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out immunityCause);
+        return ContagionDiseaseUtility.TrySeedIncubation(
+            pawn,
+            resolvedProfile.DiseaseDef,
+            resolvedProfile.PartsToAffect,
+            origin,
+            out immunityCause);
     }
 
     public static bool TrySeedArrivalCarrier(Pawn pawn, ResolvedTransmissionProfile resolvedProfile, float mildVisibleChance, out bool visibleDisease)
     {
         visibleDisease = false;
         if (Rand.Chance(Mathf.Clamp01(mildVisibleChance))
-            && TrySeedMildVisibleDisease(pawn, resolvedProfile, out HediffDef _))
+            && TrySeedMildVisibleDisease(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out HediffDef _))
         {
             visibleDisease = true;
             return true;
         }
 
-        return TrySeedExactPawn(pawn, resolvedProfile, out HediffDef _);
+        return TrySeedExactPawn(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out HediffDef _);
     }
 
     public static bool TrySeedMildVisibleDisease(Pawn pawn, ResolvedTransmissionProfile resolvedProfile, out HediffDef immunityCause)
+    {
+        return TrySeedMildVisibleDisease(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out immunityCause);
+    }
+
+    public static bool TrySeedMildVisibleDisease(
+        Pawn pawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        ContagionDiagnosticOrigin origin,
+        out HediffDef immunityCause)
     {
         immunityCause = null;
         if (pawn == null || resolvedProfile?.DiseaseDef == null)
@@ -163,12 +192,13 @@ public static class ContagionSeedingExecutionUtility
         }
 
         TaleRecorder.RecordTale(TaleDefOf.IllnessRevealed, pawn, resolvedProfile.DiseaseDef);
+        ContagionDiagnostics.RecordApplicationResult(origin, seeded: true, immunityCause: null);
         return true;
     }
 
     public static bool TrySeedRandomEligiblePawn(IReadOnlyList<Pawn> pawns, ResolvedTransmissionProfile resolvedProfile, Map map, out Pawn seededPawn)
     {
-        return TrySeedWeightedEligiblePawn(pawns, resolvedProfile, map, null, out seededPawn);
+        return TrySeedWeightedEligiblePawn(pawns, resolvedProfile, map, null, ContagionDiagnosticOrigin.Incidence, out seededPawn);
     }
 
     public static bool TrySeedWeightedEligiblePawn(
@@ -176,6 +206,17 @@ public static class ContagionSeedingExecutionUtility
         ResolvedTransmissionProfile resolvedProfile,
         Map map,
         Func<Pawn, float> weightSelector,
+        out Pawn seededPawn)
+    {
+        return TrySeedWeightedEligiblePawn(pawns, resolvedProfile, map, weightSelector, ContagionDiagnosticOrigin.Incidence, out seededPawn);
+    }
+
+    public static bool TrySeedWeightedEligiblePawn(
+        IReadOnlyList<Pawn> pawns,
+        ResolvedTransmissionProfile resolvedProfile,
+        Map map,
+        Func<Pawn, float> weightSelector,
+        ContagionDiagnosticOrigin origin,
         out Pawn seededPawn)
     {
         seededPawn = null;
@@ -215,7 +256,7 @@ public static class ContagionSeedingExecutionUtility
             return false;
         }
 
-        if (!TrySeedExactPawn(selectedPawn, resolvedProfile, out HediffDef _))
+        if (!TrySeedExactPawn(selectedPawn, resolvedProfile, origin, out HediffDef _))
         {
             return false;
         }

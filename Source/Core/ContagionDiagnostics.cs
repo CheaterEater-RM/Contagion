@@ -1,20 +1,42 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using Verse;
 
 namespace Contagion;
 
+public enum ContagionDiagnosticOrigin
+{
+    Unknown,
+    Incidence,
+    Spread
+}
+
 public enum ContagionDiagnosticCounter
 {
-    IncubationSeeded,
-    IncubationBlocked,
-    IncubationBlockedByImmunity,
+    IncidenceApplicationSeeded,
+    IncidenceApplicationBlocked,
+    IncidenceApplicationBlockedByImmunity,
+    SpreadApplicationSeeded,
+    SpreadApplicationBlocked,
+    SpreadApplicationBlockedByImmunity,
     StorytellerAttempted,
     StorytellerSeeded,
-    ArrivalAttempted,
+    StorytellerCancelled,
+    ArrivalGroupChecked,
+    ArrivalGroupSkippedEmpty,
+    ArrivalNoDiseaseCandidates,
+    ArrivalNoEligibleCarriers,
+    ArrivalExposureSucceeded,
     ArrivalSeeded,
+    ArrivalCarrierSeeded,
+    ArrivalCarrierLatent,
+    ArrivalCarrierMildVisible,
     EnvironmentalAttempted,
     EnvironmentalSeeded,
+    ContinuousSeederAttempted,
+    ContinuousSeederSeeded,
+    ContinuousSeederNoEligiblePawn,
     PendingQueued,
     PendingDroppedAtCap,
     PendingDroppedDuplicate,
@@ -56,6 +78,58 @@ public static class ContagionDiagnostics
 
     private static readonly double[] PerformanceMaxMilliseconds = new double[(int)ContagionPerformanceMetric.Count];
 
+    private static readonly ContagionDiagnosticCounter[] IncidenceCounters =
+    {
+        ContagionDiagnosticCounter.IncidenceApplicationSeeded,
+        ContagionDiagnosticCounter.IncidenceApplicationBlocked,
+        ContagionDiagnosticCounter.IncidenceApplicationBlockedByImmunity,
+        ContagionDiagnosticCounter.StorytellerAttempted,
+        ContagionDiagnosticCounter.StorytellerSeeded,
+        ContagionDiagnosticCounter.StorytellerCancelled,
+        ContagionDiagnosticCounter.ArrivalGroupChecked,
+        ContagionDiagnosticCounter.ArrivalGroupSkippedEmpty,
+        ContagionDiagnosticCounter.ArrivalNoDiseaseCandidates,
+        ContagionDiagnosticCounter.ArrivalNoEligibleCarriers,
+        ContagionDiagnosticCounter.ArrivalExposureSucceeded,
+        ContagionDiagnosticCounter.ArrivalSeeded,
+        ContagionDiagnosticCounter.ArrivalCarrierSeeded,
+        ContagionDiagnosticCounter.ArrivalCarrierLatent,
+        ContagionDiagnosticCounter.ArrivalCarrierMildVisible,
+        ContagionDiagnosticCounter.EnvironmentalAttempted,
+        ContagionDiagnosticCounter.EnvironmentalSeeded,
+        ContagionDiagnosticCounter.ContinuousSeederAttempted,
+        ContagionDiagnosticCounter.ContinuousSeederSeeded,
+        ContagionDiagnosticCounter.ContinuousSeederNoEligiblePawn,
+        ContagionDiagnosticCounter.PendingQueued,
+        ContagionDiagnosticCounter.PendingDroppedAtCap,
+        ContagionDiagnosticCounter.PendingDroppedDuplicate,
+        ContagionDiagnosticCounter.PendingResolvedArrival,
+        ContagionDiagnosticCounter.PendingResolvedAnimal,
+        ContagionDiagnosticCounter.PendingExpiredToAcausal,
+        ContagionDiagnosticCounter.EnvironmentalWindowOpened,
+        ContagionDiagnosticCounter.EnvironmentalWindowClosedBudget,
+        ContagionDiagnosticCounter.EnvironmentalWindowClosedExpiry
+    };
+
+    private static readonly ContagionDiagnosticCounter[] SpreadCounters =
+    {
+        ContagionDiagnosticCounter.SpreadApplicationSeeded,
+        ContagionDiagnosticCounter.SpreadApplicationBlocked,
+        ContagionDiagnosticCounter.SpreadApplicationBlockedByImmunity,
+        ContagionDiagnosticCounter.AirborneAttempted,
+        ContagionDiagnosticCounter.AirborneSeeded,
+        ContagionDiagnosticCounter.ProximityAttempted,
+        ContagionDiagnosticCounter.ProximitySeeded,
+        ContagionDiagnosticCounter.SocialAttempted,
+        ContagionDiagnosticCounter.SocialSeeded,
+        ContagionDiagnosticCounter.MealsContaminated,
+        ContagionDiagnosticCounter.FoodborneAttempted,
+        ContagionDiagnosticCounter.FoodborneSeeded,
+        ContagionDiagnosticCounter.VomitFilthContaminated,
+        ContagionDiagnosticCounter.FomiteAttempted,
+        ContagionDiagnosticCounter.FomiteSeeded
+    };
+
     private static bool HasDirectorSummary;
 
     private static float DirectorHumanPressureDebt;
@@ -93,6 +167,26 @@ public static class ContagionDiagnostics
         }
 
         Counters[(int)counter] += amount;
+    }
+
+    public static void RecordApplicationResult(ContagionDiagnosticOrigin origin, bool seeded, HediffDef immunityCause)
+    {
+        if (origin == ContagionDiagnosticOrigin.Incidence)
+        {
+            Record(seeded ? ContagionDiagnosticCounter.IncidenceApplicationSeeded : ContagionDiagnosticCounter.IncidenceApplicationBlocked);
+            if (!seeded && immunityCause != null)
+            {
+                Record(ContagionDiagnosticCounter.IncidenceApplicationBlockedByImmunity);
+            }
+        }
+        else if (origin == ContagionDiagnosticOrigin.Spread)
+        {
+            Record(seeded ? ContagionDiagnosticCounter.SpreadApplicationSeeded : ContagionDiagnosticCounter.SpreadApplicationBlocked);
+            if (!seeded && immunityCause != null)
+            {
+                Record(ContagionDiagnosticCounter.SpreadApplicationBlockedByImmunity);
+            }
+        }
     }
 
     public static long BeginTiming()
@@ -149,42 +243,87 @@ public static class ContagionDiagnostics
         DirectorMultiplier = multiplier;
     }
 
-    public static string BuildSummaryReport()
+    public static string BuildIncidenceReport()
     {
         if (!Enabled)
         {
             return string.Empty;
         }
 
-        if (!HasAnyRecordedCounters() && !HasDirectorSummary)
+        if (!HasAnyRecordedCounters(IncidenceCounters) && !HasDirectorSummary)
         {
-            return "Contagion_DiagnosticsNoEvents".Translate().Resolve();
+            return "Contagion_DiagnosticsNoIncidence".Translate().Resolve();
         }
 
         StringBuilder stringBuilder = new StringBuilder();
-        if (HasAnyRecordedCounters())
+        if (HasAnyRecordedCounters(IncidenceCounters))
         {
-            stringBuilder.AppendLine("Contagion_DiagnosticsSummaryIncubation".Translate(
-                GetCounter(ContagionDiagnosticCounter.IncubationSeeded),
-                GetCounter(ContagionDiagnosticCounter.IncubationBlocked),
-                GetCounter(ContagionDiagnosticCounter.IncubationBlockedByImmunity)).Resolve());
-            stringBuilder.AppendLine("Contagion_DiagnosticsSummarySeeding".Translate(
+            stringBuilder.AppendLine("Contagion_DiagnosticsIncidenceApplications".Translate(
+                GetCounter(ContagionDiagnosticCounter.IncidenceApplicationSeeded),
+                GetCounter(ContagionDiagnosticCounter.IncidenceApplicationBlocked),
+                GetCounter(ContagionDiagnosticCounter.IncidenceApplicationBlockedByImmunity)).Resolve());
+            stringBuilder.AppendLine("Contagion_DiagnosticsIncidenceIntroductions".Translate(
                 FormatSuccessAttempts(ContagionDiagnosticCounter.StorytellerSeeded, ContagionDiagnosticCounter.StorytellerAttempted),
-                FormatSuccessAttempts(ContagionDiagnosticCounter.ArrivalSeeded, ContagionDiagnosticCounter.ArrivalAttempted),
-                FormatSuccessAttempts(ContagionDiagnosticCounter.EnvironmentalSeeded, ContagionDiagnosticCounter.EnvironmentalAttempted)).Resolve());
-            stringBuilder.AppendLine("Contagion_DiagnosticsSummarySpread".Translate(
-                FormatSuccessAttempts(ContagionDiagnosticCounter.AirborneSeeded, ContagionDiagnosticCounter.AirborneAttempted),
-                FormatSuccessAttempts(ContagionDiagnosticCounter.ProximitySeeded, ContagionDiagnosticCounter.ProximityAttempted),
-                FormatSuccessAttempts(ContagionDiagnosticCounter.SocialSeeded, ContagionDiagnosticCounter.SocialAttempted)).Resolve());
-            stringBuilder.AppendLine("Contagion_DiagnosticsSummaryContamination".Translate(
-                GetCounter(ContagionDiagnosticCounter.MealsContaminated),
-                FormatSuccessAttempts(ContagionDiagnosticCounter.FoodborneSeeded, ContagionDiagnosticCounter.FoodborneAttempted),
-                GetCounter(ContagionDiagnosticCounter.VomitFilthContaminated),
-                FormatSuccessAttempts(ContagionDiagnosticCounter.FomiteSeeded, ContagionDiagnosticCounter.FomiteAttempted)).Resolve());
+                GetCounter(ContagionDiagnosticCounter.ArrivalExposureSucceeded),
+                FormatSuccessAttempts(ContagionDiagnosticCounter.EnvironmentalSeeded, ContagionDiagnosticCounter.EnvironmentalAttempted),
+                FormatSuccessAttempts(ContagionDiagnosticCounter.ContinuousSeederSeeded, ContagionDiagnosticCounter.ContinuousSeederAttempted),
+                GetCounter(ContagionDiagnosticCounter.StorytellerCancelled)).Resolve());
+            stringBuilder.AppendLine("Contagion_DiagnosticsIncidencePending".Translate(
+                GetCounter(ContagionDiagnosticCounter.PendingQueued),
+                GetCounter(ContagionDiagnosticCounter.PendingDroppedAtCap),
+                GetCounter(ContagionDiagnosticCounter.PendingDroppedDuplicate),
+                GetCounter(ContagionDiagnosticCounter.PendingResolvedArrival),
+                GetCounter(ContagionDiagnosticCounter.PendingResolvedAnimal),
+                GetCounter(ContagionDiagnosticCounter.PendingExpiredToAcausal),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowOpened),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowClosedBudget)
+                    + GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowClosedExpiry)).Resolve());
+            stringBuilder.AppendLine("Contagion_DiagnosticsIncidenceArrivals".Translate(
+                GetCounter(ContagionDiagnosticCounter.ArrivalGroupChecked),
+                GetCounter(ContagionDiagnosticCounter.ArrivalGroupSkippedEmpty),
+                GetCounter(ContagionDiagnosticCounter.ArrivalNoDiseaseCandidates),
+                GetCounter(ContagionDiagnosticCounter.ArrivalNoEligibleCarriers),
+                GetCounter(ContagionDiagnosticCounter.ArrivalCarrierSeeded),
+                GetCounter(ContagionDiagnosticCounter.ArrivalCarrierLatent),
+                GetCounter(ContagionDiagnosticCounter.ArrivalCarrierMildVisible)).Resolve());
         }
 
         AppendDirectorSummary(stringBuilder);
         return stringBuilder.ToString();
+    }
+
+    public static string BuildSpreadReport()
+    {
+        if (!Enabled)
+        {
+            return string.Empty;
+        }
+
+        if (!HasAnyRecordedCounters(SpreadCounters))
+        {
+            return "Contagion_DiagnosticsNoSpread".Translate().Resolve();
+        }
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.AppendLine("Contagion_DiagnosticsSpreadApplications".Translate(
+            GetCounter(ContagionDiagnosticCounter.SpreadApplicationSeeded),
+            GetCounter(ContagionDiagnosticCounter.SpreadApplicationBlocked),
+            GetCounter(ContagionDiagnosticCounter.SpreadApplicationBlockedByImmunity)).Resolve());
+        stringBuilder.AppendLine("Contagion_DiagnosticsSpreadVectors".Translate(
+            FormatSuccessAttempts(ContagionDiagnosticCounter.AirborneSeeded, ContagionDiagnosticCounter.AirborneAttempted),
+            FormatSuccessAttempts(ContagionDiagnosticCounter.ProximitySeeded, ContagionDiagnosticCounter.ProximityAttempted),
+            FormatSuccessAttempts(ContagionDiagnosticCounter.SocialSeeded, ContagionDiagnosticCounter.SocialAttempted),
+            FormatSuccessAttempts(ContagionDiagnosticCounter.FoodborneSeeded, ContagionDiagnosticCounter.FoodborneAttempted),
+            FormatSuccessAttempts(ContagionDiagnosticCounter.FomiteSeeded, ContagionDiagnosticCounter.FomiteAttempted)).Resolve());
+        stringBuilder.Append("Contagion_DiagnosticsSpreadContamination".Translate(
+            GetCounter(ContagionDiagnosticCounter.MealsContaminated),
+            GetCounter(ContagionDiagnosticCounter.VomitFilthContaminated)).Resolve());
+        return stringBuilder.ToString();
+    }
+
+    public static string BuildSummaryReport()
+    {
+        return BuildIncidenceReport();
     }
 
     public static string BuildPerformanceReport()
@@ -217,11 +356,11 @@ public static class ContagionDiagnostics
         return Counters[(int)counter];
     }
 
-    private static bool HasAnyRecordedCounters()
+    private static bool HasAnyRecordedCounters(IEnumerable<ContagionDiagnosticCounter> counters)
     {
-        for (int i = 0; i < Counters.Length; i++)
+        foreach (ContagionDiagnosticCounter counter in counters)
         {
-            if (Counters[i] != 0)
+            if (Counters[(int)counter] != 0)
             {
                 return true;
             }

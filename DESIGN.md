@@ -462,7 +462,7 @@ Difficulty *multiplies* the Transmission Rate slider rather than replacing it, s
 | Transmission Rate | 0.25×–2.0× | 1.0× | Global multiplier on vector base chances (composed with difficulty) |
 | Outbreak Frequency | 0.25×–2.0× | 1.0× | Multiplier on seeder MTB timers (Mode 2) and pending-event arrival chances (both modes) |
 | Incubation Length | 0.25×–2.0× | 1.0× | Multiplier on incubation durations |
-| Diagnostics | Off/Summary/Verbose | Off | In-settings counters and (dev-mode) trace logging; optional performance stats |
+| Diagnostics | Off/Summary/Verbose | Off | In-settings disease incidence and disease spread counters, plus dev-mode transition traces and optional performance stats |
 
 Per-disease behavior (`spreadSuppressionScale`, per-vector mask effectiveness) and the gene airway-immunity whitelist live in XML for player/modder patching.
 
