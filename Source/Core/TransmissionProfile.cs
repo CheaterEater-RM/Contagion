@@ -46,6 +46,18 @@ public sealed class TransmissionProfile : DefModExtension
 
     public List<TransmissionSeeder> seeders;
 
+    // When true and no hand-authored disease IncidentDef already targets this hediff, Contagion generates
+    // one at startup so the vanilla storyteller schedules this disease in Storyteller mode (Mode 1), with
+    // full biome weighting, difficulty scaling, and event spacing. Requires a Seeder_Storyteller in this
+    // profile to route the storyteller's pick through incubation. If you are not authoring your own
+    // IncidentDef, set this true.
+    public bool selfSchedules;
+
+    // Biome commonality used for the generated incident, applied to every biome that rolls diseases.
+    // 100 ~= vanilla flu; higher is picked more often by the storyteller. Only used when selfSchedules
+    // generates an incident.
+    public float selfScheduleCommonality = 100f;
+
     public int maxActiveCases;
 
     // Scales how strongly the global spread-suppression exponent applies to this disease.
