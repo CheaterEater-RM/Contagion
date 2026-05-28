@@ -103,6 +103,28 @@ The mod owns short-term reinfection protection because vanilla `HediffComp_Immun
 
 **Animal-linked seeding.** Plague feels associated with animals without general animal-to-human contagion. Animal presence authorizes/biases the first human seed event; after that, human-to-human spread uses normal transmission rules. (This is "Option C" from the original design — seeding gated by animal presence, narratively framed as animal contact, with no ongoing cross-species transmission system.)
 
+### Arrival Seeding Coverage
+
+`Seeder_Arrival` runs when an applicable pawn appears on the map through one of the vanilla "guest arrives" paths. The table below catalogs every vanilla way a humanlike (or animal) pawn can arrive on a colony map and where Contagion does or doesn't hook in. "Spawned at hook?" matters because `SeedArrivals` only acts on pawns that are already `Spawned` with a `Map`.
+
+| # | Arrival type | Vanilla path | Hook point | Spawned at hook? | Ease | Status / fit |
+|---|---|---|---|---|---|---|
+| 1 | Visitors, travelers, trade caravans, skylantern wanderers, tribute collectors | `IncidentWorker_NeutralGroup.SpawnPawns` | returns `List<Pawn>` | yes | Easy | Covered |
+| 2 | Wanderer joins | `IncidentWorker_WandererJoin.SpawnJoiner(Map, Pawn)` | `Pawn` param | yes | Easy | Covered |
+| 3 | Quest arrivals: refugees, lodgers, shuttle allies, returning lent pawns, reward joiners | `QuestPart_PawnsArrive.Notify_QuestSignalReceived` | public `pawns` field | walk-in yes / drop-pod no | Medium | Covered (walk-in); pod-mode skipped by design |
+| 4 | Wild man wanders in | `IncidentWorker_WildManWandersIn.TryExecuteWorker` | inline spawn, no param | yes (needs discovery) | Medium-hard | Skipped (feral, low value) |
+| 5 | Friendly raid (combat allies) | `IncidentWorker_Raid.PostProcessSpawnedPawns` | shared w/ enemy raids | yes | Medium | Skipped (transient) |
+| 6 | Game-ended wanderers join | `IncidentWorker_GameEndedWanderersJoin` | `startingAndOptionalPawns` | yes | Easy | Skipped (endgame) |
+| 7 | Creep joiner (Anomaly) | quest / `BaseCreepJoinerWorker` | quest path | varies | Hard | Skipped (anomalous entity) |
+| 8 | Farm animals wander in | `IncidentWorker_FarmAnimalsWanderIn.SpawnAnimal` | private method | yes | Medium | Skipped — would require an animal-side `Seeder_Arrival`; none shipped |
+| 9 | Enemy raids, sieges, mech clusters, infestations | raid/threat workers | — | yes | — | Out of scope (hostile; still transmit if already sick) |
+| 10 | Orbital traders | `IncidentWorker_OrbitalTraderArrival` | — | no map pawns | N/A | N/A |
+| 11 | Caravan meetings / world incidents | world-scope | — | no | N/A | Deferred (caravan scope) |
+
+Refugees deserve a footnote: in RimWorld 1.6 there is no `IncidentWorker_RefugeeChased` / `RefugeePodCrash`. Refugees (and most other named guests) now arrive through the **quest system** via `QuestPart_PawnsArrive` — covered above. The drop-pod-mode exception is intentional: pod-mode quest arrivals are still inside an incoming drop pod when the quest signal fires, so they're not `Spawned` yet and `SeedArrivals` correctly skips them. The walk-in case (the common one) is fully covered.
+
+The hooks themselves apply no faction or species filter — disease profiles gate that via `CanAffect`. In practice, of the shipped diseases only Flu has a `Seeder_Arrival`, so the new hooks are inert for the others by design. Adding a `Seeder_Arrival` to animal-disease profiles (and patching row 8) would be the natural extension.
+
 ---
 
 ## Core Data Model
@@ -445,7 +467,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 **Implemented and wired:** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); all five seeders; storyteller→incubation interception via `IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker` (which also covers trait-driven single-pawn disease, since that routes through `ApplyToPawns`); incubation + temporary/custom immunity with a recovery hook; outbreak notifications; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns) and contaminated-meal comp state.
 
-**Known functional gap — arrival seeding coverage.** `Seeder_Arrival` is hooked through `IncidentWorker_NeutralGroup.SpawnPawns`, which covers **visitors, travelers, and trade caravans** (all subclasses). It does **not** cover refugees, wanderer-joins, or refugee-pod arrivals. Whether to extend this is a design call: the core "a trader brought the flu" fantasy already works; "the refugee we rescued was incubating" does not yet.
+**Arrival seeding coverage.** `Seeder_Arrival` is hooked through three patches: `IncidentWorker_NeutralGroup.SpawnPawns` (visitors / travelers / trade caravans / skylantern wanderers / tribute collectors), `IncidentWorker_WandererJoin.SpawnJoiner` (wanderer joins), and `QuestPart_PawnsArrive.Notify_QuestSignalReceived` (quest pawns including walk-in refugees and lodgers). Remaining gaps, all intentional: **drop-pod-mode** quest arrivals (pawns not yet `Spawned` when the signal fires), wild man, friendly raids, and animal arrivals (no animal-side `Seeder_Arrival` ships). See the full chart under [Arrival Seeding Coverage](#arrival-seeding-coverage).
 
 **Reserved — see below.** Corpse contagion, carrier state, caravan spread, and `Vector_Lovin` are intentionally schema-only with no engine implementation in v1.
 
