@@ -60,7 +60,7 @@ internal static class Patch_FarmAnimalsWanderIn_TryExecuteWorker
 
         if (newAnimals.Count > 0)
         {
-            ContagionArrivalUtility.SeedArrivals(newAnimals);
+            ContagionArrivalUtility.SeedArrivalGroup(newAnimals, ContagionArrivalGroupKind.FarmAnimals);
         }
     }
 }

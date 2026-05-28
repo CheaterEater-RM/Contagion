@@ -289,6 +289,10 @@
             <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
             <handlerBias>2.0</handlerBias>
           </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.01</arrivalChance>
+            <cooldownDays>3</cooldownDays>
+          </li>
           <li Class="Contagion.Seeder_Acausal">
             <mtbDays>180</mtbDays>
             <cooldownDays>15</cooldownDays>

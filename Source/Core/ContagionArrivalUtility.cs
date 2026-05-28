@@ -3,15 +3,26 @@ using Verse;
 
 namespace Contagion;
 
+public enum ContagionArrivalGroupKind
+{
+    Neutral,
+    WandererJoin,
+    QuestGuest,
+    QuestJoiner,
+    HostileRaid,
+    TribalRaid,
+    FarmAnimals
+}
+
 public static class ContagionArrivalUtility
 {
     public static int SeedArrivals(IEnumerable<Pawn> pawns)
     {
-        return ContagionSeedingCoordinator.HandleArrivals(pawns);
+        return SeedArrivalGroup(pawns, ContagionArrivalGroupKind.Neutral);
     }
 
-    public static bool TrySeedRaidPawn(Pawn pawn)
+    public static int SeedArrivalGroup(IEnumerable<Pawn> pawns, ContagionArrivalGroupKind groupKind)
     {
-        return ContagionSeedingCoordinator.HandleRaidArrival(pawn);
+        return ContagionSeedingCoordinator.HandleArrivalGroup(pawns, groupKind);
     }
 }

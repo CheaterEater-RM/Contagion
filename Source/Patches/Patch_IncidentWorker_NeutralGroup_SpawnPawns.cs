@@ -70,7 +70,7 @@ internal static class Patch_NeutralArrivalCompletion_Helper
 
         if (arrivals.Count > 0)
         {
-            ContagionArrivalUtility.SeedArrivals(arrivals);
+            ContagionArrivalUtility.SeedArrivalGroup(arrivals, ContagionArrivalGroupKind.Neutral);
         }
     }
 }

@@ -52,7 +52,9 @@ internal static class Patch_QuestPart_PawnsArrive_Notify_QuestSignalReceived
 
         if (arrivals.Count > 0)
         {
-            ContagionArrivalUtility.SeedArrivals(arrivals);
+            ContagionArrivalUtility.SeedArrivalGroup(
+                arrivals,
+                __instance.joinPlayer ? ContagionArrivalGroupKind.QuestJoiner : ContagionArrivalGroupKind.QuestGuest);
         }
     }
 }

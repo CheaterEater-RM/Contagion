@@ -34,14 +34,10 @@ internal static class Patch_IncidentWorker_Raid_PostProcessSpawnedPawns
             return;
         }
 
-        livePawns.Shuffle();
-        for (int i = 0; i < livePawns.Count; i++)
-        {
-            // One infectious arrival max per hostile raid group.
-            if (ContagionArrivalUtility.TrySeedRaidPawn(livePawns[i]))
-            {
-                break;
-            }
-        }
+        ContagionArrivalUtility.SeedArrivalGroup(
+            livePawns,
+            parms.faction.def.techLevel <= TechLevel.Neolithic
+                ? ContagionArrivalGroupKind.TribalRaid
+                : ContagionArrivalGroupKind.HostileRaid);
     }
 }

@@ -100,7 +100,7 @@ The mod owns short-term reinfection protection because vanilla `HediffComp_Immun
 Contagion has two seeding modes the player chooses in mod settings. Both share the same source paths and transmission engine — only the question of *when an outbreak starts* differs.
 
 - **Mode 1 — Storyteller-driven (default).** The vanilla storyteller still picks diseases on its biome-aware schedule. Contagion intercepts each pick, turns it into a *pending disease event* with a per-disease expiry window, and fulfils it through whichever source path fits the disease best (arrival, animal contact, environmental window, etc.). On expiry, an acausal seed lands silently. The storyteller stops being a vector and becomes the scheduler.
-- **Mode 2 — Contagion-driven.** Contagion runs all pacing itself. Arrivals carry continuous low-rate risk, environmental exposure is continuous, an MTB acausal fallback covers isolated colonies, and a per-disease *pressure* cooloff dampens follow-up rolls after every successful seed so a bad streak does not sweep the colony. Storyteller disease incidents for profiled diseases are cancelled outright; unprofiled diseases (mechanites, other-mod additions) pass through to vanilla untouched.
+- **Mode 2 — Contagion-driven.** Contagion runs all pacing itself. Arrivals carry continuous low-rate risk, environmental exposure is continuous, an MTB acausal fallback covers isolated colonies, and a per-disease *pressure* cooloff dampens follow-up rolls after each disease introduction so a bad streak does not sweep the colony. Storyteller disease incidents for profiled diseases are cancelled outright; unprofiled diseases (mechanites, other-mod additions) pass through to vanilla untouched.
 
 Mode 1 is the default because the storyteller cadence matches most players' mental model and minimises mod-conflict surface area. Mode 2 is the opt-in for sim-leaning players who want continuous, legible pressure.
 
@@ -120,14 +120,14 @@ Strategies are reinterpretations of the existing seeder classes — same data, s
 | Flu | Arrival → Acausal | 15 days |
 | Animal_Flu | Animal-arrival → Acausal | 15 days |
 | Plague | Animal-contact → Arrival → Acausal | 5 days |
-| Animal_Plague | Animal-contact → Acausal | 5 days |
+| Animal_Plague | Animal-contact → Animal-arrival → Acausal | 5 days |
 | GutWorms | Acausal (immediate, no wait) | 0 days |
 | Malaria | Environmental window | converts to a time-bounded environmental event |
 | SleepingSickness | Environmental window | converts to a time-bounded environmental event |
 
 The 5-day plague window is deliberately tight. The goal is for the storyteller's plague pick to resolve close to when it fired, so the storyteller's event-spacing logic (which considers raids, disasters, and other events) stays meaningful. A long pending window would let a disease event collide with a raid the storyteller deliberately spaced apart.
 
-**Arrival fulfillment.** While a pending event exists for a contagious disease, the *next eligible arrival* (profile-affectable, not already sick or immune) becomes patient zero — they arrive carrying incubation. This is deterministic, not a per-pawn random roll; it prevents unbounded pending-event growth on low-traffic maps. The vanilla "only some pawns are vulnerable" feel comes from susceptibility factors gating eligibility, not from a low base chance.
+**Arrival fulfillment.** While a pending event exists for a contagious disease, the *next eligible arriving group* resolves it. Exposure is deterministic in Mode 1 because the storyteller event already represents disease pressure; carrier count is capped and scales sublinearly with eligible group size and disease cluster factor. The vanilla "only some pawns are vulnerable" feel comes from susceptibility factors gating eligibility, not from a low base chance.
 
 **Animal-contact fulfillment.** For plague, if animals are present on the map (a colony with any livestock/wildlife), the event resolves within the window onto a pawn biased toward handlers. This is deliberately near-deterministic on animal-bearing maps — the `mtbDays` field on `Seeder_AnimalLinked` is used only in Mode 2.
 
@@ -139,12 +139,12 @@ The 5-day plague window is deliberately tight. The goal is for the storyteller's
 
 Mode 2 disregards the storyteller for profiled diseases and runs continuous, low-rate seeding:
 
-- **Arrivals.** Every neutral group, wanderer, quest pawn, and hostile raid (capped at one seed per raid group) has a small profile-defined chance to carry an incubating profiled disease.
+- **Arrivals.** Every neutral group, wanderer, quest arrival, hostile raid, and farm-animal wander-in rolls group exposure once. If exposure succeeds, one disease is chosen for the group and a capped, sublinear number of eligible pawns become carriers.
 - **Environmental exposure** runs continuously, gated by biome commonality, season, temperature, water proximity, and indoor sheltering — same engine as Mode 1's environmental windows, just always on.
 - **Animal-linked seeding** runs as an MTB process when animals are present, biased toward handlers.
 - **Acausal MTB** is the isolated-colony backstop (long MTB, used mainly for gut worms).
 
-**Per-disease pressure.** Every successful seed (any path) adds to a `pressure` value tracked per `(map, disease)` on the map component. Pressure multiplies *down* subsequent seed chances for the same disease and decays back to baseline over several days. Pressure is independent per disease: a flu wave does not dampen a malaria event. The cooloff acts on *chance*, not on the calendar — a bad roll early does not freeze seeding; it just makes the immediate follow-up rolls quieter. This is the spring-like pullback that keeps a bad streak from sweeping the colony.
+**Per-disease pressure.** Every successful disease introduction adds to a `pressure` value tracked per `(map, disease)` on the map component. A group exposure counts once, even if it seeds several carriers. Pressure multiplies *down* subsequent seed chances for the same disease and decays back to baseline over several days. Pressure is independent per disease: a flu wave does not dampen a malaria event. The cooloff acts on *chance*, not on the calendar — a bad roll early does not freeze seeding; it just makes the immediate follow-up rolls quieter.
 
 Mode 2's storyteller intercept is simpler than Mode 1's: cancel the incident for any profiled disease, do nothing else. Pressure and continuous seeding produce the cadence on their own.
 
@@ -154,11 +154,11 @@ The vanilla "guest arrives" paths Contagion hooks are listed below. "Spawned at 
 
 | # | Arrival type | Vanilla path | Hook point | Spawned at hook? | Status |
 |---|---|---|---|---|---|
-| 1 | Visitors, travelers, trade caravans, skylantern wanderers, tribute collectors | `IncidentWorker_NeutralGroup.SpawnPawns` | returns `List<Pawn>` | yes | Covered |
-| 2 | Wanderer joins | `IncidentWorker_WandererJoin.SpawnJoiner(Map, Pawn)` | `Pawn` param | yes | Covered |
+| 1 | Visitors, travelers, trade caravans, skylantern wanderers, tribute collectors | concrete neutral incident `TryExecuteWorker` postfixes | newly spawned pawns after success | yes | Covered |
+| 2 | Wanderer joins | `IncidentWorker_WandererJoin.TryExecuteWorker` | newly spawned pawn after success | yes | Covered |
 | 3 | Quest arrivals: refugees, lodgers, shuttle allies, returning lent pawns, reward joiners | `QuestPart_PawnsArrive.Notify_QuestSignalReceived` | public `pawns` field | walk-in yes / drop-pod no | Covered (walk-in); pod-mode skipped by design |
-| 4 | Hostile raids / sieges (prisoner-take vector) | enemy raid worker `PostProcessSpawnedPawns` | shared with raid spawn | yes | **Planned** — capped at one seed per raid group |
-| 5 | Farm animals wander in | `IncidentWorker_FarmAnimalsWanderIn.SpawnAnimal` | private method | yes | **Planned** — animal-disease arrival path |
+| 4 | Hostile raids / sieges (prisoner-take vector) | enemy raid worker `PostProcessSpawnedPawns` | shared with raid spawn | yes | Covered — group exposure with tribal/hostile policies |
+| 5 | Farm animals wander in | `IncidentWorker_FarmAnimalsWanderIn.TryExecuteWorker` | newly spawned animals after success | yes | Covered — animal profile eligibility gates disease |
 | 6 | Wild man wanders in | `IncidentWorker_WildManWandersIn.TryExecuteWorker` | inline spawn | yes (needs discovery) | Skipped (feral, low value) |
 | 7 | Friendly raid (combat allies) | shared raid path | shared | yes | Skipped (transient — leaves before incubation completes) |
 | 8 | Game-ended wanderers join | `IncidentWorker_GameEndedWanderersJoin` | `startingAndOptionalPawns` | yes | Skipped (endgame) |
@@ -168,7 +168,7 @@ The vanilla "guest arrives" paths Contagion hooks are listed below. "Spawned at 
 
 Refugees in RimWorld 1.6 do not have a dedicated `IncidentWorker_RefugeeChased` / `RefugeePodCrash` — they arrive through the quest system via `QuestPart_PawnsArrive` (row 3). The drop-pod-mode exception is intentional: pod-mode quest arrivals are still inside the incoming pod when the quest signal fires, so they are not `Spawned` yet and arrival seeding correctly skips them. The walk-in case (the common one) is fully covered.
 
-The hostile-raid hook deliberately treats raids as a low-frequency, high-impact vector. One incubating raider per raid (cap) is sufficient to generate a prisoner-borne outbreak when the player downs and captures them. The existing transmission engine already handles prisoner-to-prisoner spread via proximity and airborne vectors — no new code is needed beyond the seed. Deliberately nursing a downed raider, taking them prisoner, and watching the prison ward become a quarantine problem is an emergent loop the design encourages.
+The hostile-raid hook deliberately treats raids as a low-frequency, high-impact vector. Raid exposure is rolled once for the group, then carrier count scales sublinearly with eligible raiders and disease cluster factor, with tribal raids tuned higher than pirate/outlander raids. The existing transmission engine already handles prisoner-to-prisoner spread via proximity and airborne vectors. Deliberately nursing a downed raider, taking them prisoner, and watching the prison ward become a quarantine problem is an emergent loop the design encourages.
 
 ### Trait Interactions (Sickly and friends)
 
@@ -398,7 +398,7 @@ Shared base fields: `cooldownDays` (minimum gap between events of this type — 
 | Strategy | Mode 1 role | Mode 2 role | Key fields |
 |---|---|---|---|
 | `Seeder_Storyteller` | Driver. The storyteller's pick is intercepted and turned into a pending event; `seedCountRange` becomes the event's initial infection budget for environmental events. | Cancelled and discarded. | `seedCountRange` |
-| `Seeder_Arrival` | Fulfillment: the next eligible arrival becomes patient zero (deterministic within the pending window). | Continuous per-arrival chance roll. | `arrivalChance` (Mode 2 only) |
+| `Seeder_Arrival` | Fulfillment: the next eligible arriving group resolves the pending event into a capped group payload. | Continuous group exposure roll; if exposed, one disease and a capped carrier payload. | `arrivalChance` |
 | `Seeder_Environmental` | Fulfillment: opens a time-bounded environmental exposure window with `infectionBudget`. | Continuous environmental exposure (no event window). | `baseChanceMultiplier`, `windowDays` (Mode 1), `infectionBudget` (Mode 1) |
 | `Seeder_AnimalLinked` | Fulfillment: requires animal presence; resolves onto a handler-biased pawn within the window. | Continuous MTB seeding biased to handlers. | `mtbDays` (Mode 2), `requiresAnimalsOnMap`, `handlerBias` |
 | `Seeder_Acausal` | Pending-event expiry fallback, or immediate resolution for diseases with no outside path (gut worms). | Continuous MTB backstop for isolated colonies. | `mtbDays` (Mode 2) |
@@ -412,9 +412,9 @@ All seven profiles are patched onto vanilla hediffs in `1.6/Patches/Contagion_Pr
 | Disease | Vectors | Seeders | Incubation | Immunity | Species | Notes |
 |---|---|---|---|---|---|---|
 | Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival | 1.5 d | none* | Human | Seasonal (winter-peaking); `maxActiveCases` 5 |
-| Animal_Flu | Airborne, Fomite | Storyteller | 1.5 d | none* | Animal | Species-isolated |
+| Animal_Flu | Airborne, Fomite | Storyteller, Arrival | 1.5 d | none* | Animal | Species-isolated |
 | Plague | Proximity (cleanliness) | Storyteller, AnimalLinked | 1.0 d | none* | Human | `airwayImmunityFactor` 0; `maxActiveCases` 4 |
-| Animal_Plague | Proximity | Storyteller | 1.0 d | none* | Animal | Species-isolated |
+| Animal_Plague | Proximity | Storyteller, Arrival | 1.0 d | none* | Animal | Species-isolated |
 | GutWorms | Foodborne | Storyteller, Acausal | 3.0 d | 15 d | Human | `targetBodyParts: Stomach`; `maxActiveCases` 3 |
 | Malaria | Environmental | Environmental | 2.0 d | none* | Human | `outbreakNotification None`, `spreadSuppressionScale 0`, seasonal |
 | SleepingSickness | Environmental | Environmental | 2.5 d | none* | Human | Tropical-weighted; `outbreakNotification None`, `spreadSuppressionScale 0` |
@@ -529,9 +529,9 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 *As of 2026-05-28. Transmission engine and vector implementations are complete and stable; the build is clean (0 warnings, 0 errors). The seeding model documented above is the post-revision target — the seeding-system implementation is in flight. See [`SEEDING_REDESIGN.md`](SEEDING_REDESIGN.md) for the active handoff.*
 
-**Implemented and stable (no redesign needed):** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns) and contaminated-meal comp state; the three existing arrival hooks (`IncidentWorker_NeutralGroup.SpawnPawns`, `IncidentWorker_WandererJoin.SpawnJoiner`, `QuestPart_PawnsArrive.Notify_QuestSignalReceived`); the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`).
+**Implemented and stable (no redesign needed):** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns) and contaminated-meal comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`).
 
-**Being redesigned (Mode 1 / Mode 2 split):** the seeding wrapper around all of the above. The current implementation runs four parallel seeders independently (storyteller intercept → 1 case immediately, arrival → flat 1% per pawn, environmental → continuous, animal-linked + acausal → MTB). The new model collapses these into a single scheduler-and-fulfillment-chain (Mode 1) or a continuous-with-pressure-cooloff system (Mode 2). The vectors, hooks, and transmission engine are not touched — only the orchestration layer above them changes. New components are a `PendingDiseaseEvents` map state, a per-disease `pressure` tracker, a `Seeding Mode` setting, and two new arrival hooks (hostile raid, farm animal wander-in).
+**Being redesigned (Mode 1 / Mode 2 split):** the seeding wrapper around all of the above. The old implementation ran four parallel seeders independently (storyteller intercept → 1 case immediately, arrival → flat per-pawn chance, environmental → continuous, animal-linked + acausal → MTB). The new model collapses these into a single scheduler-and-fulfillment-chain (Mode 1) or a continuous-with-pressure-cooloff system (Mode 2). The vectors, hooks, and transmission engine are not touched — only the orchestration layer above them changes.
 
 **Reserved — see below.** Corpse contagion, carrier state, caravan spread, and `Vector_Lovin` are intentionally schema-only with no engine implementation in v1.
 
@@ -567,11 +567,11 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Two seeding modes (storyteller-driven default, Contagion-driven opt-in) | Vanilla cadence preserved as default; opt-in continuous pressure for sim-leaning players; mode toggle keeps the mental model clear per player |
 | Mode 1: pending events with per-disease fulfillment chains | Replaces four parallel independent seeders with one scheduler + ranked strategies — clearer mental model, unified semantics, and the strategy/window can be tuned per disease |
 | Mode 1 plague window 5 days, gut worms 0 days | Tight windows preserve storyteller event-spacing — a long pending window would let a disease event collide with raids the storyteller deliberately spaced apart. Gut worms have no outside vector, so immediate acausal resolution is correct |
-| Mode 1 arrival fulfillment = next eligible carrier (deterministic) | Avoids unbounded pending-event growth on low-traffic maps. Vanilla's "some pawns are vulnerable" feel comes from susceptibility factors gating eligibility, not from low base chance |
+| Mode 1 arrival fulfillment = next eligible group (deterministic exposure) | Avoids unbounded pending-event growth on low-traffic maps while allowing large groups to carry a capped, sublinear payload |
 | Mode 1 environmental: time-bounded window with infection budget | Event-scoped budget is distinct from colony-wide `maxActiveCases` — matches vanilla's "outbreak happens then ends" feel rather than turning environmental disease into a permanent biome hazard |
 | Mode 2: storyteller incidents cancelled for profiled diseases | Mode 2 owns pacing; letting the storyteller inject extra events would undermine the pressure-cooloff invariant the player is learning to read |
 | Mode 2: per-disease pressure that decays | Spring-like pullback — dampens chance after each seed, decays back to baseline. Bad rolls don't sweep the colony, but the calendar isn't frozen |
-| Hostile raids as arrival vector, capped at 1 seed per raid group | Per-pawn chance on a 30-raider group would saturate every raid with disease; cap matches the "raid is one event" narrative. Prisoner-take is the main intended pathway |
+| Group arrival exposure | Per-pawn chance on large groups would saturate arrivals with disease. Exposure is incident-level, carrier count is group-size-aware but capped, and pressure increments once per exposed group |
 
 ---
 

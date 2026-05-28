@@ -9,14 +9,14 @@
 The existing seeding code runs four independent paths in parallel:
 
 1. **Storyteller intercept** (`Patch_IncidentWorker_Disease`) — converts a vanilla disease incident into 1 immediate incubation seed.
-2. **Arrival seeder** (`ContagionArrivalUtility` + three patches) — rolls a flat per-pawn chance on every incoming neutral/wanderer/quest pawn.
+2. **Arrival seeder** (`ContagionArrivalUtility` + arrival patches) — evaluates incoming groups as one exposure event, then seeds a capped carrier payload.
 3. **Environmental seeder** (`Contagion_MapTransmissionComponent.RunEnvironmentalExposurePass`) — continuous biome+temperature+water risk every 2500 ticks.
 4. **MTB seeders** (`Contagion_MapTransmissionComponent.RunGeneralSeederPass`) — `Seeder_Acausal` and `Seeder_AnimalLinked` fire on long MTBs.
 
 These paths mostly do not collide, but the mental model is muddled and they don't compose. The redesign collapses them into **two clean modes** the player chooses in mod settings:
 
 - **Mode 1 — Storyteller-driven (default).** The vanilla storyteller still picks diseases on its biome-aware schedule. Each pick becomes a *pending event* with a per-disease window; fulfillment strategies (arrival, animal-contact, environmental window, acausal) resolve it.
-- **Mode 2 — Contagion-driven.** Contagion runs all pacing. Continuous low-rate seeding from all source paths. Storyteller picks for profiled diseases are cancelled outright. A per-disease *pressure* value decays after each seed, dampening follow-up rolls.
+- **Mode 2 — Contagion-driven.** Contagion runs all pacing. Continuous low-rate seeding from all source paths. Storyteller picks for profiled diseases are cancelled outright. A per-disease *pressure* value decays after each disease introduction, dampening follow-up rolls.
 
 **The transmission engine, vectors, incubation, immunity, masks, suppression — none of these change.** Only the orchestration layer above them changes.
 
@@ -38,10 +38,10 @@ The conversation reached lock-in on these points. Implementer should treat them 
   - Flu: Arrival → Acausal
   - Animal_Flu: Animal-arrival → Acausal
   - Plague: Animal-contact → Arrival → Acausal
-  - Animal_Plague: Animal-contact → Acausal
+  - Animal_Plague: Animal-contact → Animal-arrival → Acausal
   - GutWorms: Acausal (immediate)
   - Malaria / SleepingSickness: Environmental window (event-scoped)
-- **Arrival fulfillment is deterministic, not random.** The *next eligible arrival* (profile-affectable, not currently sick, not immune) becomes patient zero. This avoids unbounded pending-event growth on low-traffic maps. The "only some pawns are vulnerable" vanilla feel comes from susceptibility factors gating eligibility, not from a low base chance.
+- **Arrival fulfillment is deterministic, not random.** The *next eligible arriving group* resolves the event. Carrier count is capped and scales sublinearly with eligible group size and disease cluster factor. This avoids unbounded pending-event growth on low-traffic maps while letting large groups carry more than one case.
 - **Animal-contact fulfillment.** If a pending plague event exists and animals are on the map, the event resolves within the window onto a handler-biased pawn. Near-deterministic on animal-bearing maps. `Seeder_AnimalLinked.mtbDays` is Mode-2-only; Mode 1 doesn't gate by MTB.
 - **Environmental fulfillment.** Storyteller's malaria/sleeping-sickness pick opens a time-bounded environmental window on the map. Continuous `Vector_Environmental` exposure runs for `windowDays`, capped by `infectionBudget` (event-scoped, distinct from colony-wide `maxActiveCases`). When budget exhausted or window expires, event clears.
 - **Acausal expiry.** Silent single-pawn incubation on a random eligible pawn. The final fallback when the window closes unfulfilled, or the immediate resolution for diseases with no outside path.
@@ -50,12 +50,12 @@ The conversation reached lock-in on these points. Implementer should treat them 
 ### Mode 2 — Contagion-driven
 
 - **All storyteller disease incidents for profiled diseases are cancelled outright.** Option (a) from the discussion: cancel, do nothing else. Pressure + continuous seeding produce the cadence. Unprofiled diseases pass through to vanilla untouched.
-- **Continuous arrival rolls.** Every neutral group, wanderer, quest pawn, and hostile raid (capped at one seed per raid group) has a `Seeder_Arrival.arrivalChance` per-pawn roll. This is the current Mode-1-implicit behavior — keep it as is for Mode 2.
+- **Group arrival exposure.** Every neutral group, wanderer, quest arrival, hostile raid, and farm-animal wander-in is evaluated as one incoming group. `Seeder_Arrival.arrivalChance` is the disease's base group exposure chance; code policy multipliers tune group type. If exposure succeeds, Contagion picks one disease for the group and seeds a capped, sublinear number of carriers.
 - **Continuous environmental exposure.** Same engine as the current `RunEnvironmentalExposurePass`. Gated by biome commonality, season, temperature, water proximity, indoor sheltering.
 - **`Seeder_AnimalLinked` MTB stays.** Periodic animal-linked seeding when animals present, biased to handlers. Current implementation is correct for Mode 2.
 - **`Seeder_Acausal` MTB stays.** Isolated-colony backstop, especially for gut worms (no other path).
 - **Per-disease pressure.**
-  - Every successful seed (any path) adds to a `pressure` value tracked per `(map, disease)`.
+  - Every successful disease introduction adds to a `pressure` value tracked per `(map, disease)`. A group exposure increments pressure once, even if it seeds several carriers.
   - Pressure multiplies *down* subsequent seed chances for the same disease.
   - Pressure decays linearly back to 0 over `pressureDecayDays` (proposed default: ~5 days).
   - Independent per disease — a flu wave doesn't dampen a malaria event.
@@ -64,14 +64,14 @@ The conversation reached lock-in on these points. Implementer should treat them 
 ### Hostile raid hook (both modes)
 
 - Hook the enemy raid worker's `PostProcessSpawnedPawns` (or equivalent — confirm the exact extension point in [`RimWorld/IncidentWorker_Raid.cs`](../Rimworld_References/Rimworld%201.6%20Decompiled%20Source/RimWorld/IncidentWorker_Raid.cs)).
-- **Cap at one seed per raid group.** A 30-raider raid at 1% per pawn would near-saturate every raid with disease — wrong. Roll once for the group at a higher per-group chance, or roll per-raider but stop after the first success.
+- **Roll exposure once per raid group.** A 30-raider raid at 1% per pawn would near-saturate every raid with disease. Raids now roll group exposure once, then seed a capped number of carriers using `1 + Poisson(scale * diseaseClusterFactor * sqrt(eligibleRaiders))`.
 - Friendly raids (combat allies) are skipped — they leave before incubation completes, so a seed on them never affects the colony.
 - **Why this is interesting gameplay:** the prisoner-take loop. Down a raider, take them prisoner, the prison ward turns into a quarantine problem as proximity/airborne vectors spread inside. No new code needed for the spread itself — the existing engine handles it.
 
 ### Farm animal wander-in hook
 
 - Hook `IncidentWorker_FarmAnimalsWanderIn.SpawnAnimal` (private; need reflection or a transpiler) or, better, hook the `TryExecuteWorker` postfix and walk the spawned animals.
-- Per-animal seed chance for animal-disease profiles (`Animal_Flu`, `Animal_Plague`).
+- Group exposure chance for animal-disease profiles (`Animal_Flu`, `Animal_Plague`) with a farm-animal policy cap.
 - This is the natural extension of "wild animals may occasionally carry plague."
 
 ### Schema reinterpretation, not rewrite
@@ -119,7 +119,7 @@ Add to [`Source/Core/TransmissionProfile.cs`](Source/Core/TransmissionProfile.cs
 // diseases ignore this — they use Seeder_Environmental.windowDays instead.
 public float pendingWindowDays = 5f;
 
-// Mode 2: per-disease pressure tuning. After each successful seed, pressure increases by
+// Mode 2: per-disease pressure tuning. After each successful disease introduction, pressure increases by
 // `pressureGain` and dampens future rolls. Decays linearly to 0 over `pressureDecayDays`.
 public float pressureGain = 1f;
 public float pressureDecayDays = 5f;
@@ -224,8 +224,8 @@ private float GetPressureMultiplier(HediffDef disease, float decayDays)
   - **Mode 2.** `RunGeneralSeederPass` runs the existing MTB seeders (acausal + animal-linked) but multiplies their chances by the pressure multiplier. `RunEnvironmentalExposurePass` similarly multiplies by pressure. `NotifySeederFired` calls into a new `IncrementPressure(disease, profile.pressureGain)` helper.
 
 - **[`Source/Core/ContagionArrivalUtility.cs`](Source/Core/ContagionArrivalUtility.cs)** — branch on `Contagion_Mod.Settings.seedingMode`:
-  - **Mode 1.** For each arriving pawn, check the map's pending events. For each pending event whose disease the pawn can carry, seed and clear the pending entry. First match wins (don't seed one pawn with two pending diseases).
-  - **Mode 2.** Current behavior: per-pawn `arrivalChance` roll, multiplied by pressure.
+  - **Mode 1.** For each arriving group, check the map's pending events. The first pending arrival-fulfillable disease that the group can carry seeds a capped carrier payload and clears the pending entry. First match wins (don't seed one group with two pending diseases).
+  - **Mode 2.** Compute one group exposure roll from `arrivalChance`, group policy, outbreak frequency, pressure, and season. If exposed, choose one disease weighted by chance and seed a capped carrier payload.
 - **[`Source/Patches/Patch_IncidentWorker_Disease.cs`](Source/Patches/Patch_IncidentWorker_Disease.cs)** — redirect storyteller fires:
   - **Mode 1.** `TryExecuteWorker` prefix builds a `PendingDiseaseEvent` instead of calling `SeedIncubationToPawns`. For environmental diseases (`UsesEnvironmentalSeedingOnly`), build an environmental window event from `Seeder_Environmental.windowDays` and `infectionBudget`. For diseases with `pendingWindowDays == 0` (gut worms), call the acausal resolver immediately instead of queuing. The trait-driven `ApplyToPawns` path is unchanged in both modes (trait MTB still produces a direct seed).
   - **Mode 2.** `TryExecuteWorker` prefix sets `__result = false` and returns false for any profiled disease — full cancel. `ApplyToPawns` (trait path) is unchanged.
@@ -236,7 +236,7 @@ private float GetPressureMultiplier(HediffDef disease, float decayDays)
 
 ### New files
 
-- **`Source/Patches/Patch_IncidentWorker_RaidEnemy_PostProcessSpawnedPawns.cs`** — postfix that scans raiders for one seed per group. Look up the exact extension point in [`RimWorld/IncidentWorker_RaidEnemy.cs`](../Rimworld_References/Rimworld%201.6%20Decompiled%20Source/RimWorld/IncidentWorker_RaidEnemy.cs) before writing the patch; the cleanest hook may differ from `PostProcessSpawnedPawns` depending on 1.6 specifics. Use the existing `ContagionArrivalUtility` pattern but with the "stop after first success" cap.
+- **`Source/Patches/Patch_IncidentWorker_Raid_PostProcessSpawnedPawns.cs`** — postfix that passes the whole hostile raid group to `ContagionArrivalUtility` with hostile/tribal group context. Roll exposure once, then seed a capped carrier payload.
 
 - **`Source/Patches/Patch_IncidentWorker_FarmAnimalsWanderIn.cs`** — postfix that walks the spawned animals and calls into a new `ContagionArrivalUtility.SeedAnimalArrivals` (or repurposes `SeedArrivals` if it filters species correctly). Confirm in [`RimWorld/IncidentWorker_FarmAnimalsWanderIn.cs`](../Rimworld_References/Rimworld%201.6%20Decompiled%20Source/RimWorld/IncidentWorker_FarmAnimalsWanderIn.cs) which method exposes the spawned animal list.
 
@@ -257,7 +257,7 @@ Suggested phases, each independently testable:
 ### Phase B — Mode 2 (simpler — closer to current behavior)
 
 1. Add `IncrementPressure` / `GetPressureMultiplier` helpers on the map component.
-2. Multiply pressure into existing per-pawn arrival roll in `ContagionArrivalUtility` (gated on `seedingMode == Contagion`).
+2. Multiply pressure into the group exposure roll in `ContagionArrivalUtility` (gated on `seedingMode == Contagion`).
 3. Multiply pressure into `RunGeneralSeederPass` and `RunEnvironmentalExposurePass` chances.
 4. Change `Patch_IncidentWorker_Disease.TryExecuteWorker` Mode-2 branch to full cancel for any profiled disease.
 5. Test: switch to Mode 2 in settings, confirm storyteller flu incidents are silently dropped, arrival/environmental seeds happen at expected rates, multiple seeds in quick succession dampen further rolls.
@@ -265,7 +265,7 @@ Suggested phases, each independently testable:
 ### Phase C — Mode 1 pending events
 
 1. In `Patch_IncidentWorker_Disease.TryExecuteWorker` Mode-1 branch, build and queue a `PendingDiseaseEvent` instead of calling `SeedIncubationToPawns`. Respect `pendingWindowDays == 0` (acausal-immediate for gut worms) and the environmental branch (build a windowed event for malaria/sleeping sickness).
-2. Rewrite `ContagionArrivalUtility.SeedArrivals` Mode-1 branch: drain pending events into eligible arrivals (next eligible carrier consumes the event).
+2. Rewrite `ContagionArrivalUtility.SeedArrivals` Mode-1 branch: drain at most one pending event into an eligible arriving group.
 3. In `RunGeneralSeederPass`, add a pass that walks pending events:
    - For animal-linked plague events on maps with animals, seed onto a handler-biased pawn.
    - For events past `expiryTick`, fire acausal seed.
@@ -274,7 +274,7 @@ Suggested phases, each independently testable:
 
 ### Phase D — New arrival hooks
 
-1. Hostile raid hook (one seed per raid cap).
+1. Hostile raid hook (group exposure with capped carrier payload).
 2. Farm-animal wander-in hook.
 3. Verify in both modes.
 
@@ -328,23 +328,29 @@ These are first-pass guesses. Expect tuning during Phase E.
 
 | Field | Default | Notes |
 |---|---|---|
-| `pressureGain` | 1.0 | Per successful seed |
+| `pressureGain` | 1.0 | Per successful disease introduction |
 | `pressureDecayDays` | 5 | Linear decay back to 0 |
 | Multiplier curve | `1 / (1 + pressure)` | After 1 seed: 0.5×; 2 seeds: 0.33×; decays back |
 
 Per-disease overrides on contagious diseases (Flu, Plague) can use a stronger gain (1.5) so a single seed produces a more obvious cooloff before transmission kicks in. Environmental diseases should use a weaker gain (0.5) so the player can still get a steady trickle.
 
-### Mode 2 arrival chance
+### Group arrival exposure
 
-Keep the existing `Seeder_Arrival.arrivalChance = 0.01`. Pressure does the dampening from there.
+Keep the existing `Seeder_Arrival.arrivalChance = 0.01` as the disease's base group exposure chance. Mode 2 multiplies it by group policy, outbreak frequency, pressure, and season, then rolls exposure once for the whole group. If more than one disease candidate is valid, one disease is chosen weighted by exposure chance.
 
-### Raid seed chance
+Carrier count is `1 + Poisson(groupCarrierSqrtScale * diseaseClusterFactor * sqrt(eligiblePawnCount))`, clamped by group policy, active-case cap, and eligible pawn count. Disease cluster factor is derived from vectors: airborne/social/fomite diseases cluster more than proximity-only plague. Carriers are 70% latent incubation and 30% mild visible disease by default; group policies can override the mild-visible share.
 
-`Seeder_Arrival.raidGroupChance` (new field, optional) — proposed default `0.10`. Roll once per raid, ignore raid size. If the field is absent, derive from `arrivalChance × 5` or similar.
+Default code policies:
 
-### Farm-animal wander chance
-
-`Seeder_Arrival.animalArrivalChance` on `Animal_Plague` / `Animal_Flu` profiles — proposed `0.02` per animal.
+| Group kind | Exposure multiplier | Carrier scale | Carrier cap | Mild visible |
+|---|---:|---:|---:|---:|
+| Neutral trader/visitor/traveler | 6 | 0.35 | 3 | 30% |
+| Wanderer join | 8 | 0.00 | 1 | 30% |
+| Quest guests | 8 | 0.35 | 3 | 30% |
+| Quest joiner/refugee-style | 14 | 0.45 | 5 | 45% |
+| Hostile raid | 6 | 0.55 | 8 | 20% |
+| Tribal raid | 12 | 0.65 | 12 | 30% |
+| Farm animals | 10 | 0.40 | 4 | 30% |
 
 ---
 
@@ -355,7 +361,7 @@ Run each in dev mode. Check `Player.log` is clean. Check diagnostics counters in
 ### Mode 1
 
 1. **Flu storyteller fire.** Confirm a `PendingDiseaseEvent` appears on the map component. No immediate seed.
-2. **Arrival within window.** Spawn a visitor (dev mode trader) while a flu pending event exists. Confirm the visitor is seeded with incubating flu; pending event clears.
+2. **Arrival within window.** Spawn a visitor/trader group while a flu pending event exists. Confirm the group seeds a capped carrier payload and the pending event clears.
 3. **Window expiry.** Fast-forward 15 days with no arrivals. Confirm an acausal seed on a random colonist; pending event clears.
 4. **Plague with animals.** Confirm a plague pending event resolves within 5 days onto a handler-biased pawn.
 5. **Plague without animals.** Confirm the event falls through to arrival, then to acausal at 5 days.

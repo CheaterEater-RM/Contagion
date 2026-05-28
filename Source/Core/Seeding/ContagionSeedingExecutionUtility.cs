@@ -9,6 +9,8 @@ namespace Contagion;
 
 public static class ContagionSeedingExecutionUtility
 {
+    private const float MildDiseaseSeverity = 0.15f;
+
     public static List<Pawn> SeedIncubationToPawns(
         ResolvedTransmissionProfile resolvedProfile,
         IEnumerable<Pawn> pawns,
@@ -112,6 +114,56 @@ public static class ContagionSeedingExecutionUtility
         }
 
         return ContagionDiseaseUtility.TrySeedIncubation(pawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out immunityCause);
+    }
+
+    public static bool TrySeedArrivalCarrier(Pawn pawn, ResolvedTransmissionProfile resolvedProfile, float mildVisibleChance, out bool visibleDisease)
+    {
+        visibleDisease = false;
+        if (Rand.Chance(Mathf.Clamp01(mildVisibleChance))
+            && TrySeedMildVisibleDisease(pawn, resolvedProfile, out HediffDef _))
+        {
+            visibleDisease = true;
+            return true;
+        }
+
+        return TrySeedExactPawn(pawn, resolvedProfile, out HediffDef _);
+    }
+
+    public static bool TrySeedMildVisibleDisease(Pawn pawn, ResolvedTransmissionProfile resolvedProfile, out HediffDef immunityCause)
+    {
+        immunityCause = null;
+        if (pawn == null || resolvedProfile?.DiseaseDef == null)
+        {
+            return false;
+        }
+
+        if (!ContagionDiseaseUtility.CanContractDiseaseNow(pawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out immunityCause))
+        {
+            return false;
+        }
+
+        List<Hediff> addedHediffs = new List<Hediff>();
+        bool applied = HediffGiverUtility.TryApply(
+            pawn,
+            resolvedProfile.DiseaseDef,
+            resolvedProfile.PartsToAffect,
+            outAddedHediffs: addedHediffs);
+        if (!applied)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < addedHediffs.Count; i++)
+        {
+            Hediff hediff = addedHediffs[i];
+            if (hediff?.def == resolvedProfile.DiseaseDef)
+            {
+                hediff.Severity = Mathf.Min(hediff.def.maxSeverity, MildDiseaseSeverity);
+            }
+        }
+
+        TaleRecorder.RecordTale(TaleDefOf.IllnessRevealed, pawn, resolvedProfile.DiseaseDef);
+        return true;
     }
 
     public static bool TrySeedRandomEligiblePawn(IReadOnlyList<Pawn> pawns, ResolvedTransmissionProfile resolvedProfile, Map map, out Pawn seededPawn)

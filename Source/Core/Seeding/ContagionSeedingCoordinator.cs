@@ -31,6 +31,54 @@ public static class ContagionSeedingCoordinator
         public Seeder_Arrival Seeder { get; }
     }
 
+    private sealed class GroupSeedingPolicy
+    {
+        public GroupSeedingPolicy(float exposureMultiplier, float carrierSqrtScale, int carrierCap, float mildVisibleChance)
+        {
+            ExposureMultiplier = exposureMultiplier;
+            CarrierSqrtScale = carrierSqrtScale;
+            CarrierCap = carrierCap;
+            MildVisibleChance = mildVisibleChance;
+        }
+
+        public float ExposureMultiplier { get; }
+
+        public float CarrierSqrtScale { get; }
+
+        public int CarrierCap { get; }
+
+        public float MildVisibleChance { get; }
+    }
+
+    private sealed class CarrierCandidate
+    {
+        public CarrierCandidate(Pawn pawn, float weight)
+        {
+            Pawn = pawn;
+            Weight = weight;
+        }
+
+        public Pawn Pawn { get; }
+
+        public float Weight { get; }
+    }
+
+    private sealed class GroupExposureCandidate
+    {
+        public GroupExposureCandidate(ArrivalCandidate arrivalCandidate, List<CarrierCandidate> carrierCandidates, float exposureChance)
+        {
+            ArrivalCandidate = arrivalCandidate;
+            CarrierCandidates = carrierCandidates;
+            ExposureChance = exposureChance;
+        }
+
+        public ArrivalCandidate ArrivalCandidate { get; }
+
+        public List<CarrierCandidate> CarrierCandidates { get; }
+
+        public float ExposureChance { get; }
+    }
+
     public static ContagionSeedingMode CurrentMode => Contagion_Mod.Settings?.seedingMode ?? ContagionSeedingMode.Storyteller;
 
     public static bool TryHandleStorytellerRequest(IncidentWorker_Disease worker, IncidentParms parms, ResolvedTransmissionProfile resolvedProfile, out bool result)
@@ -106,72 +154,21 @@ public static class ContagionSeedingCoordinator
         return true;
     }
 
-    public static int HandleArrivals(IEnumerable<Pawn> pawns)
+    public static int HandleArrivalGroup(IEnumerable<Pawn> pawns, ContagionArrivalGroupKind groupKind)
     {
-        if (pawns == null)
+        List<Pawn> groupPawns = BuildSpawnedGroupPawns(pawns, out Map map);
+        if (groupPawns.Count == 0 || map == null)
         {
             return 0;
         }
 
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalAttempted);
         if (CurrentMode == ContagionSeedingMode.Storyteller)
         {
-            int resolvedCount = 0;
-            foreach (Pawn pawn in pawns)
-            {
-                if (TryResolvePendingArrival(pawn))
-                {
-                    resolvedCount++;
-                }
-            }
-
-            return resolvedCount;
+            return TryResolvePendingArrivalGroup(groupPawns, map, groupKind);
         }
 
-        List<ArrivalCandidate> arrivalCandidates = BuildArrivalCandidates();
-        if (arrivalCandidates.Count == 0)
-        {
-            return 0;
-        }
-
-        float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
-        int seededCount = 0;
-        foreach (Pawn pawn in pawns)
-        {
-            if (TryHandleSingleArrival(pawn, arrivalCandidates, outbreakMultiplier))
-            {
-                seededCount++;
-            }
-        }
-
-        return seededCount;
-    }
-
-    public static bool HandleRaidArrival(Pawn pawn)
-    {
-        if (pawn == null || pawn.Dead || !pawn.Spawned)
-        {
-            return false;
-        }
-
-        Contagion_MapTransmissionComponent component = pawn.Map?.GetComponent<Contagion_MapTransmissionComponent>();
-        if (component == null)
-        {
-            return false;
-        }
-
-        if (CurrentMode == ContagionSeedingMode.Storyteller)
-        {
-            return TryResolvePendingArrival(pawn);
-        }
-
-        List<ArrivalCandidate> arrivalCandidates = BuildArrivalCandidates();
-        if (arrivalCandidates.Count == 0)
-        {
-            return false;
-        }
-
-        float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
-        return TryHandleSingleArrival(pawn, arrivalCandidates, outbreakMultiplier);
+        return TryResolveContinuousArrivalGroup(groupPawns, map, groupKind);
     }
 
     public static void RunGeneralSeeding(Contagion_MapTransmissionComponent component, IReadOnlyList<Pawn> spawnedPawns)
@@ -331,19 +328,15 @@ public static class ContagionSeedingCoordinator
         return seeded;
     }
 
-    private static bool TryResolvePendingArrival(Pawn pawn)
+    private static int TryResolvePendingArrivalGroup(IReadOnlyList<Pawn> groupPawns, Map map, ContagionArrivalGroupKind groupKind)
     {
-        if (pawn == null || pawn.Dead || !pawn.Spawned)
-        {
-            return false;
-        }
-
-        Contagion_MapTransmissionComponent component = pawn.Map?.GetComponent<Contagion_MapTransmissionComponent>();
+        Contagion_MapTransmissionComponent component = map.GetComponent<Contagion_MapTransmissionComponent>();
         if (component == null)
         {
-            return false;
+            return 0;
         }
 
+        GroupSeedingPolicy policy = GetGroupPolicy(groupKind);
         List<PendingDiseaseEvent> pendingEvents = new List<PendingDiseaseEvent>(component.PendingEvents);
         for (int i = 0; i < pendingEvents.Count; i++)
         {
@@ -360,48 +353,142 @@ public static class ContagionSeedingCoordinator
                 continue;
             }
 
-            if (!CanResolvePendingEventViaArrival(component, pendingEvent, resolvedProfile, pawn))
+            if (!CanResolvePendingEventViaArrival(component, pendingEvent, resolvedProfile))
             {
                 continue;
             }
 
-            if (!ContagionSeedingExecutionUtility.TrySeedExactPawn(pawn, resolvedProfile, out HediffDef _))
+            Seeder_Arrival arrivalSeeder = GetSeeder<Seeder_Arrival>(resolvedProfile.Profile);
+            if (arrivalSeeder == null)
+            {
+                continue;
+            }
+
+            List<CarrierCandidate> carrierCandidates = BuildCarrierCandidates(groupPawns, resolvedProfile, map);
+            int remainingCapacity = GetRemainingActiveCaseCapacity(component, resolvedProfile, arrivalSeeder);
+            int carrierCount = DetermineCarrierCount(carrierCandidates.Count, resolvedProfile.Profile, policy, remainingCapacity);
+            int seededCount = SeedCarrierPayload(carrierCandidates, resolvedProfile, policy, carrierCount);
+            if (seededCount <= 0)
             {
                 continue;
             }
 
             component.RemovePendingEvent(pendingEvent);
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingResolvedArrival);
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalSeeded);
-            ContagionDiagnostics.Trace($"Pending arrival request resolved {resolvedProfile.DiseaseDef.defName} onto {pawn.LabelShortCap}.");
-            return true;
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalSeeded, seededCount);
+            ContagionDiagnostics.Trace($"Pending arrival request resolved {resolvedProfile.DiseaseDef.defName} onto {seededCount} pawn(s) from a {groupKind} group.");
+            return seededCount;
         }
 
-        return false;
+        return 0;
     }
 
-    private static bool TryHandleSingleArrival(Pawn pawn, List<ArrivalCandidate> arrivalCandidates, float outbreakMultiplier)
+    private static int TryResolveContinuousArrivalGroup(IReadOnlyList<Pawn> groupPawns, Map map, ContagionArrivalGroupKind groupKind)
     {
-        if (CurrentMode == ContagionSeedingMode.Storyteller)
+        Contagion_MapTransmissionComponent component = map.GetComponent<Contagion_MapTransmissionComponent>();
+        if (component == null)
         {
-            return TryResolvePendingArrival(pawn);
+            return 0;
         }
 
-        return TrySeedContinuousArrivalDisease(pawn, arrivalCandidates, outbreakMultiplier);
+        List<ArrivalCandidate> arrivalCandidates = BuildArrivalCandidates();
+        if (arrivalCandidates.Count == 0)
+        {
+            return 0;
+        }
+
+        GroupSeedingPolicy policy = GetGroupPolicy(groupKind);
+        float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
+        List<GroupExposureCandidate> exposureCandidates = new List<GroupExposureCandidate>();
+        float exposureFailureChance = 1f;
+
+        for (int i = 0; i < arrivalCandidates.Count; i++)
+        {
+            ArrivalCandidate arrivalCandidate = arrivalCandidates[i];
+            if (!component.CanRunSeeder(arrivalCandidate.ResolvedProfile, arrivalCandidate.Seeder))
+            {
+                continue;
+            }
+
+            int remainingCapacity = GetRemainingActiveCaseCapacity(component, arrivalCandidate.ResolvedProfile, arrivalCandidate.Seeder);
+            if (remainingCapacity <= 0)
+            {
+                continue;
+            }
+
+            List<CarrierCandidate> carrierCandidates = BuildCarrierCandidates(groupPawns, arrivalCandidate.ResolvedProfile, map);
+            if (carrierCandidates.Count == 0)
+            {
+                continue;
+            }
+
+            float pressureMultiplier = component.GetPressureMultiplier(
+                arrivalCandidate.ResolvedProfile.DiseaseDef,
+                arrivalCandidate.ResolvedProfile.Profile.pressureDecayDays);
+            float exposureChance = Mathf.Clamp01(
+                arrivalCandidate.Seeder.arrivalChance
+                * policy.ExposureMultiplier
+                * outbreakMultiplier
+                * pressureMultiplier
+                * ContagionTransmissionUtility.GetSeasonalMultiplier(map, arrivalCandidate.ResolvedProfile.Profile));
+            if (exposureChance <= 0f)
+            {
+                continue;
+            }
+
+            exposureCandidates.Add(new GroupExposureCandidate(arrivalCandidate, carrierCandidates, exposureChance));
+            exposureFailureChance *= 1f - exposureChance;
+        }
+
+        if (exposureCandidates.Count == 0)
+        {
+            return 0;
+        }
+
+        float combinedExposureChance = Mathf.Clamp01(1f - exposureFailureChance);
+        if (!Rand.Chance(combinedExposureChance))
+        {
+            return 0;
+        }
+
+        GroupExposureCandidate selectedExposure = SelectExposureCandidate(exposureCandidates);
+        if (selectedExposure == null)
+        {
+            return 0;
+        }
+
+        int selectedRemainingCapacity = GetRemainingActiveCaseCapacity(
+            component,
+            selectedExposure.ArrivalCandidate.ResolvedProfile,
+            selectedExposure.ArrivalCandidate.Seeder);
+        int carrierCount = DetermineCarrierCount(
+            selectedExposure.CarrierCandidates.Count,
+            selectedExposure.ArrivalCandidate.ResolvedProfile.Profile,
+            policy,
+            selectedRemainingCapacity);
+        int seededCount = SeedCarrierPayload(
+            selectedExposure.CarrierCandidates,
+            selectedExposure.ArrivalCandidate.ResolvedProfile,
+            policy,
+            carrierCount);
+        if (seededCount <= 0)
+        {
+            return 0;
+        }
+
+        component.NotifySeederFired(selectedExposure.ArrivalCandidate.ResolvedProfile, selectedExposure.ArrivalCandidate.Seeder);
+        IncrementPressure(component, selectedExposure.ArrivalCandidate.ResolvedProfile);
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalSeeded, seededCount);
+        ContagionDiagnostics.Trace($"Arrival group exposure seeded {selectedExposure.ArrivalCandidate.ResolvedProfile.DiseaseDef.defName} on {seededCount} pawn(s) from a {groupKind} group.");
+        return seededCount;
     }
 
     private static bool CanResolvePendingEventViaArrival(
         Contagion_MapTransmissionComponent component,
         PendingDiseaseEvent pendingEvent,
-        ResolvedTransmissionProfile resolvedProfile,
-        Pawn arrivingPawn)
+        ResolvedTransmissionProfile resolvedProfile)
     {
         if (pendingEvent.IsExpired(Find.TickManager.TicksGame))
-        {
-            return false;
-        }
-
-        if (!ContagionSeedingExecutionUtility.IsEligiblePawn(arrivingPawn, resolvedProfile, component.Map, out HediffDef _))
         {
             return false;
         }
@@ -435,78 +522,294 @@ public static class ContagionSeedingCoordinator
         return false;
     }
 
-    private static bool TrySeedContinuousArrivalDisease(Pawn pawn, List<ArrivalCandidate> arrivalCandidates, float outbreakMultiplier)
+    private static List<Pawn> BuildSpawnedGroupPawns(IEnumerable<Pawn> pawns, out Map map)
     {
-        if (pawn == null || pawn.Dead || !pawn.Spawned)
+        map = null;
+        List<Pawn> groupPawns = new List<Pawn>();
+        if (pawns == null)
         {
-            return false;
+            return groupPawns;
         }
 
-        Contagion_MapTransmissionComponent component = pawn.Map?.GetComponent<Contagion_MapTransmissionComponent>();
-        ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalAttempted);
-
-        List<ArrivalCandidate> applicableCandidates = new List<ArrivalCandidate>();
-        for (int i = 0; i < arrivalCandidates.Count; i++)
+        foreach (Pawn pawn in pawns)
         {
-            ArrivalCandidate candidate = arrivalCandidates[i];
-            if (component != null && !component.CanRunSeeder(candidate.ResolvedProfile, candidate.Seeder))
+            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map == null)
             {
                 continue;
             }
 
-            float pressureMultiplier = component?.GetPressureMultiplier(candidate.ResolvedProfile.DiseaseDef, candidate.ResolvedProfile.Profile.pressureDecayDays) ?? 1f;
-            float chance = ContagionTransmissionUtility.BuildSeederChance(
-                candidate.Seeder.arrivalChance * pressureMultiplier,
+            if (map == null)
+            {
+                map = pawn.Map;
+            }
+
+            if (pawn.Map != map)
+            {
+                continue;
+            }
+
+            groupPawns.Add(pawn);
+        }
+
+        return groupPawns;
+    }
+
+    private static List<CarrierCandidate> BuildCarrierCandidates(IReadOnlyList<Pawn> pawns, ResolvedTransmissionProfile resolvedProfile, Map map)
+    {
+        List<CarrierCandidate> carrierCandidates = new List<CarrierCandidate>();
+        for (int i = 0; i < pawns.Count; i++)
+        {
+            Pawn pawn = pawns[i];
+            float weight = ContagionTransmissionUtility.BuildSeederChance(
+                1f,
                 pawn,
-                candidate.ResolvedProfile,
-                pawn.Map,
-                outbreakMultiplier,
+                resolvedProfile,
+                map,
+                1f,
                 out HediffDef _);
-            if (chance > 0f)
-            {
-                applicableCandidates.Add(candidate);
-            }
-        }
-
-        if (applicableCandidates.Count == 0)
-        {
-            return false;
-        }
-
-        applicableCandidates.Shuffle();
-        for (int i = 0; i < applicableCandidates.Count; i++)
-        {
-            ArrivalCandidate candidate = applicableCandidates[i];
-            float pressureMultiplier = component?.GetPressureMultiplier(candidate.ResolvedProfile.DiseaseDef, candidate.ResolvedProfile.Profile.pressureDecayDays) ?? 1f;
-            float arrivalChance = ContagionTransmissionUtility.BuildSeederChance(
-                candidate.Seeder.arrivalChance * pressureMultiplier,
-                pawn,
-                candidate.ResolvedProfile,
-                pawn.Map,
-                outbreakMultiplier,
-                out HediffDef _);
-            if (arrivalChance <= 0f || !Rand.Chance(Mathf.Clamp01(arrivalChance)))
+            if (weight <= 0f)
             {
                 continue;
             }
 
-            if (!ContagionSeedingExecutionUtility.TrySeedExactPawn(pawn, candidate.ResolvedProfile, out HediffDef _))
-            {
-                continue;
-            }
-
-            component?.NotifySeederFired(candidate.ResolvedProfile, candidate.Seeder);
-            if (component != null)
-            {
-                IncrementPressure(component, candidate.ResolvedProfile);
-            }
-
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalSeeded);
-            ContagionDiagnostics.Trace($"Arrival seeded: {candidate.ResolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap}.");
-            return true;
+            carrierCandidates.Add(new CarrierCandidate(pawn, weight));
         }
 
-        return false;
+        return carrierCandidates;
+    }
+
+    private static int DetermineCarrierCount(
+        int eligiblePawnCount,
+        TransmissionProfile profile,
+        GroupSeedingPolicy policy,
+        int remainingCapacity)
+    {
+        if (eligiblePawnCount <= 0 || remainingCapacity <= 0)
+        {
+            return 0;
+        }
+
+        int carrierCap = Mathf.Min(policy.CarrierCap, eligiblePawnCount, remainingCapacity);
+        if (carrierCap <= 0)
+        {
+            return 0;
+        }
+
+        float lambda = policy.CarrierSqrtScale
+            * GetDiseaseClusterFactor(profile)
+            * Mathf.Sqrt(eligiblePawnCount);
+        int carrierCount = 1 + SamplePoisson(lambda);
+        return Mathf.Clamp(carrierCount, 1, carrierCap);
+    }
+
+    private static int SeedCarrierPayload(
+        List<CarrierCandidate> carrierCandidates,
+        ResolvedTransmissionProfile resolvedProfile,
+        GroupSeedingPolicy policy,
+        int carrierCount)
+    {
+        if (carrierCandidates.Count == 0 || carrierCount <= 0)
+        {
+            return 0;
+        }
+
+        int seededCount = 0;
+        List<CarrierCandidate> remainingCandidates = new List<CarrierCandidate>(carrierCandidates);
+        while (seededCount < carrierCount && remainingCandidates.Count > 0)
+        {
+            int selectedIndex = SelectCarrierCandidateIndex(remainingCandidates);
+            CarrierCandidate selectedCandidate = remainingCandidates[selectedIndex];
+            remainingCandidates.RemoveAt(selectedIndex);
+
+            if (ContagionSeedingExecutionUtility.TrySeedArrivalCarrier(
+                selectedCandidate.Pawn,
+                resolvedProfile,
+                policy.MildVisibleChance,
+                out bool visibleDisease))
+            {
+                seededCount++;
+                ContagionDiagnostics.Trace($"Arrival carrier seeded: {resolvedProfile.DiseaseDef.defName} on {selectedCandidate.Pawn.LabelShortCap} ({(visibleDisease ? "mild visible" : "latent")}).");
+            }
+        }
+
+        return seededCount;
+    }
+
+    private static int SelectCarrierCandidateIndex(List<CarrierCandidate> carrierCandidates)
+    {
+        float totalWeight = 0f;
+        for (int i = 0; i < carrierCandidates.Count; i++)
+        {
+            totalWeight += Mathf.Max(0f, carrierCandidates[i].Weight);
+        }
+
+        if (totalWeight <= 0f)
+        {
+            return Rand.Range(0, carrierCandidates.Count);
+        }
+
+        float roll = Rand.Value * totalWeight;
+        float runningWeight = 0f;
+        for (int i = 0; i < carrierCandidates.Count; i++)
+        {
+            runningWeight += Mathf.Max(0f, carrierCandidates[i].Weight);
+            if (roll <= runningWeight)
+            {
+                return i;
+            }
+        }
+
+        return carrierCandidates.Count - 1;
+    }
+
+    private static GroupExposureCandidate SelectExposureCandidate(List<GroupExposureCandidate> exposureCandidates)
+    {
+        float totalWeight = 0f;
+        for (int i = 0; i < exposureCandidates.Count; i++)
+        {
+            totalWeight += Mathf.Max(0f, exposureCandidates[i].ExposureChance);
+        }
+
+        if (totalWeight <= 0f)
+        {
+            return null;
+        }
+
+        float roll = Rand.Value * totalWeight;
+        float runningWeight = 0f;
+        for (int i = 0; i < exposureCandidates.Count; i++)
+        {
+            runningWeight += Mathf.Max(0f, exposureCandidates[i].ExposureChance);
+            if (roll <= runningWeight)
+            {
+                return exposureCandidates[i];
+            }
+        }
+
+        return exposureCandidates[exposureCandidates.Count - 1];
+    }
+
+    private static int SamplePoisson(float lambda)
+    {
+        if (lambda <= 0f)
+        {
+            return 0;
+        }
+
+        float threshold = Mathf.Exp(-lambda);
+        float product = 1f;
+        int sample = 0;
+        do
+        {
+            sample++;
+            product *= Rand.Value;
+        }
+        while (product > threshold && sample < 100);
+
+        return sample - 1;
+    }
+
+    private static int GetRemainingActiveCaseCapacity(
+        Contagion_MapTransmissionComponent component,
+        ResolvedTransmissionProfile resolvedProfile,
+        TransmissionSeeder seeder)
+    {
+        int activeCaseLimit = seeder?.maxActiveCases > 0 ? seeder.maxActiveCases : resolvedProfile.Profile.maxActiveCases;
+        if (activeCaseLimit <= 0)
+        {
+            return int.MaxValue;
+        }
+
+        int activeCases = ContagionTransmissionUtility.CountActiveCases(component.Map, resolvedProfile);
+        return Mathf.Max(0, activeCaseLimit - activeCases);
+    }
+
+    private static GroupSeedingPolicy GetGroupPolicy(ContagionArrivalGroupKind groupKind)
+    {
+        switch (groupKind)
+        {
+            case ContagionArrivalGroupKind.WandererJoin:
+                return new GroupSeedingPolicy(8f, 0f, 1, 0.30f);
+            case ContagionArrivalGroupKind.QuestGuest:
+                return new GroupSeedingPolicy(8f, 0.35f, 3, 0.30f);
+            case ContagionArrivalGroupKind.QuestJoiner:
+                return new GroupSeedingPolicy(14f, 0.45f, 5, 0.45f);
+            case ContagionArrivalGroupKind.HostileRaid:
+                return new GroupSeedingPolicy(6f, 0.55f, 8, 0.20f);
+            case ContagionArrivalGroupKind.TribalRaid:
+                return new GroupSeedingPolicy(12f, 0.65f, 12, 0.30f);
+            case ContagionArrivalGroupKind.FarmAnimals:
+                return new GroupSeedingPolicy(10f, 0.40f, 4, 0.30f);
+            default:
+                return new GroupSeedingPolicy(6f, 0.35f, 3, 0.30f);
+        }
+    }
+
+    private static float GetDiseaseClusterFactor(TransmissionProfile profile)
+    {
+        if (profile?.vectors == null)
+        {
+            return 1f;
+        }
+
+        bool hasAirborne = false;
+        bool hasSocial = false;
+        bool hasFomite = false;
+        bool hasProximity = false;
+        bool hasEnvironmental = false;
+        bool hasFoodborne = false;
+        for (int i = 0; i < profile.vectors.Count; i++)
+        {
+            switch (profile.vectors[i])
+            {
+                case Vector_Airborne:
+                    hasAirborne = true;
+                    break;
+                case Vector_Social:
+                    hasSocial = true;
+                    break;
+                case Vector_Fomite:
+                    hasFomite = true;
+                    break;
+                case Vector_Proximity:
+                    hasProximity = true;
+                    break;
+                case Vector_Environmental:
+                    hasEnvironmental = true;
+                    break;
+                case Vector_Foodborne:
+                    hasFoodborne = true;
+                    break;
+            }
+        }
+
+        float factor = 1f;
+        if (hasAirborne)
+        {
+            factor += 0.45f;
+        }
+
+        if (hasSocial)
+        {
+            factor += 0.25f;
+        }
+
+        if (hasFomite)
+        {
+            factor += 0.15f;
+        }
+
+        if (hasProximity && !hasAirborne && !hasSocial)
+        {
+            factor *= 0.75f;
+        }
+
+        if ((hasEnvironmental || hasFoodborne) && !hasAirborne && !hasSocial && !hasFomite && !hasProximity)
+        {
+            factor *= 0.5f;
+        }
+
+        return Mathf.Clamp(factor, 0.5f, 1.85f);
     }
 
     private static void ResolvePendingMapFulfillment(Contagion_MapTransmissionComponent component, IReadOnlyList<Pawn> spawnedPawns)
