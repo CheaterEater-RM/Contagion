@@ -396,6 +396,11 @@ public static class ContagionSeedingCoordinator
         ResolvedTransmissionProfile resolvedProfile,
         Pawn arrivingPawn)
     {
+        if (pendingEvent.IsExpired(Find.TickManager.TicksGame))
+        {
+            return false;
+        }
+
         if (!ContagionSeedingExecutionUtility.IsEligiblePawn(arrivingPawn, resolvedProfile, component.Map, out HediffDef _))
         {
             return false;
