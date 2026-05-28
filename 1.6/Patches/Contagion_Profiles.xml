@@ -17,9 +17,9 @@
         <incubationInfectivityCurve>
           <points>
             <li>(0.0, 0.0)</li>
-            <li>(0.3, 0.05)</li>
-            <li>(0.7, 0.15)</li>
-            <li>(1.0, 0.3)</li>
+            <li>(0.3, 0.15)</li>
+            <li>(0.7, 0.45)</li>
+            <li>(1.0, 0.8)</li>
           </points>
         </incubationInfectivityCurve>
         <activeInfectivityCurve>
@@ -117,9 +117,9 @@
         <incubationInfectivityCurve>
           <points>
             <li>(0.0, 0.0)</li>
-            <li>(0.3, 0.05)</li>
-            <li>(0.7, 0.15)</li>
-            <li>(1.0, 0.3)</li>
+            <li>(0.3, 0.15)</li>
+            <li>(0.7, 0.45)</li>
+            <li>(1.0, 0.8)</li>
           </points>
         </incubationInfectivityCurve>
         <activeInfectivityCurve>

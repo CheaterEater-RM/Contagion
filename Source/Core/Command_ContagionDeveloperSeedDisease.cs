@@ -38,7 +38,7 @@ public sealed class Command_ContagionDeveloperSeedDisease : Command_Action
         {
             ResolvedTransmissionProfile resolvedProfile = profiles[i];
             yield return new FloatMenuOption(
-                resolvedProfile.DiseaseDef.LabelCap.Resolve(),
+                BuildOptionLabel(resolvedProfile),
                 delegate
                 {
                     TrySeedDisease(resolvedProfile);
@@ -80,5 +80,20 @@ public sealed class Command_ContagionDeveloperSeedDisease : Command_Action
     private static bool HasIncubation(Pawn pawn)
     {
         return pawn?.health?.hediffSet?.HasHediff(ContagionDefOf.Contagion_Incubation) == true;
+    }
+
+    private static string BuildOptionLabel(ResolvedTransmissionProfile resolvedProfile)
+    {
+        string label = resolvedProfile.DiseaseDef.LabelCap.Resolve();
+        bool affectsHumans = resolvedProfile.Profile?.affectsHumans == true;
+        bool affectsAnimals = resolvedProfile.Profile?.affectsAnimals == true;
+        if (affectsHumans == affectsAnimals)
+        {
+            return label;
+        }
+
+        return affectsHumans
+            ? "Contagion_DeveloperDiseaseLabelHuman".Translate(label).Resolve()
+            : "Contagion_DeveloperDiseaseLabelAnimal".Translate(label).Resolve();
     }
 }

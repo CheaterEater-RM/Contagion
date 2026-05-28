@@ -11,6 +11,8 @@ public static class ContagionDeveloperOverlayDrawer
 
     private const int ValueBandCount = 16;
 
+    private const float MinVisibleNominalChance = 0.00005f;
+
     private const float MinCleanlinessFactor = 0.1f;
 
     private const float MaxCleanlinessFactor = 3f;
@@ -109,6 +111,8 @@ public static class ContagionDeveloperOverlayDrawer
         }
 
         FillOverlayBucketColors.Clear();
+        Dictionary<int, float> chanceByCell = new Dictionary<int, float>();
+        float strongestChance = 0f;
         bool sourceRoofed = map.roofGrid.Roofed(sourcePawn.Position);
         Room sourceRoom = sourcePawn.Position.GetRoom(map);
         float settingsMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
@@ -179,7 +183,31 @@ public static class ContagionDeveloperOverlayDrawer
                 continue;
             }
 
-            Color color = ValueBands[GetValueBand(aggregateChance)];
+            if (aggregateChance < MinVisibleNominalChance)
+            {
+                continue;
+            }
+
+            int cellIndex = map.cellIndices.CellToIndex(cell);
+            chanceByCell[cellIndex] = aggregateChance;
+            strongestChance = Mathf.Max(strongestChance, aggregateChance);
+        }
+
+        if (strongestChance <= 0f || chanceByCell.Count == 0)
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<int, float> chanceEntry in chanceByCell)
+        {
+            float normalizedChance = GetDisplayStrength(chanceEntry.Value, strongestChance);
+            if (normalizedChance <= 0f)
+            {
+                continue;
+            }
+
+            IntVec3 cell = CellIndicesUtility.IndexToCell(chanceEntry.Key, map.Size.x);
+            Color color = ValueBands[GetValueBand(normalizedChance)];
             int colorKey = PackColor(color);
             if (!FillOverlayBuckets.TryGetValue(colorKey, out List<IntVec3> bucket))
             {
@@ -241,6 +269,17 @@ public static class ContagionDeveloperOverlayDrawer
     private static float GetDistanceFactor(float distance, float distanceFalloffRate)
     {
         return Mathf.Exp(-Mathf.Max(0.01f, distanceFalloffRate) * distance);
+    }
+
+    private static float GetDisplayStrength(float chance, float strongestChance)
+    {
+        if (chance <= 0f || strongestChance <= 0f)
+        {
+            return 0f;
+        }
+
+        float normalizedChance = Mathf.Clamp01(chance / strongestChance);
+        return Mathf.Pow(normalizedChance, 0.65f);
     }
 
     private static bool IsOutdoors(Room room)
@@ -310,10 +349,10 @@ public static class ContagionDeveloperOverlayDrawer
 
     private static Color[] BuildValueBands()
     {
-        Color low = new Color(1.00f, 0.24f, 0.18f, 0.24f);
-        Color lowerMid = new Color(1.00f, 0.54f, 0.10f, 0.30f);
-        Color upperMid = new Color(1.00f, 0.90f, 0.14f, 0.40f);
-        Color high = new Color(0.20f, 0.96f, 0.24f, 0.56f);
+        Color low = new Color(0.94f, 0.46f, 0.16f, 0.10f);
+        Color lowerMid = new Color(1.00f, 0.70f, 0.12f, 0.22f);
+        Color upperMid = new Color(0.98f, 0.92f, 0.18f, 0.42f);
+        Color high = new Color(0.20f, 0.96f, 0.24f, 0.60f);
         Color[] bands = new Color[ValueBandCount];
 
         for (int i = 0; i < bands.Length; i++)

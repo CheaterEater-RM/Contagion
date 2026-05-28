@@ -82,19 +82,22 @@ public sealed class ContagionTransmissionTrace
 
     public int Tick { get; }
 
+    public bool Matches(Pawn sourcePawn, Pawn targetPawn, HediffDef diseaseDef, ContagionDebugVectorKind vectorKind)
+    {
+        return SourcePawn == sourcePawn
+            && TargetPawn == targetPawn
+            && DiseaseDef == diseaseDef
+            && VectorKind == vectorKind;
+    }
+
     public bool Contains(Pawn pawn)
     {
         return pawn != null && (SourcePawn == pawn || TargetPawn == pawn);
     }
 
-    public bool IsValidFor(Map map, int currentTick, int maxAgeTicks)
+    public bool IsValidFor(Map map)
     {
         if (SourcePawn == null || TargetPawn == null || map == null)
-        {
-            return false;
-        }
-
-        if (currentTick - Tick > maxAgeTicks)
         {
             return false;
         }
@@ -104,6 +107,7 @@ public sealed class ContagionTransmissionTrace
             && SourcePawn.Map == map
             && TargetPawn.Map == map
             && !SourcePawn.Destroyed
-            && !TargetPawn.Destroyed;
+            && !TargetPawn.Destroyed
+            && ContagionDiseaseUtility.HasDiseaseOrIncubation(TargetPawn, DiseaseDef);
     }
 }

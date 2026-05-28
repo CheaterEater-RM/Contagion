@@ -213,38 +213,38 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
             builder.AppendLine("Contagion_DeveloperHoverBreakdownLine".Translate(
                 breakdown.DiseaseDef?.LabelCap ?? "?",
                 GetVectorLabel(breakdown.VectorKind),
-                breakdown.FinalChance.ToStringPercent("0.0")).Resolve());
+                FormatChance(breakdown.FinalChance)).Resolve());
             builder.AppendLine("Contagion_DeveloperHoverCommonFactors".Translate(
-                breakdown.BaseChance.ToStringPercent("0.0"),
-                breakdown.Infectivity.ToString("0.00"),
-                breakdown.SeasonalMultiplier.ToString("0.00"),
-                breakdown.TargetEligibilityFactor.ToString("0.00"),
-                breakdown.SettingsMultiplier.ToString("0.00")).Resolve());
+                FormatChance(breakdown.BaseChance),
+                FormatMultiplier(breakdown.Infectivity),
+                FormatMultiplier(breakdown.SeasonalMultiplier),
+                FormatMultiplier(breakdown.TargetEligibilityFactor),
+                FormatMultiplier(breakdown.SettingsMultiplier)).Resolve());
 
             switch (breakdown.VectorKind)
             {
                 case ContagionDebugVectorKind.Airborne:
                     builder.AppendLine("Contagion_DeveloperHoverAirborneFactors".Translate(
-                        breakdown.DistanceFactor.ToString("0.00"),
-                        breakdown.EnclosureFactor.ToString("0.00"),
-                        breakdown.ObstructionFactor.ToString("0.00"),
-                        breakdown.MaskFactor.ToString("0.00"),
-                        breakdown.SuppressionFactor.ToString("0.00")).Resolve());
+                        FormatMultiplier(breakdown.DistanceFactor),
+                        FormatMultiplier(breakdown.EnclosureFactor),
+                        FormatMultiplier(breakdown.ObstructionFactor),
+                        FormatMultiplier(breakdown.MaskFactor),
+                        FormatMultiplier(breakdown.SuppressionFactor)).Resolve());
                     break;
                 case ContagionDebugVectorKind.Proximity:
                     builder.AppendLine("Contagion_DeveloperHoverProximityFactors".Translate(
-                        breakdown.DistanceFactor.ToString("0.00"),
-                        breakdown.OutdoorFactor.ToString("0.00"),
-                        breakdown.CleanlinessFactor.ToString("0.00"),
-                        breakdown.MaskFactor.ToString("0.00"),
-                        breakdown.SuppressionFactor.ToString("0.00")).Resolve());
+                        FormatMultiplier(breakdown.DistanceFactor),
+                        FormatMultiplier(breakdown.OutdoorFactor),
+                        FormatMultiplier(breakdown.CleanlinessFactor),
+                        FormatMultiplier(breakdown.MaskFactor),
+                        FormatMultiplier(breakdown.SuppressionFactor)).Resolve());
                     break;
                 case ContagionDebugVectorKind.Social:
                     builder.AppendLine("Contagion_DeveloperHoverSocialFactors".Translate(
-                        breakdown.EnclosureFactor.ToString("0.00"),
-                        breakdown.ObstructionFactor.ToString("0.00"),
-                        breakdown.MaskFactor.ToString("0.00"),
-                        breakdown.SuppressionFactor.ToString("0.00")).Resolve());
+                        FormatMultiplier(breakdown.EnclosureFactor),
+                        FormatMultiplier(breakdown.ObstructionFactor),
+                        FormatMultiplier(breakdown.MaskFactor),
+                        FormatMultiplier(breakdown.SuppressionFactor)).Resolve());
                     break;
             }
 
@@ -350,5 +350,31 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         float area = Mathf.Max(1f, (2 * outdoorFilthRadius + 1) * (2 * outdoorFilthRadius + 1));
         float filthDensity = filthCount / area;
         return Mathf.Clamp(1f + filthDensity * cleanlinessImpact, 0.1f, 3f);
+    }
+
+    private static string FormatChance(float chance)
+    {
+        float clampedChance = Mathf.Clamp01(chance);
+        if (clampedChance >= 0.01f)
+        {
+            return clampedChance.ToStringPercent("0.00");
+        }
+
+        if (clampedChance >= 0.001f)
+        {
+            return clampedChance.ToStringPercent("0.000");
+        }
+
+        if (clampedChance <= 0f)
+        {
+            return "0.000%";
+        }
+
+        return "<0.001%";
+    }
+
+    private static string FormatMultiplier(float value)
+    {
+        return value.ToString("0.00") + "x";
     }
 }

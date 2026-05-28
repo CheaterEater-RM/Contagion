@@ -22,6 +22,20 @@ internal static class Patch_Pawn_GetGizmos
         gizmos.Add(new Command_ContagionDeveloperSeedDisease(__instance));
 
         Contagion_MapTransmissionComponent component = __instance.Map.GetComponent<Contagion_MapTransmissionComponent>();
+        if (component != null)
+        {
+            gizmos.Add(new Command_Action
+            {
+                defaultLabel = component.DeveloperTraceCaptureEnabled
+                    ? "Contagion_DeveloperTraceCaptureOn".Translate()
+                    : "Contagion_DeveloperTraceCaptureOff".Translate(),
+                defaultDesc = "Contagion_DeveloperTraceCaptureDesc".Translate(),
+                icon = component.DeveloperTraceCaptureEnabled ? TexCommand.ForbidOff : TexCommand.ForbidOn,
+                Order = -93.5f,
+                action = component.DeveloperToggleTraceCapture
+            });
+        }
+
         if (component?.DeveloperHasTracesForPawn(__instance) == true)
         {
             gizmos.Add(new Command_Action

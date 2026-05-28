@@ -52,20 +52,25 @@
   <Contagion_DeveloperTraceHeader>Transmission traces</Contagion_DeveloperTraceHeader>
   <Contagion_DeveloperTraceCount>Stored trace lines: {0}</Contagion_DeveloperTraceCount>
   <Contagion_DeveloperClearAllTraces>Clear contagion traces</Contagion_DeveloperClearAllTraces>
+  <Contagion_DeveloperTraceCaptureOn>Spread tracing: on</Contagion_DeveloperTraceCaptureOn>
+  <Contagion_DeveloperTraceCaptureOff>Spread tracing: off</Contagion_DeveloperTraceCaptureOff>
+  <Contagion_DeveloperTraceCaptureDesc>Toggle developer contagion trace capture and rendering for this map.</Contagion_DeveloperTraceCaptureDesc>
   <Contagion_DeveloperSeedDisease>Seed incubation</Contagion_DeveloperSeedDisease>
   <Contagion_DeveloperSeedDiseaseDesc>Developer tool: choose a disease profile and seed its incubation on this pawn using the normal Contagion incubation path.</Contagion_DeveloperSeedDiseaseDesc>
   <Contagion_DeveloperSeedDiseaseFailed>{0} could not be seeded with {1}.</Contagion_DeveloperSeedDiseaseFailed>
+  <Contagion_DeveloperDiseaseLabelHuman>{0} (human)</Contagion_DeveloperDiseaseLabelHuman>
+  <Contagion_DeveloperDiseaseLabelAnimal>{0} (animal)</Contagion_DeveloperDiseaseLabelAnimal>
   <Contagion_DeveloperClearPawnTraces>Clear this pawn's traces</Contagion_DeveloperClearPawnTraces>
   <Contagion_DeveloperClearPawnTracesDesc>Remove stored contagion transmission traces where this pawn is the source or target.</Contagion_DeveloperClearPawnTracesDesc>
   <Contagion_DeveloperHoverHeader>Contagion diagnostics: {0} -> {1}</Contagion_DeveloperHoverHeader>
-  <Contagion_DeveloperHoverBreakdownLine>{0} [{1}]: {2}</Contagion_DeveloperHoverBreakdownLine>
+  <Contagion_DeveloperHoverBreakdownLine>{0} [{1}] final chance: {2}</Contagion_DeveloperHoverBreakdownLine>
   <Contagion_DeveloperHoverVectorAirborne>Airborne</Contagion_DeveloperHoverVectorAirborne>
   <Contagion_DeveloperHoverVectorProximity>Proximity</Contagion_DeveloperHoverVectorProximity>
   <Contagion_DeveloperHoverVectorSocial>Social (on interaction)</Contagion_DeveloperHoverVectorSocial>
-  <Contagion_DeveloperHoverCommonFactors>Base {0} | Infect {1} | Season {2} | Target {3} | Settings {4}</Contagion_DeveloperHoverCommonFactors>
-  <Contagion_DeveloperHoverAirborneFactors>Distance {0} | Enclosure {1} | LOS {2} | Mask {3} | Suppress {4}</Contagion_DeveloperHoverAirborneFactors>
-  <Contagion_DeveloperHoverProximityFactors>Distance {0} | Outdoors {1} | Clean {2} | Mask {3} | Suppress {4}</Contagion_DeveloperHoverProximityFactors>
-  <Contagion_DeveloperHoverSocialFactors>Enclosure {0} | LOS {1} | Mask {2} | Suppress {3}</Contagion_DeveloperHoverSocialFactors>
+  <Contagion_DeveloperHoverCommonFactors>Base roll {0} | Source infectivity {1} | Season {2} | Target susceptibility {3} | Settings {4}</Contagion_DeveloperHoverCommonFactors>
+  <Contagion_DeveloperHoverAirborneFactors>Distance falloff {0} | Enclosure {1} | LOS {2} | Mask {3} | Colony suppression {4}</Contagion_DeveloperHoverAirborneFactors>
+  <Contagion_DeveloperHoverProximityFactors>Distance falloff {0} | Outdoors {1} | Cleanliness {2} | Mask {3} | Colony suppression {4}</Contagion_DeveloperHoverProximityFactors>
+  <Contagion_DeveloperHoverSocialFactors>Enclosure {0} | LOS {1} | Mask {2} | Colony suppression {3}</Contagion_DeveloperHoverSocialFactors>
   <Contagion_DeveloperHoverBlockedByImmunity>Blocked by immunity: {0}</Contagion_DeveloperHoverBlockedByImmunity>
   <Contagion_DiagnosticsNoIncidence>No disease introductions recorded yet.</Contagion_DiagnosticsNoIncidence>
   <Contagion_DiagnosticsNoSpread>No disease spread recorded yet.</Contagion_DiagnosticsNoSpread>

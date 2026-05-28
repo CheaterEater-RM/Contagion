@@ -250,6 +250,17 @@ public static class ContagionDiseaseUtility
         return null;
     }
 
+    public static bool HasDiseaseOrIncubation(Pawn pawn, HediffDef diseaseDef)
+    {
+        if (pawn?.health?.hediffSet == null || diseaseDef == null)
+        {
+            return false;
+        }
+
+        return pawn.health.hediffSet.HasHediff(diseaseDef)
+            || FindIncubation(pawn, diseaseDef) != null;
+    }
+
     public static bool HasTraitSeedCooldown(Pawn pawn)
     {
         return FindTraitSeedCooldown(pawn) != null;

@@ -7,9 +7,7 @@ namespace Contagion;
 
 public sealed class Contagion_MapTransmissionComponent : MapComponent
 {
-    private const int DeveloperTraceLifetimeTicks = 2500;
-
-    private const int DeveloperTraceMaxCount = 32;
+    private const int DeveloperTraceMaxCount = 128;
 
     private const int TransmissionCheckInterval = 250;
 
@@ -46,6 +44,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     private HediffDef _developerForcedArrivalDisease;
 
     private List<ContagionTransmissionTrace> _developerTransmissionTraces = new List<ContagionTransmissionTrace>();
+
+    private bool _developerTraceCaptureEnabled = true;
 
     private Pawn _developerHoverSourcePawn;
 
@@ -105,6 +105,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     public HediffDef DeveloperForcedArrivalDisease => _developerForcedArrivalDisease;
 
     public IReadOnlyList<ContagionTransmissionTrace> DeveloperTransmissionTraces => _developerTransmissionTraces;
+
+    public bool DeveloperTraceCaptureEnabled => _developerTraceCaptureEnabled;
 
     public override void ExposeData()
     {
@@ -234,6 +236,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         ContagionDebugVectorKind vectorKind)
     {
         if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true
+            || !_developerTraceCaptureEnabled
             || sourcePawn == null
             || targetPawn == null
             || sourcePawn == targetPawn
@@ -245,6 +248,14 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
 
         PruneDeveloperTransmissionTraces();
+        for (int i = 0; i < _developerTransmissionTraces.Count; i++)
+        {
+            if (_developerTransmissionTraces[i]?.Matches(sourcePawn, targetPawn, diseaseDef, vectorKind) == true)
+            {
+                return;
+            }
+        }
+
         if (_developerTransmissionTraces.Count >= DeveloperTraceMaxCount)
         {
             _developerTransmissionTraces.RemoveAt(0);
@@ -261,6 +272,11 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     public void DeveloperClearAllTraces()
     {
         _developerTransmissionTraces.Clear();
+    }
+
+    public void DeveloperToggleTraceCapture()
+    {
+        _developerTraceCaptureEnabled = !_developerTraceCaptureEnabled;
     }
 
     public void DeveloperClearTracesForPawn(Pawn pawn)
@@ -384,7 +400,10 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             ContagionDeveloperOverlayDrawer.DrawHoverLine(hoverSourcePawn, hoverTargetPawn);
         }
 
-        ContagionDeveloperOverlayDrawer.DrawTransmissionTraces(map, _developerTransmissionTraces);
+        if (_developerTraceCaptureEnabled)
+        {
+            ContagionDeveloperOverlayDrawer.DrawTransmissionTraces(map, _developerTransmissionTraces);
+        }
     }
 
     public override void MapComponentTick()
@@ -937,8 +956,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return;
         }
 
-        int currentTick = Find.TickManager.TicksGame;
-        _developerTransmissionTraces.RemoveAll(trace => trace == null || !trace.IsValidFor(map, currentTick, DeveloperTraceLifetimeTicks));
+        _developerTransmissionTraces.RemoveAll(trace => trace == null || !trace.IsValidFor(map));
     }
 
     private void CleanupContaminatedVomit()
