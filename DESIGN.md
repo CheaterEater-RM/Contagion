@@ -146,6 +146,8 @@ Mode 2 disregards the storyteller for profiled diseases and runs continuous, low
 
 **Disease director.** Mode 2 owns a `ContagionDiseaseDirector` per map. It tracks human and animal pressure debt, current normalized sickness burden, recent disease introductions, and ticks since the last seeded incident. Quiet colonies accumulate pressure debt; active colonist/prisoner sickness and recent successful seeding suppress new introductions. Animal-only profiles use the animal burden/debt channel, while human profiles use the human channel. A group exposure spends director pressure once, even if it seeds several carriers.
 
+Mode 2 arrival exposure candidates are hard-clamped to 0.1%-10% after group policy, outbreak frequency, director output, and season are applied. Zero remains zero. This keeps director debt and large group multipliers from turning arrivals into guaranteed disease events while still allowing long quiet periods to matter.
+
 Mode 2's storyteller intercept is simpler than Mode 1's: cancel the incident for any profiled disease, do nothing else. The director and continuous seeding produce the cadence on their own.
 
 ### Source Path Hooks (shared by both modes)

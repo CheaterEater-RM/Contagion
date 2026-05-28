@@ -321,11 +321,6 @@ public static class ContagionDiagnostics
         return stringBuilder.ToString();
     }
 
-    public static string BuildSummaryReport()
-    {
-        return BuildIncidenceReport();
-    }
-
     public static string BuildPerformanceReport()
     {
         if (!PerformanceEnabled)

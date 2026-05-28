@@ -122,14 +122,12 @@ public static class ContagionSeedingCoordinator
         Seeder_Storyteller storytellerSeeder = GetSeeder<Seeder_Storyteller>(resolvedProfile.Profile);
         if (storytellerSeeder == null)
         {
-            Log.Warning($"[Contagion] Profile {resolvedProfile.DiseaseDef.defName} has no storyteller or environmental request path. Storyteller request was skipped.");
-            result = false;
-            return true;
+            return false;
         }
 
         if (resolvedProfile.Profile.pendingWindowDays <= 0f)
         {
-            result = TryResolveImmediateAcausal(component, resolvedProfile, storytellerSeeder, "immediate storyteller fallback");
+            result = TryResolveImmediateAcausal(component, resolvedProfile, "immediate storyteller fallback");
             return true;
         }
 
@@ -311,7 +309,6 @@ public static class ContagionSeedingCoordinator
     private static bool TryResolveImmediateAcausal(
         Contagion_MapTransmissionComponent component,
         ResolvedTransmissionProfile resolvedProfile,
-        Seeder_Storyteller storytellerSeeder,
         string reason)
     {
         Seeder_Acausal acausalSeeder = GetSeeder<Seeder_Acausal>(resolvedProfile.Profile);
@@ -324,6 +321,7 @@ public static class ContagionSeedingCoordinator
         bool seeded = ContagionSeedingExecutionUtility.TrySeedRandomEligiblePawn(component.Map.mapPawns.AllPawnsSpawned, resolvedProfile, component.Map, out Pawn seededPawn);
         if (seeded)
         {
+            component.NotifySeederFired(resolvedProfile, acausalSeeder);
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingExpiredToAcausal);
             ContagionDiagnostics.Trace($"Acausal resolution ({reason}) seeded {resolvedProfile.DiseaseDef.defName} on {seededPawn.LabelShortCap}.");
         }
@@ -525,7 +523,7 @@ public static class ContagionSeedingCoordinator
                 case SeedingFulfillmentKind.Arrival:
                     return true;
                 case SeedingFulfillmentKind.AnimalLinked:
-                    if (HasAnimalsOnMap(component.Map.mapPawns.AllPawnsSpawned))
+                    if (CanAnimalLinkedResolveArrivalPrecedence(component, resolvedProfile))
                     {
                         return false;
                     }
@@ -540,6 +538,33 @@ public static class ContagionSeedingCoordinator
                     break;
                 default:
                     break;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool CanAnimalLinkedResolveArrivalPrecedence(
+        Contagion_MapTransmissionComponent component,
+        ResolvedTransmissionProfile resolvedProfile)
+    {
+        IReadOnlyList<Pawn> spawnedPawns = component?.Map?.mapPawns?.AllPawnsSpawned;
+        if (spawnedPawns == null || !HasAnimalsOnMap(spawnedPawns))
+        {
+            return false;
+        }
+
+        Seeder_AnimalLinked animalSeeder = GetSeeder<Seeder_AnimalLinked>(resolvedProfile.Profile);
+        if (animalSeeder == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < spawnedPawns.Count; i++)
+        {
+            if (ContagionSeedingExecutionUtility.IsEligiblePawn(spawnedPawns[i], resolvedProfile, component.Map, out HediffDef _))
+            {
+                return true;
             }
         }
 
