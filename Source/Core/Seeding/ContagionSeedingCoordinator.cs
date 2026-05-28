@@ -81,6 +81,25 @@ public static class ContagionSeedingCoordinator
 
     public static ContagionSeedingMode CurrentMode => Contagion_Mod.Settings?.seedingMode ?? ContagionSeedingMode.Storyteller;
 
+    public static List<ResolvedTransmissionProfile> GetDeveloperArrivalProfiles()
+    {
+        List<ResolvedTransmissionProfile> profiles = new List<ResolvedTransmissionProfile>();
+        List<ArrivalCandidate> arrivalCandidates = BuildArrivalCandidates();
+        for (int i = 0; i < arrivalCandidates.Count; i++)
+        {
+            ResolvedTransmissionProfile resolvedProfile = arrivalCandidates[i].ResolvedProfile;
+            if (resolvedProfile?.Profile?.affectsHumans != true)
+            {
+                continue;
+            }
+
+            profiles.Add(resolvedProfile);
+        }
+
+        profiles.Sort((left, right) => string.Compare(left?.DiseaseDef?.label, right?.DiseaseDef?.label, System.StringComparison.OrdinalIgnoreCase));
+        return profiles;
+    }
+
     public static bool TryHandleStorytellerRequest(IncidentWorker_Disease worker, IncidentParms parms, ResolvedTransmissionProfile resolvedProfile, out bool result)
     {
         result = false;
@@ -396,10 +415,28 @@ public static class ContagionSeedingCoordinator
         }
 
         List<ArrivalCandidate> arrivalCandidates = BuildArrivalCandidates();
+        HediffDef forcedDisease = GetForcedArrivalDisease(component);
+        bool forcedArrivalApplied = false;
+        if (forcedDisease != null)
+        {
+            List<ArrivalCandidate> forcedArrivalCandidates = FilterArrivalCandidates(arrivalCandidates, forcedDisease);
+            if (IsForcedArrivalGroupQualifying(forcedArrivalCandidates, groupPawns, map))
+            {
+                component.DeveloperClearForcedArrival();
+                arrivalCandidates = forcedArrivalCandidates;
+                forcedArrivalApplied = true;
+            }
+        }
+
         if (arrivalCandidates.Count == 0)
         {
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalNoDiseaseCandidates);
             ContagionDiagnostics.Trace($"Arrival group skipped ({groupKind}): no diseases have arrival seeders.");
+            if (forcedArrivalApplied)
+            {
+                ContagionDiagnostics.Trace($"Forced arrival override consumed for {forcedDisease.defName}, but no matching arrival seeder was available for a {groupKind} group.");
+            }
+
             return 0;
         }
 
@@ -461,18 +498,33 @@ public static class ContagionSeedingCoordinator
                 ContagionDiagnostics.Trace($"Arrival group skipped ({groupKind}): no runnable disease candidates.");
             }
 
+            if (forcedArrivalApplied)
+            {
+                ContagionDiagnostics.Trace($"Forced arrival override for {forcedDisease.defName} on a {groupKind} group found no runnable exposure candidate.");
+            }
+
             return 0;
         }
 
         float combinedExposureChance = Mathf.Clamp01(1f - exposureFailureChance);
         if (!Rand.Chance(combinedExposureChance))
         {
+            if (forcedArrivalApplied)
+            {
+                ContagionDiagnostics.Trace($"Forced arrival override for {forcedDisease.defName} on a {groupKind} group failed its arrival exposure chance roll.");
+            }
+
             return 0;
         }
 
         GroupExposureCandidate selectedExposure = SelectExposureCandidate(exposureCandidates);
         if (selectedExposure == null)
         {
+            if (forcedArrivalApplied)
+            {
+                ContagionDiagnostics.Trace($"Forced arrival override for {forcedDisease.defName} on a {groupKind} group produced no selectable exposure candidate.");
+            }
+
             return 0;
         }
 
@@ -495,6 +547,11 @@ public static class ContagionSeedingCoordinator
         {
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalNoEligibleCarriers);
             ContagionDiagnostics.Trace($"Arrival exposure for {selectedExposure.ArrivalCandidate.ResolvedProfile.DiseaseDef.defName} from a {groupKind} group seeded no carriers.");
+            if (forcedArrivalApplied)
+            {
+                ContagionDiagnostics.Trace($"Forced arrival override for {forcedDisease.defName} on a {groupKind} group seeded no carriers.");
+            }
+
             return 0;
         }
 
@@ -502,6 +559,11 @@ public static class ContagionSeedingCoordinator
         component.DiseaseDirector.NotifySeeded(selectedExposure.ArrivalCandidate.ResolvedProfile.Profile, seededCount);
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalSeeded, seededCount);
         ContagionDiagnostics.Trace($"Arrival group exposure seeded {selectedExposure.ArrivalCandidate.ResolvedProfile.DiseaseDef.defName} on {seededCount} pawn(s) from a {groupKind} group.");
+        if (forcedArrivalApplied)
+        {
+            ContagionDiagnostics.Trace($"Forced arrival override succeeded for {forcedDisease.defName} on a {groupKind} group.");
+        }
+
         return seededCount;
     }
 
@@ -1111,6 +1173,66 @@ public static class ContagionSeedingCoordinator
         }
 
         return arrivalCandidates;
+    }
+
+    private static HediffDef GetForcedArrivalDisease(Contagion_MapTransmissionComponent component)
+    {
+        if (component == null)
+        {
+            return null;
+        }
+
+        if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true)
+        {
+            if (component.DeveloperForcedArrivalDisease != null)
+            {
+                component.DeveloperClearForcedArrival();
+            }
+
+            return null;
+        }
+
+        return component.DeveloperForcedArrivalDisease;
+    }
+
+    private static List<ArrivalCandidate> FilterArrivalCandidates(List<ArrivalCandidate> arrivalCandidates, HediffDef diseaseDef)
+    {
+        if (arrivalCandidates == null || diseaseDef == null)
+        {
+            return arrivalCandidates ?? new List<ArrivalCandidate>();
+        }
+
+        List<ArrivalCandidate> filteredCandidates = new List<ArrivalCandidate>();
+        for (int i = 0; i < arrivalCandidates.Count; i++)
+        {
+            if (arrivalCandidates[i].ResolvedProfile.DiseaseDef == diseaseDef)
+            {
+                filteredCandidates.Add(arrivalCandidates[i]);
+            }
+        }
+
+        return filteredCandidates;
+    }
+
+    private static bool IsForcedArrivalGroupQualifying(
+        List<ArrivalCandidate> arrivalCandidates,
+        IReadOnlyList<Pawn> groupPawns,
+        Map map)
+    {
+        if (arrivalCandidates == null || arrivalCandidates.Count == 0 || groupPawns == null || map == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < arrivalCandidates.Count; i++)
+        {
+            if (BuildCarrierCandidates(groupPawns, arrivalCandidates[i].ResolvedProfile, map).Count > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static List<SeedingFulfillmentKind> GetFulfillmentOrder(TransmissionProfile profile)

@@ -30,6 +30,8 @@
   <Contagion_DiagnosticsModeSummaryTooltip>Collect lightweight counters for disease incidence, spread, and blocked application outcomes.</Contagion_DiagnosticsModeSummaryTooltip>
   <Contagion_DiagnosticsModeVerbose>Verbose</Contagion_DiagnosticsModeVerbose>
   <Contagion_DiagnosticsModeVerboseTooltip>Enable event-level tracing for debugging. Traces should remain gated behind dev mode.</Contagion_DiagnosticsModeVerboseTooltip>
+  <Contagion_DiagnosticsModeDeveloper>Developer</Contagion_DiagnosticsModeDeveloper>
+  <Contagion_DiagnosticsModeDeveloperTooltip>Enable developer-only contagion debugging tools such as forced arrivals, pawn seeding gizmos, hover breakdowns, and trace overlays.</Contagion_DiagnosticsModeDeveloperTooltip>
   <Contagion_ShowPerformanceStats>Collect performance stats</Contagion_ShowPerformanceStats>
   <Contagion_ShowPerformanceStatsTooltip>Track transmission tick timings and candidate counts while diagnostics are enabled.</Contagion_ShowPerformanceStatsTooltip>
   <Contagion_DiagnosticsPending>Runtime counters and trace summaries will appear here once the contagion engine is implemented.</Contagion_DiagnosticsPending>
@@ -37,6 +39,34 @@
   <Contagion_DiagnosticsPerformanceHeader>Performance</Contagion_DiagnosticsPerformanceHeader>
   <Contagion_DiagnosticsIncidenceHeader>Disease incidence</Contagion_DiagnosticsIncidenceHeader>
   <Contagion_DiagnosticsSpreadHeader>Disease spread</Contagion_DiagnosticsSpreadHeader>
+  <Contagion_DeveloperDiagnosticsHeader>Developer tools</Contagion_DeveloperDiagnosticsHeader>
+  <Contagion_DeveloperDiagnosticsNoMap>Developer tools only appear while a colony map is open.</Contagion_DeveloperDiagnosticsNoMap>
+  <Contagion_DeveloperDiagnosticsUnavailable>Developer tools are unavailable because the current map has no Contagion runtime component.</Contagion_DeveloperDiagnosticsUnavailable>
+  <Contagion_DeveloperForceArrivalHeader>Force next arrival disease</Contagion_DeveloperForceArrivalHeader>
+  <Contagion_DeveloperForceArrivalDisease>Choose forced arrival disease</Contagion_DeveloperForceArrivalDisease>
+  <Contagion_DeveloperForcedArrivalSummary>Armed override: {0}</Contagion_DeveloperForcedArrivalSummary>
+  <Contagion_DeveloperForcedArrivalNone>No forced arrival override is armed.</Contagion_DeveloperForcedArrivalNone>
+  <Contagion_DeveloperClearForcedArrival>Clear forced arrival override</Contagion_DeveloperClearForcedArrival>
+  <Contagion_DeveloperForceArrivalRequiresContagion>Force-next-arrival only works while Seeding mode is set to Contagion.</Contagion_DeveloperForceArrivalRequiresContagion>
+  <Contagion_DeveloperForceArrivalNoDiseases>No arrival-capable disease profiles are configured.</Contagion_DeveloperForceArrivalNoDiseases>
+  <Contagion_DeveloperTraceHeader>Transmission traces</Contagion_DeveloperTraceHeader>
+  <Contagion_DeveloperTraceCount>Stored trace lines: {0}</Contagion_DeveloperTraceCount>
+  <Contagion_DeveloperClearAllTraces>Clear contagion traces</Contagion_DeveloperClearAllTraces>
+  <Contagion_DeveloperSeedDisease>Seed incubation</Contagion_DeveloperSeedDisease>
+  <Contagion_DeveloperSeedDiseaseDesc>Developer tool: choose a disease profile and seed its incubation on this pawn using the normal Contagion incubation path.</Contagion_DeveloperSeedDiseaseDesc>
+  <Contagion_DeveloperSeedDiseaseFailed>{0} could not be seeded with {1}.</Contagion_DeveloperSeedDiseaseFailed>
+  <Contagion_DeveloperClearPawnTraces>Clear this pawn's traces</Contagion_DeveloperClearPawnTraces>
+  <Contagion_DeveloperClearPawnTracesDesc>Remove stored contagion transmission traces where this pawn is the source or target.</Contagion_DeveloperClearPawnTracesDesc>
+  <Contagion_DeveloperHoverHeader>Contagion diagnostics: {0} -> {1}</Contagion_DeveloperHoverHeader>
+  <Contagion_DeveloperHoverBreakdownLine>{0} [{1}]: {2}</Contagion_DeveloperHoverBreakdownLine>
+  <Contagion_DeveloperHoverVectorAirborne>Airborne</Contagion_DeveloperHoverVectorAirborne>
+  <Contagion_DeveloperHoverVectorProximity>Proximity</Contagion_DeveloperHoverVectorProximity>
+  <Contagion_DeveloperHoverVectorSocial>Social (on interaction)</Contagion_DeveloperHoverVectorSocial>
+  <Contagion_DeveloperHoverCommonFactors>Base {0} | Infect {1} | Season {2} | Target {3} | Settings {4}</Contagion_DeveloperHoverCommonFactors>
+  <Contagion_DeveloperHoverAirborneFactors>Distance {0} | Enclosure {1} | LOS {2} | Mask {3} | Suppress {4}</Contagion_DeveloperHoverAirborneFactors>
+  <Contagion_DeveloperHoverProximityFactors>Distance {0} | Outdoors {1} | Clean {2} | Mask {3} | Suppress {4}</Contagion_DeveloperHoverProximityFactors>
+  <Contagion_DeveloperHoverSocialFactors>Enclosure {0} | LOS {1} | Mask {2} | Suppress {3}</Contagion_DeveloperHoverSocialFactors>
+  <Contagion_DeveloperHoverBlockedByImmunity>Blocked by immunity: {0}</Contagion_DeveloperHoverBlockedByImmunity>
   <Contagion_DiagnosticsNoIncidence>No disease introductions recorded yet.</Contagion_DiagnosticsNoIncidence>
   <Contagion_DiagnosticsNoSpread>No disease spread recorded yet.</Contagion_DiagnosticsNoSpread>
   <Contagion_DiagnosticsIncidenceApplications>Incidence application: {0} seeded, {1} blocked, {2} immunity-blocked.</Contagion_DiagnosticsIncidenceApplications>
@@ -52,6 +82,7 @@
   <Contagion_DiagnosticsPerformanceEnvironmental>Environmental pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceEnvironmental>
   <Contagion_ClearDiagnostics>Clear diagnostics</Contagion_ClearDiagnostics>
   <Contagion_DiagnosticsVerboseDevMode>Verbose traces only emit while RimWorld dev mode is enabled.</Contagion_DiagnosticsVerboseDevMode>
+  <Contagion_DiagnosticsDeveloperDevMode>Developer tools only run while RimWorld dev mode is enabled.</Contagion_DiagnosticsDeveloperDevMode>
   <Contagion_IncubationLabel>{0} incubation</Contagion_IncubationLabel>
   <Contagion_MessageDiseaseActivated>{0} has developed {1}.</Contagion_MessageDiseaseActivated>
   <Contagion_LetterLabelOutbreak>Outbreak detected: {0}</Contagion_LetterLabelOutbreak>

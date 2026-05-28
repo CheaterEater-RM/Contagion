@@ -44,7 +44,8 @@
              so reducing outward spread keeps them from becoming a constant colony outbreak source. -->
         <sourceInfectivityFactors>
           <li Class="Contagion.SourceFactor_Trait">
-            <trait>Sickly</trait>
+            <trait>Immunity</trait>
+            <degree>-1</degree>
             <factor>0.5</factor>
           </li>
         </sourceInfectivityFactors>
@@ -180,7 +181,8 @@
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <sourceInfectivityFactors>
           <li Class="Contagion.SourceFactor_Trait">
-            <trait>Sickly</trait>
+            <trait>Immunity</trait>
+            <degree>-1</degree>
             <factor>0.5</factor>
           </li>
         </sourceInfectivityFactors>
@@ -314,7 +316,8 @@
         </targetBodyParts>
         <sourceInfectivityFactors>
           <li Class="Contagion.SourceFactor_Trait">
-            <trait>Sickly</trait>
+            <trait>Immunity</trait>
+            <degree>-1</degree>
             <factor>0.5</factor>
           </li>
         </sourceInfectivityFactors>

@@ -54,17 +54,19 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
             float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn)
                 ? ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile)
                 : 1f;
-            float chance = ContagionTransmissionUtility.BuildSourceTargetChance(
-                socialVector.baseChancePerInteraction,
+            if (!ContagionDeveloperDiagnosticsUtility.TryBuildSocialBreakdown(
                 sourcePawn,
                 targetPawn,
                 resolvedProfile,
                 socialVector,
                 map,
-                enclosureFactor * obstructionFactor * maskFactor * suppressionFactor,
                 transmissionMultiplier,
-                out HediffDef _);
-            if (!Rand.Chance(Mathf.Clamp01(chance)))
+                enclosureFactor,
+                obstructionFactor,
+                maskFactor,
+                suppressionFactor,
+                out ContagionSpreadBreakdown breakdown)
+                || !Rand.Chance(Mathf.Clamp01(breakdown.FinalChance)))
             {
                 continue;
             }
@@ -79,6 +81,11 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
             {
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.SocialSeeded);
                 ContagionDiagnostics.Trace($"Social transmission: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap} to {targetPawn.LabelShortCap}.");
+                map.GetComponent<Contagion_MapTransmissionComponent>()?.DeveloperRecordTransmissionTrace(
+                    sourcePawn,
+                    targetPawn,
+                    resolvedProfile.DiseaseDef,
+                    ContagionDebugVectorKind.Social);
                 break;
             }
         }

@@ -1,0 +1,260 @@
+using Verse;
+
+namespace Contagion;
+
+public static class ContagionDeveloperDiagnosticsUtility
+{
+    public static bool TryBuildAirborneBreakdown(
+        Pawn sourcePawn,
+        Pawn targetPawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        Vector_Airborne vector,
+        Map map,
+        float settingsMultiplier,
+        float distance,
+        float distanceFactor,
+        float enclosureFactor,
+        float obstructionFactor,
+        float maskFactor,
+        float suppressionFactor,
+        out ContagionSpreadBreakdown breakdown)
+    {
+        bool canCompute = TryBuildBreakdown(
+            vector?.baseChancePerCheck ?? 0f,
+            sourcePawn,
+            targetPawn,
+            resolvedProfile,
+            vector,
+            map,
+            settingsMultiplier,
+            distanceFactor * enclosureFactor * obstructionFactor * maskFactor * suppressionFactor,
+            ContagionDebugVectorKind.Airborne,
+            out breakdown);
+
+        if (breakdown != null)
+        {
+            breakdown.Distance = distance;
+            breakdown.DistanceFactor = distanceFactor;
+            breakdown.EnclosureFactor = enclosureFactor;
+            breakdown.ObstructionFactor = obstructionFactor;
+            breakdown.MaskFactor = maskFactor;
+            breakdown.SuppressionFactor = suppressionFactor;
+        }
+
+        return canCompute;
+    }
+
+    public static bool TryBuildProximityBreakdown(
+        Pawn sourcePawn,
+        Pawn targetPawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        Vector_Proximity vector,
+        Map map,
+        float settingsMultiplier,
+        float distance,
+        float distanceFactor,
+        float outdoorFactor,
+        float cleanlinessFactor,
+        float maskFactor,
+        float suppressionFactor,
+        out ContagionSpreadBreakdown breakdown)
+    {
+        bool canCompute = TryBuildBreakdown(
+            vector?.baseChancePerCheck ?? 0f,
+            sourcePawn,
+            targetPawn,
+            resolvedProfile,
+            vector,
+            map,
+            settingsMultiplier,
+            distanceFactor * outdoorFactor * cleanlinessFactor * maskFactor * suppressionFactor,
+            ContagionDebugVectorKind.Proximity,
+            out breakdown);
+
+        if (breakdown != null)
+        {
+            breakdown.Distance = distance;
+            breakdown.DistanceFactor = distanceFactor;
+            breakdown.OutdoorFactor = outdoorFactor;
+            breakdown.CleanlinessFactor = cleanlinessFactor;
+            breakdown.MaskFactor = maskFactor;
+            breakdown.SuppressionFactor = suppressionFactor;
+        }
+
+        return canCompute;
+    }
+
+    public static bool TryBuildSocialBreakdown(
+        Pawn sourcePawn,
+        Pawn targetPawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        Vector_Social vector,
+        Map map,
+        float settingsMultiplier,
+        float enclosureFactor,
+        float obstructionFactor,
+        float maskFactor,
+        float suppressionFactor,
+        out ContagionSpreadBreakdown breakdown)
+    {
+        bool canCompute = TryBuildBreakdown(
+            vector?.baseChancePerInteraction ?? 0f,
+            sourcePawn,
+            targetPawn,
+            resolvedProfile,
+            vector,
+            map,
+            settingsMultiplier,
+            enclosureFactor * obstructionFactor * maskFactor * suppressionFactor,
+            ContagionDebugVectorKind.Social,
+            out breakdown);
+
+        if (breakdown != null)
+        {
+            breakdown.EnclosureFactor = enclosureFactor;
+            breakdown.ObstructionFactor = obstructionFactor;
+            breakdown.MaskFactor = maskFactor;
+            breakdown.SuppressionFactor = suppressionFactor;
+        }
+
+        return canCompute;
+    }
+
+    public static bool TryBuildNominalAirborneBreakdown(
+        Pawn sourcePawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        Vector_Airborne vector,
+        Map map,
+        float settingsMultiplier,
+        float distance,
+        float distanceFactor,
+        float enclosureFactor,
+        float obstructionFactor,
+        out ContagionSpreadBreakdown breakdown)
+    {
+        bool canCompute = TryBuildNominalBreakdown(
+            vector?.baseChancePerCheck ?? 0f,
+            sourcePawn,
+            resolvedProfile,
+            vector,
+            map,
+            settingsMultiplier,
+            distanceFactor * enclosureFactor * obstructionFactor,
+            ContagionDebugVectorKind.Airborne,
+            out breakdown);
+
+        if (breakdown != null)
+        {
+            breakdown.Distance = distance;
+            breakdown.DistanceFactor = distanceFactor;
+            breakdown.EnclosureFactor = enclosureFactor;
+            breakdown.ObstructionFactor = obstructionFactor;
+        }
+
+        return canCompute;
+    }
+
+    public static bool TryBuildNominalProximityBreakdown(
+        Pawn sourcePawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        Vector_Proximity vector,
+        Map map,
+        float settingsMultiplier,
+        float distance,
+        float distanceFactor,
+        float outdoorFactor,
+        float cleanlinessFactor,
+        out ContagionSpreadBreakdown breakdown)
+    {
+        bool canCompute = TryBuildNominalBreakdown(
+            vector?.baseChancePerCheck ?? 0f,
+            sourcePawn,
+            resolvedProfile,
+            vector,
+            map,
+            settingsMultiplier,
+            distanceFactor * outdoorFactor * cleanlinessFactor,
+            ContagionDebugVectorKind.Proximity,
+            out breakdown);
+
+        if (breakdown != null)
+        {
+            breakdown.Distance = distance;
+            breakdown.DistanceFactor = distanceFactor;
+            breakdown.OutdoorFactor = outdoorFactor;
+            breakdown.CleanlinessFactor = cleanlinessFactor;
+        }
+
+        return canCompute;
+    }
+
+    private static bool TryBuildBreakdown(
+        float baseChance,
+        Pawn sourcePawn,
+        Pawn targetPawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        TransmissionVector vector,
+        Map map,
+        float settingsMultiplier,
+        float vectorContextFactor,
+        ContagionDebugVectorKind vectorKind,
+        out ContagionSpreadBreakdown breakdown)
+    {
+        breakdown = null;
+        if (sourcePawn == null || targetPawn == null || resolvedProfile?.Profile == null || vector == null || map == null)
+        {
+            return false;
+        }
+
+        float infectivity = ContagionTransmissionUtility.GetSourceInfectivity(sourcePawn, resolvedProfile, vector);
+        float targetFactor = ContagionTransmissionUtility.GetTargetEligibilityFactor(targetPawn, resolvedProfile, sourcePawn, out HediffDef immunityCause);
+        breakdown = new ContagionSpreadBreakdown
+        {
+            DiseaseDef = resolvedProfile.DiseaseDef,
+            ResolvedProfile = resolvedProfile,
+            VectorKind = vectorKind,
+            BaseChance = baseChance,
+            Infectivity = infectivity,
+            SeasonalMultiplier = ContagionTransmissionUtility.GetSeasonalMultiplier(map, resolvedProfile.Profile),
+            TargetEligibilityFactor = targetFactor,
+            SettingsMultiplier = settingsMultiplier,
+            VectorContextFactor = vectorContextFactor,
+            ImmunityCause = immunityCause
+        };
+
+        return breakdown.FinalChance > 0f;
+    }
+
+    private static bool TryBuildNominalBreakdown(
+        float baseChance,
+        Pawn sourcePawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        TransmissionVector vector,
+        Map map,
+        float settingsMultiplier,
+        float vectorContextFactor,
+        ContagionDebugVectorKind vectorKind,
+        out ContagionSpreadBreakdown breakdown)
+    {
+        breakdown = null;
+        if (sourcePawn == null || resolvedProfile?.Profile == null || vector == null || map == null)
+        {
+            return false;
+        }
+
+        breakdown = new ContagionSpreadBreakdown
+        {
+            DiseaseDef = resolvedProfile.DiseaseDef,
+            ResolvedProfile = resolvedProfile,
+            VectorKind = vectorKind,
+            BaseChance = baseChance,
+            Infectivity = ContagionTransmissionUtility.GetSourceInfectivity(sourcePawn, resolvedProfile, vector),
+            SeasonalMultiplier = ContagionTransmissionUtility.GetSeasonalMultiplier(map, resolvedProfile.Profile),
+            TargetEligibilityFactor = 1f,
+            SettingsMultiplier = settingsMultiplier,
+            VectorContextFactor = vectorContextFactor
+        };
+
+        return breakdown.FinalChance > 0f;
+    }
+}

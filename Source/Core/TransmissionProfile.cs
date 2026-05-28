@@ -405,9 +405,18 @@ public sealed class SourceFactor_Trait : SourceInfectivityFactor
 {
     public TraitDef trait;
 
+    public int degree = int.MinValue;
+
     public override float Evaluate(Pawn pawn)
     {
-        return pawn?.story?.traits != null && trait != null && pawn.story.traits.HasTrait(trait) ? factor : 1f;
+        if (pawn?.story?.traits == null || trait == null)
+        {
+            return 1f;
+        }
+
+        return degree != int.MinValue
+            ? (pawn.story.traits.HasTrait(trait, degree) ? factor : 1f)
+            : (pawn.story.traits.HasTrait(trait) ? factor : 1f);
     }
 }
 

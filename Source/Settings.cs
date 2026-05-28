@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
@@ -7,7 +8,8 @@ public enum ContagionDiagnosticsMode
 {
     Off,
     Summary,
-    Verbose
+    Verbose,
+    Developer
 }
 
 // Order is persisted by Scribe as ordinal values. Never reorder; append new values only.
@@ -66,6 +68,8 @@ public sealed class Contagion_Settings : ModSettings
     public bool DiagnosticsEnabled => diagnosticsMode != ContagionDiagnosticsMode.Off;
 
     public bool VerboseDiagnosticsEnabled => diagnosticsMode == ContagionDiagnosticsMode.Verbose && Prefs.DevMode;
+
+    public bool DeveloperDiagnosticsEnabled => diagnosticsMode == ContagionDiagnosticsMode.Developer && Prefs.DevMode;
 
     // Difficulty scales person-to-person transmission on top of the user slider.
     public float DifficultyTransmissionScale => difficulty switch
@@ -245,6 +249,14 @@ public sealed class Contagion_Mod : Mod
             settings.diagnosticsMode = ContagionDiagnosticsMode.Verbose;
         }
 
+        if (listing.RadioButton(
+            "Contagion_DiagnosticsModeDeveloper".Translate().Resolve(),
+            settings.diagnosticsMode == ContagionDiagnosticsMode.Developer,
+            tooltip: "Contagion_DiagnosticsModeDeveloperTooltip".Translate().Resolve()))
+        {
+            settings.diagnosticsMode = ContagionDiagnosticsMode.Developer;
+        }
+
         listing.CheckboxLabeled(
             "Contagion_ShowPerformanceStats".Translate().Resolve(),
             ref settings.showPerformanceStats,
@@ -267,6 +279,12 @@ public sealed class Contagion_Mod : Mod
                 listing.SubLabel(ContagionDiagnostics.BuildPerformanceReport(), 1f);
             }
 
+            if (settings.diagnosticsMode == ContagionDiagnosticsMode.Developer)
+            {
+                listing.Gap(6f);
+                DrawDeveloperDiagnosticsControls(listing);
+            }
+
             listing.Gap(6f);
 
             if (listing.ButtonText("Contagion_ClearDiagnostics".Translate()))
@@ -278,6 +296,11 @@ public sealed class Contagion_Mod : Mod
             {
                 listing.SubLabel("Contagion_DiagnosticsVerboseDevMode".Translate().Resolve(), 1f);
             }
+
+            if (settings.diagnosticsMode == ContagionDiagnosticsMode.Developer && !Prefs.DevMode)
+            {
+                listing.SubLabel("Contagion_DiagnosticsDeveloperDevMode".Translate().Resolve(), 1f);
+            }
         }
 
         listing.Gap(12f);
@@ -288,5 +311,107 @@ public sealed class Contagion_Mod : Mod
         }
 
         listing.End();
+    }
+
+    private static void DrawDeveloperDiagnosticsControls(Listing_Standard listing)
+    {
+        listing.Label("Contagion_DeveloperDiagnosticsHeader".Translate());
+        if (!Prefs.DevMode)
+        {
+            listing.SubLabel("Contagion_DiagnosticsDeveloperDevMode".Translate().Resolve(), 1f);
+            return;
+        }
+
+        Map currentMap = Find.CurrentMap;
+        if (currentMap == null)
+        {
+            listing.SubLabel("Contagion_DeveloperDiagnosticsNoMap".Translate().Resolve(), 1f);
+            return;
+        }
+
+        Contagion_MapTransmissionComponent component = currentMap.GetComponent<Contagion_MapTransmissionComponent>();
+        if (component == null)
+        {
+            listing.SubLabel("Contagion_DeveloperDiagnosticsUnavailable".Translate().Resolve(), 1f);
+            return;
+        }
+
+        listing.Label("Contagion_DeveloperForceArrivalHeader".Translate());
+        if (component.DeveloperForcedArrivalDisease != null)
+        {
+            listing.SubLabel(
+                "Contagion_DeveloperForcedArrivalSummary".Translate(component.DeveloperForcedArrivalDisease.LabelCap).Resolve(),
+                1f);
+        }
+        else
+        {
+            listing.SubLabel("Contagion_DeveloperForcedArrivalNone".Translate().Resolve(), 1f);
+        }
+
+        if (Settings.seedingMode != ContagionSeedingMode.Contagion)
+        {
+            listing.SubLabel("Contagion_DeveloperForceArrivalRequiresContagion".Translate().Resolve(), 1f);
+        }
+        else
+        {
+            List<ResolvedTransmissionProfile> arrivalProfiles = ContagionSeedingCoordinator.GetDeveloperArrivalProfiles();
+            if (arrivalProfiles.Count == 0)
+            {
+                listing.SubLabel("Contagion_DeveloperForceArrivalNoDiseases".Translate().Resolve(), 1f);
+            }
+            else if (listing.ButtonText("Contagion_DeveloperForceArrivalDisease".Translate()))
+            {
+                ShowDeveloperForcedArrivalMenu(component, arrivalProfiles);
+            }
+        }
+
+        if (component.DeveloperForcedArrivalDisease != null
+            && listing.ButtonText("Contagion_DeveloperClearForcedArrival".Translate()))
+        {
+            component.DeveloperClearForcedArrival();
+        }
+
+        listing.Gap(4f);
+        listing.Label("Contagion_DeveloperTraceHeader".Translate());
+        listing.SubLabel(
+            "Contagion_DeveloperTraceCount".Translate(component.DeveloperTransmissionTraces.Count).Resolve(),
+            1f);
+        if (component.DeveloperTransmissionTraces.Count > 0
+            && listing.ButtonText("Contagion_DeveloperClearAllTraces".Translate()))
+        {
+            component.DeveloperClearAllTraces();
+        }
+    }
+
+    private static void ShowDeveloperForcedArrivalMenu(
+        Contagion_MapTransmissionComponent component,
+        List<ResolvedTransmissionProfile> arrivalProfiles)
+    {
+        if (component == null || arrivalProfiles == null || arrivalProfiles.Count == 0)
+        {
+            return;
+        }
+
+        List<FloatMenuOption> options = new List<FloatMenuOption>();
+        for (int i = 0; i < arrivalProfiles.Count; i++)
+        {
+            ResolvedTransmissionProfile resolvedProfile = arrivalProfiles[i];
+            if (resolvedProfile?.DiseaseDef == null)
+            {
+                continue;
+            }
+
+            options.Add(new FloatMenuOption(
+                resolvedProfile.DiseaseDef.LabelCap.Resolve(),
+                delegate
+                {
+                    component.DeveloperArmForcedArrival(resolvedProfile.DiseaseDef);
+                }));
+        }
+
+        if (options.Count > 0)
+        {
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
     }
 }

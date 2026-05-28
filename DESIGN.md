@@ -464,9 +464,73 @@ Difficulty *multiplies* the Transmission Rate slider rather than replacing it, s
 | Transmission Rate | 0.25×–2.0× | 1.0× | Global multiplier on vector base chances (composed with difficulty) |
 | Outbreak Frequency | 0.25×–2.0× | 1.0× | Multiplier on seeder MTB timers (Mode 2) and pending-event arrival chances (both modes) |
 | Incubation Length | 0.25×–2.0× | 1.0× | Multiplier on incubation durations |
-| Diagnostics | Off/Summary/Verbose | Off | In-settings disease incidence and disease spread counters, plus dev-mode transition traces and optional performance stats |
+| Diagnostics | Off/Summary/Verbose/Developer | Off | Summary/Verbose keep the current in-settings counters and traces; Developer adds dev-only runtime helpers (director forcing, pawn seeding gizmos, hover chance readouts) on top |
 
 Per-disease behavior (`spreadSuppressionScale`, per-vector mask effectiveness) and the gene airway-immunity whitelist live in XML for player/modder patching.
+
+---
+
+## Developer Diagnostics (In Progress)
+
+The existing diagnostics counters remain the lightweight default. A separate **Developer** diagnostics mode extends them with interactive tools for debugging contagion behavior during live playtesting.
+
+### Gating and persistence
+
+- The mode is **developer-only**. It is meant for testers running RimWorld with `Prefs.DevMode` on, not for normal players.
+- If the enum changes, it must be **append-only**. `ContagionDiagnosticsMode` is persisted by ordinal value, so `Developer` is added at the end rather than replacing or reordering existing values.
+- Interactive diagnostic state is **runtime-only**. No queued test action, selected disease override, hovered-target cache, or temporary UI selection should be scribed into saves.
+- Runtime ownership should still be map-scoped, not static. A Contagion map component can own developer traces and queued one-shot commands without exposing them to `ExposeData()`.
+
+### Mode 2 director forcing
+
+When diagnostics mode is **Developer**, the mod settings window exposes extra runtime controls. The disease-director control lives there, not in a separate inspect tab.
+
+- The settings page can show a runtime-only "force next arrival disease" control when all three conditions are true: Developer diagnostics are active, Seeding Mode is **Contagion** (Mode 2), and `Find.CurrentMap` exists.
+- Outside a live map, the control should be hidden or disabled with a plain reason string. This is a map-scoped test action and should not pretend to work from the main menu or world map.
+- Choosing a disease does **not** seed a pawn directly. It arms a non-persistent map-scoped override: the **next qualifying arrival group** is evaluated as that disease instead of going through normal weighted disease selection.
+- The real arrival pipeline still runs: eligibility filters, `maxActiveCases`, carrier-payload sizing, species gating, and director bookkeeping all remain in place. This is a forced **attempt**, not a guaranteed seed, which makes it suitable for testing actual arrival mechanics.
+- The override is consumed after the first qualifying arrival attempt, whether the attempt succeeds or fails. This keeps the tool legible and avoids hidden sticky debug state.
+- The settings action should be paired with a visible "armed override" summary and a clear/cancel button so the tester always knows whether a forced disease is pending.
+
+### Pawn incubation gizmo
+
+Every selected pawn gets a Contagion developer gizmo while Developer diagnostics are active.
+
+- The gizmo lives on the normal pawn gizmo surface rather than a `ThingComp`, so it introduces no new persistent pawn state and no mod-removal risk.
+- Right-click opens a disease list built from `DiseaseProfileCache`; choosing a disease uses the existing `TrySeedIncubation(...)` path so all normal immunity, duplicate-incubation, and species checks still apply.
+- The icon can switch when the pawn currently harbors `Hediff_ContagionIncubation`, making hidden incubation visible to testers without using the health debug UI.
+- Because the repo currently has no custom texture pipeline, the first implementation should either use a vanilla icon or add one small cached command texture explicitly for this tool.
+- The same gizmo surface is also the right place for a local "clear contagion traces" action when the selected pawn is the source or target of stored debug trace lines.
+
+### Hover spread readout
+
+When a contagious pawn is selected and the cursor is over another pawn, the developer tools add a spread readout to the normal mouseover panel.
+
+- This should be a `MouseoverReadout.MouseoverReadoutOnGUI()` postfix so it extends the existing bottom-left readout instead of creating a separate debug window.
+- The numbers should come from the same helper stack the simulation uses now (`GetSourceInfectivity`, `GetTargetEligibilityFactor`, `BuildSourceTargetChance`), not from a parallel approximation.
+- The readout should be **per disease and per vector**, not one synthetic aggregate. Airborne and proximity are true current-tick chances; social should either be shown separately as an **on interaction** chance or omitted from the hover readout to avoid implying it rolls every tick.
+- The tooltip should include the major factors explicitly: base chance, source infectivity, seasonal multiplier, target eligibility, distance/context multiplier, mask factor, cleanliness or enclosure factor where relevant, and spread suppression when applicable.
+- A short world-space line between the selected source pawn and the hovered target pawn should accompany the tooltip while the mouseover readout is active. `GenDraw.DrawLineBetween(...)`, as used in LOS-Check's CE diagnostic overlay, is the right fit for this rather than a custom mesh system.
+- This UI runs every repaint, so the calculation must stay narrowly scoped to the selected source pawn and the hovered target pawn. Dev-only gating keeps the cost low, but the implementation should still avoid broad map scans beyond the disease-specific suppression factor already required for the displayed pair.
+
+### Nominal spread overlay
+
+When a contagious pawn is selected, Developer diagnostics also draw a local range overlay around that pawn showing **nominal** distance-based spread chance.
+
+- This is a selection overlay, not a permanent map overlay. A postfix on `Pawn.DrawExtraSelectionOverlays()` is the clean vanilla hook.
+- The overlay should use the same instanced-cell rendering pattern as Lookouts and LOS-Check: batch `MeshPool.plane10` quads at `AltitudeLayer.MetaOverlays` with a small set of color bands rather than drawing a unique material per cell.
+- "Nominal" means the overlay is target-agnostic: it assumes a typical susceptible pawn rather than the exact pawn standing in each cell. The intended reading is falloff and geometry, not the full contract chance for a specific pawn.
+- The overlay still benefits from current source-side state such as infectivity stage and seasonal multiplier, but it should not depend on per-target immunity, apparel, or trait modifiers.
+- Because social transmission is event-driven and fomite/foodborne are not radial space vectors, the nominal overlay should be limited to the vectors that have a meaningful spatial falloff surface, chiefly airborne and proximity.
+
+### Infection trace lines
+
+When an actual transmission succeeds, Developer diagnostics retain a short-lived trace entry so the tester can see **who infected whom**.
+
+- Each trace entry should record source pawn, target pawn, disease, vector kind, and tick. This is runtime-only map state and should not be saved.
+- The visual is a world-space line between source and target, ideally with a simple direction marker or source/target cap so direction is obvious. LOS-Check's line drawing gives the base pattern; a small plane marker near the target end is enough for directionality.
+- The trace system needs bounded lifetime and bounded count. A short time-to-live plus a capped ring buffer prevents diagnostic clutter from becoming permanent map noise.
+- Clearing should be available in two places: a global button in the Developer diagnostics section of mod settings, and a selected-pawn gizmo action that clears traces involving that pawn.
 
 ---
 
@@ -574,6 +638,12 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Mode 2: storyteller incidents cancelled for profiled diseases | Mode 2 owns pacing; letting the storyteller inject extra events would undermine the director cadence the player is learning to read |
 | Mode 2: map-level disease director | Quiet periods raise pressure, active sickness and recent successful seeding suppress new introductions. Good quarantine still buys breathing room because an attempted threat counts even if colonists avoid infection |
 | Group arrival exposure | Per-pawn chance on large groups would saturate arrivals with disease. Exposure is incident-level, carrier count is group-size-aware but capped, and director pressure is spent once per exposed group |
+| Developer diagnostics are UI-only and non-persistent | Debug helpers must not add save-state churn or mod-removal hazards; runtime-only overrides and caches are sufficient |
+| Mode 2 arrival testing uses a one-shot forced disease override | Lets testers exercise the real arrival pipeline without adding a parallel fake seeding path or permanently mutating the director |
+| Hover diagnostics show vector breakdown, not one aggregate spread percent | Airborne/proximity are current-tick rolls; social is event-driven. A single combined percentage would be misleading |
+| Developer controls live in mod settings, not a separate map tab | The user explicitly wants the mode toggle and director action in the in-game settings surface; map-specific actions there must disable cleanly when no current map exists |
+| The nominal spread overlay is target-agnostic by design | Its job is to visualize distance and geometry around a contagious source, not to predict exact chance for every possible pawn |
+| Successful transmissions leave bounded runtime trace lines | This gives post-event attribution without introducing persistent forensic state into saves |
 
 ---
 
