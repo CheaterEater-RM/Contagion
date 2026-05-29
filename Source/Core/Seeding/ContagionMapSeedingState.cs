@@ -5,34 +5,38 @@ using Verse;
 
 namespace Contagion;
 
-internal sealed class ContagionMapSeedingState
+internal sealed class ContagionMapSeedingState : IExposable
 {
-    private List<HediffDef> _seederCooldownDiseases;
+    private List<HediffDef> _seederCooldownDiseases = new List<HediffDef>();
 
-    private List<string> _seederCooldownKeys;
+    private List<string> _seederCooldownKeys = new List<string>();
 
-    private List<int> _seederCooldownTicks;
+    private List<int> _seederCooldownTicks = new List<int>();
 
-    private List<PendingDiseaseEvent> _pendingEvents;
+    private List<PendingDiseaseEvent> _pendingEvents = new List<PendingDiseaseEvent>();
 
-    private ContagionDiseaseDirector _diseaseDirector;
+    private ContagionDiseaseDirector _diseaseDirector = new ContagionDiseaseDirector();
 
     public IReadOnlyList<PendingDiseaseEvent> PendingEvents => _pendingEvents;
 
     public ContagionDiseaseDirector DiseaseDirector => _diseaseDirector;
 
-    public void Rebind(
-        List<HediffDef> seederCooldownDiseases,
-        List<string> seederCooldownKeys,
-        List<int> seederCooldownTicks,
-        List<PendingDiseaseEvent> pendingEvents,
-        ContagionDiseaseDirector diseaseDirector)
+    public void ExposeData()
     {
-        _seederCooldownDiseases = seederCooldownDiseases;
-        _seederCooldownKeys = seederCooldownKeys;
-        _seederCooldownTicks = seederCooldownTicks;
-        _pendingEvents = pendingEvents;
-        _diseaseDirector = diseaseDirector;
+        Scribe_Collections.Look(ref _seederCooldownDiseases, "seederCooldownDiseases", LookMode.Def);
+        Scribe_Collections.Look(ref _seederCooldownKeys, "seederCooldownKeys", LookMode.Value);
+        Scribe_Collections.Look(ref _seederCooldownTicks, "seederCooldownTicks", LookMode.Value);
+        Scribe_Collections.Look(ref _pendingEvents, "pendingEvents", LookMode.Deep);
+        Scribe_Deep.Look(ref _diseaseDirector, "diseaseDirector");
+
+        if (Scribe.mode == LoadSaveMode.PostLoadInit)
+        {
+            _seederCooldownDiseases ??= new List<HediffDef>();
+            _seederCooldownKeys ??= new List<string>();
+            _seederCooldownTicks ??= new List<int>();
+            _pendingEvents ??= new List<PendingDiseaseEvent>();
+            _diseaseDirector ??= new ContagionDiseaseDirector();
+        }
     }
 
     public bool IsAtActiveCaseLimit(Map map, ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)

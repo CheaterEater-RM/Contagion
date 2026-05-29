@@ -13,33 +13,17 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private const int DirectorUpdateInterval = 60000;
 
-    private List<Filth> _contaminatedVomitFilth = new List<Filth>();
-
-    private List<HediffDef> _contaminatedVomitDiseases = new List<HediffDef>();
-
-    private List<int> _contaminatedVomitTicks = new List<int>();
-
-    private List<HediffDef> _seederCooldownDiseases = new List<HediffDef>();
-
-    private List<string> _seederCooldownKeys = new List<string>();
-
-    private List<int> _seederCooldownTicks = new List<int>();
-
-    private List<PendingDiseaseEvent> _pendingEvents = new List<PendingDiseaseEvent>();
-
-    private ContagionDiseaseDirector _diseaseDirector = new ContagionDiseaseDirector();
-
     private readonly ContagionMapDeveloperDiagnosticsController _developerDiagnosticsController;
 
     private readonly ContagionMapSlaughterOverrideTracker _slaughterOverrideTracker;
 
     private readonly ContagionPawnTransmissionProcessor _pawnTransmissionProcessor;
 
-    private readonly ContagionVomitFomiteTracker _vomitFomiteTracker;
-
     private readonly ContagionEnvironmentalExposureProcessor _environmentalExposureProcessor;
 
-    private readonly ContagionMapSeedingState _seedingState;
+    private ContagionVomitFomiteTracker _vomitFomiteTracker = new();
+
+    private ContagionMapSeedingState _seedingState = new();
 
     public Contagion_MapTransmissionComponent(Map map)
         : base(map)
@@ -47,11 +31,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         _developerDiagnosticsController = new ContagionMapDeveloperDiagnosticsController(map);
         _slaughterOverrideTracker = new ContagionMapSlaughterOverrideTracker();
         _pawnTransmissionProcessor = new ContagionPawnTransmissionProcessor(map, _developerDiagnosticsController);
-        _vomitFomiteTracker = new ContagionVomitFomiteTracker(map);
-        _vomitFomiteTracker.Rebind(_contaminatedVomitFilth, _contaminatedVomitDiseases, _contaminatedVomitTicks);
         _environmentalExposureProcessor = new ContagionEnvironmentalExposureProcessor(this);
-        _seedingState = new ContagionMapSeedingState();
-        _seedingState.Rebind(_seederCooldownDiseases, _seederCooldownKeys, _seederCooldownTicks, _pendingEvents, _diseaseDirector);
     }
 
     public Map Map => map;
@@ -60,37 +40,19 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     public ContagionDiseaseDirector DiseaseDirector => _seedingState.DiseaseDirector;
 
-    public HediffDef DeveloperForcedArrivalDisease => _developerDiagnosticsController.ForcedArrivalDisease;
-
-    public IReadOnlyList<ContagionTransmissionTrace> DeveloperTransmissionTraces => _developerDiagnosticsController.TransmissionTraces;
-
-    public bool DeveloperTraceCaptureEnabled => _developerDiagnosticsController.TraceCaptureEnabled;
+    internal ContagionMapDeveloperDiagnosticsController DeveloperDiagnostics => _developerDiagnosticsController;
 
     public override void ExposeData()
     {
         base.ExposeData();
-        Scribe_Collections.Look(ref _contaminatedVomitFilth, "contaminatedVomitFilth", LookMode.Reference);
-        Scribe_Collections.Look(ref _contaminatedVomitDiseases, "contaminatedVomitDiseases", LookMode.Def);
-        Scribe_Collections.Look(ref _contaminatedVomitTicks, "contaminatedVomitTicks", LookMode.Value);
-        Scribe_Collections.Look(ref _seederCooldownDiseases, "seederCooldownDiseases", LookMode.Def);
-        Scribe_Collections.Look(ref _seederCooldownKeys, "seederCooldownKeys", LookMode.Value);
-        Scribe_Collections.Look(ref _seederCooldownTicks, "seederCooldownTicks", LookMode.Value);
-        Scribe_Collections.Look(ref _pendingEvents, "pendingEvents", LookMode.Deep);
-        Scribe_Deep.Look(ref _diseaseDirector, "diseaseDirector");
+        Scribe_Deep.Look(ref _vomitFomiteTracker, "vomitFomiteTracker");
+        Scribe_Deep.Look(ref _seedingState, "seedingState");
 
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
-            _contaminatedVomitFilth ??= new List<Filth>();
-            _contaminatedVomitDiseases ??= new List<HediffDef>();
-            _contaminatedVomitTicks ??= new List<int>();
-            _seederCooldownDiseases ??= new List<HediffDef>();
-            _seederCooldownKeys ??= new List<string>();
-            _seederCooldownTicks ??= new List<int>();
-            _pendingEvents ??= new List<PendingDiseaseEvent>();
-            _diseaseDirector ??= new ContagionDiseaseDirector();
-            _vomitFomiteTracker.Rebind(_contaminatedVomitFilth, _contaminatedVomitDiseases, _contaminatedVomitTicks);
-            _vomitFomiteTracker.Cleanup();
-            _seedingState.Rebind(_seederCooldownDiseases, _seederCooldownKeys, _seederCooldownTicks, _pendingEvents, _diseaseDirector);
+            _vomitFomiteTracker ??= new ContagionVomitFomiteTracker();
+            _seedingState ??= new ContagionMapSeedingState();
+            _vomitFomiteTracker.Cleanup(map);
         }
     }
 
@@ -119,14 +81,9 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         _seedingState.RemovePendingEvent(pendingEvent);
     }
 
-    public void DeveloperArmForcedArrival(HediffDef diseaseDef)
+    public void NotifySeederFired(ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)
     {
-        _developerDiagnosticsController.ArmForcedArrival(diseaseDef);
-    }
-
-    public void DeveloperClearForcedArrival()
-    {
-        _developerDiagnosticsController.ClearForcedArrival();
+        _seedingState.NotifySeederFired(resolvedProfile, seeder);
     }
 
     public void ArmForceRot(int pawnId)
@@ -142,55 +99,6 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     }
 
     public bool ConsumeButcherBypass(int pawnId) => _slaughterOverrideTracker.ConsumeButcherBypass(pawnId);
-
-    public void DeveloperRecordTransmissionTrace(
-        Pawn sourcePawn,
-        Pawn targetPawn,
-        HediffDef diseaseDef,
-        ContagionDebugVectorKind vectorKind)
-    {
-        _developerDiagnosticsController.RecordTransmissionTrace(sourcePawn, targetPawn, diseaseDef, vectorKind);
-    }
-
-    public void DeveloperClearAllTraces()
-    {
-        _developerDiagnosticsController.ClearAllTraces();
-    }
-
-    public void DeveloperToggleTraceCapture()
-    {
-        _developerDiagnosticsController.ToggleTraceCapture();
-    }
-
-    public void DeveloperClearTracesForPawn(Pawn pawn)
-    {
-        _developerDiagnosticsController.ClearTracesForPawn(pawn);
-    }
-
-    public bool DeveloperHasTracesForPawn(Pawn pawn)
-    {
-        return _developerDiagnosticsController.HasTracesForPawn(pawn);
-    }
-
-    public void DeveloperSetHoverPair(Pawn sourcePawn, Pawn targetPawn)
-    {
-        _developerDiagnosticsController.SetHoverPair(sourcePawn, targetPawn);
-    }
-
-    public bool DeveloperTryGetHoverPair(out Pawn sourcePawn, out Pawn targetPawn)
-    {
-        return _developerDiagnosticsController.TryGetHoverPair(out sourcePawn, out targetPawn);
-    }
-
-    public void DeveloperClearHoverPair()
-    {
-        _developerDiagnosticsController.ClearHoverPair();
-    }
-
-    public void NotifySeederFired(ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)
-    {
-        _seedingState.NotifySeederFired(resolvedProfile, seeder);
-    }
 
     public override void MapComponentUpdate()
     {
@@ -228,7 +136,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return;
         }
 
-        _vomitFomiteTracker.Cleanup();
+        _vomitFomiteTracker.Cleanup(map);
         _slaughterOverrideTracker.CleanupStaleEntries(ticksGame);
 
         if (runEnvironmental)
@@ -245,7 +153,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
 
         long transmissionTiming = ContagionDiagnostics.BeginTiming();
-        _vomitFomiteTracker.RunFomiteExposurePass(spawnedPawns);
+        _vomitFomiteTracker.RunFomiteExposurePass(spawnedPawns, map);
 
         if (spawnedPawns.Count >= 2)
         {
@@ -257,7 +165,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     public void NotifyVomitFilthCreated(Filth filth, Pawn sourcePawn)
     {
-        _vomitFomiteTracker.NotifyVomitFilthCreated(filth, sourcePawn);
+        _vomitFomiteTracker.NotifyVomitFilthCreated(filth, sourcePawn, map);
     }
 
     private void RunGeneralSeederPass(IReadOnlyList<Pawn> spawnedPawns)

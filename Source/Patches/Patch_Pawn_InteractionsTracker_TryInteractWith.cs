@@ -131,7 +131,7 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
             {
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.SocialSeeded);
                 ContagionDiagnostics.Trace($"Social transmission: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap} to {targetPawn.LabelShortCap}.");
-                map.GetComponent<Contagion_MapTransmissionComponent>()?.DeveloperRecordTransmissionTrace(
+                map.GetComponent<Contagion_MapTransmissionComponent>()?.DeveloperDiagnostics.RecordTransmissionTrace(
                     sourcePawn,
                     targetPawn,
                     resolvedProfile.DiseaseDef,

@@ -422,7 +422,7 @@ public static class ContagionSeedingCoordinator
             List<ArrivalCandidate> forcedArrivalCandidates = FilterArrivalCandidates(arrivalCandidates, forcedDisease);
             if (IsForcedArrivalGroupQualifying(forcedArrivalCandidates, groupPawns, map))
             {
-                component.DeveloperClearForcedArrival();
+                component.DeveloperDiagnostics.ClearForcedArrival();
                 arrivalCandidates = forcedArrivalCandidates;
                 forcedArrivalApplied = true;
             }
@@ -1184,15 +1184,15 @@ public static class ContagionSeedingCoordinator
 
         if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true)
         {
-            if (component.DeveloperForcedArrivalDisease != null)
+            if (component.DeveloperDiagnostics.ForcedArrivalDisease != null)
             {
-                component.DeveloperClearForcedArrival();
+                component.DeveloperDiagnostics.ClearForcedArrival();
             }
 
             return null;
         }
 
-        return component.DeveloperForcedArrivalDisease;
+        return component.DeveloperDiagnostics.ForcedArrivalDisease;
     }
 
     private static List<ArrivalCandidate> FilterArrivalCandidates(List<ArrivalCandidate> arrivalCandidates, HediffDef diseaseDef)

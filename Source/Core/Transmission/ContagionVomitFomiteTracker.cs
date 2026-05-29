@@ -5,35 +5,35 @@ using Verse;
 
 namespace Contagion;
 
-internal sealed class ContagionVomitFomiteTracker
+internal sealed class ContagionVomitFomiteTracker : IExposable
 {
     private const int TicksPerHour = 2500;
 
     private const float MinFomitePotency = 0.05f;
 
-    private readonly Map _map;
+    private List<Filth> _contaminatedVomitFilth = new List<Filth>();
 
-    private List<Filth> _contaminatedVomitFilth;
+    private List<HediffDef> _contaminatedVomitDiseases = new List<HediffDef>();
 
-    private List<HediffDef> _contaminatedVomitDiseases;
+    private List<int> _contaminatedVomitTicks = new List<int>();
 
-    private List<int> _contaminatedVomitTicks;
-
-    public ContagionVomitFomiteTracker(Map map)
+    public void ExposeData()
     {
-        _map = map;
+        Scribe_Collections.Look(ref _contaminatedVomitFilth, "contaminatedVomitFilth", LookMode.Reference);
+        Scribe_Collections.Look(ref _contaminatedVomitDiseases, "contaminatedVomitDiseases", LookMode.Def);
+        Scribe_Collections.Look(ref _contaminatedVomitTicks, "contaminatedVomitTicks", LookMode.Value);
+
+        if (Scribe.mode == LoadSaveMode.PostLoadInit)
+        {
+            _contaminatedVomitFilth ??= new List<Filth>();
+            _contaminatedVomitDiseases ??= new List<HediffDef>();
+            _contaminatedVomitTicks ??= new List<int>();
+        }
     }
 
-    public void Rebind(List<Filth> contaminatedVomitFilth, List<HediffDef> contaminatedVomitDiseases, List<int> contaminatedVomitTicks)
+    public void NotifyVomitFilthCreated(Filth filth, Pawn sourcePawn, Map map)
     {
-        _contaminatedVomitFilth = contaminatedVomitFilth;
-        _contaminatedVomitDiseases = contaminatedVomitDiseases;
-        _contaminatedVomitTicks = contaminatedVomitTicks;
-    }
-
-    public void NotifyVomitFilthCreated(Filth filth, Pawn sourcePawn)
-    {
-        if (filth == null || sourcePawn == null || sourcePawn.Map != _map)
+        if (filth == null || sourcePawn == null || sourcePawn.Map != map)
         {
             return;
         }
@@ -64,14 +64,14 @@ internal sealed class ContagionVomitFomiteTracker
         }
     }
 
-    public void Cleanup()
+    public void Cleanup(Map map)
     {
         for (int i = _contaminatedVomitFilth.Count - 1; i >= 0; i--)
         {
             Filth filth = _contaminatedVomitFilth[i];
             HediffDef diseaseDef = i < _contaminatedVomitDiseases.Count ? _contaminatedVomitDiseases[i] : null;
             int contaminationTick = i < _contaminatedVomitTicks.Count ? _contaminatedVomitTicks[i] : 0;
-            bool remove = filth == null || filth.Destroyed || !filth.Spawned || filth.Map != _map || diseaseDef == null;
+            bool remove = filth == null || filth.Destroyed || !filth.Spawned || filth.Map != map || diseaseDef == null;
 
             if (!remove
                 && (!DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile)
@@ -100,7 +100,7 @@ internal sealed class ContagionVomitFomiteTracker
         }
     }
 
-    public void RunFomiteExposurePass(IReadOnlyList<Pawn> spawnedPawns)
+    public void RunFomiteExposurePass(IReadOnlyList<Pawn> spawnedPawns, Map map)
     {
         if (_contaminatedVomitFilth.Count == 0)
         {
@@ -112,7 +112,7 @@ internal sealed class ContagionVomitFomiteTracker
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
             Pawn pawn = spawnedPawns[pawnIndex];
-            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != _map)
+            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != map)
             {
                 continue;
             }
@@ -142,7 +142,7 @@ internal sealed class ContagionVomitFomiteTracker
                 {
                     if (!suppressionByDisease.TryGetValue(resolvedProfile.DiseaseDef, out suppression))
                     {
-                        suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, resolvedProfile);
+                        suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile);
                         suppressionByDisease[resolvedProfile.DiseaseDef] = suppression;
                     }
                 }
@@ -152,7 +152,7 @@ internal sealed class ContagionVomitFomiteTracker
                     fomiteVector.baseChancePerContact * potencyFactor * suppression,
                     pawn,
                     resolvedProfile,
-                    _map,
+                    map,
                     transmissionMultiplier,
                     out HediffDef _);
                 if (!Rand.Chance(Mathf.Clamp01(chance)))
@@ -175,7 +175,7 @@ internal sealed class ContagionVomitFomiteTracker
         }
     }
 
-    private float GetFomitePotencyFactor(int contaminationTick, float potencyDecayPerHour)
+    private static float GetFomitePotencyFactor(int contaminationTick, float potencyDecayPerHour)
     {
         float elapsedHours = Mathf.Max(0f, (Find.TickManager.TicksGame - contaminationTick) / (float)TicksPerHour);
         return Mathf.Exp(-Mathf.Max(0f, potencyDecayPerHour) * elapsedHours);

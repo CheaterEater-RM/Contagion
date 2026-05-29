@@ -9,15 +9,14 @@ namespace Contagion.Patches;
 [HarmonyPatch(typeof(Pawn), nameof(Pawn.GetGizmos))]
 internal static class Patch_Pawn_GetGizmos
 {
-    // Lazy-loaded icon textures — loaded once, then cached.
+    // Lazy-loaded icon texture — loaded once, then cached. IconButcherAnyway uses TexCommand.Attack
+    // as a placeholder until a custom "butcher despite disease risk" icon is created.
     private static Texture2D _iconDispose;
-    private static Texture2D _iconButcherAnyway;
 
     private static Texture2D IconDispose =>
         _iconDispose ??= ContentFinder<Texture2D>.Get("UI/Designators/Slaughter");
 
-    private static Texture2D IconButcherAnyway =>
-        _iconButcherAnyway ??= ContentFinder<Texture2D>.Get("UI/Designators/Slaughter");
+    private static Texture2D IconButcherAnyway => TexCommand.Attack;
 
     public static void Postfix(Pawn __instance, ref IEnumerable<Gizmo> __result)
     {
@@ -48,17 +47,17 @@ internal static class Patch_Pawn_GetGizmos
         {
             gizmos.Add(new Command_Action
             {
-                defaultLabel = component.DeveloperTraceCaptureEnabled
+                defaultLabel = component.DeveloperDiagnostics.TraceCaptureEnabled
                     ? "Contagion_DeveloperTraceCaptureOn".Translate()
                     : "Contagion_DeveloperTraceCaptureOff".Translate(),
                 defaultDesc = "Contagion_DeveloperTraceCaptureDesc".Translate(),
-                icon = component.DeveloperTraceCaptureEnabled ? TexCommand.ForbidOff : TexCommand.ForbidOn,
+                icon = component.DeveloperDiagnostics.TraceCaptureEnabled ? TexCommand.ForbidOff : TexCommand.ForbidOn,
                 Order = -93.5f,
-                action = component.DeveloperToggleTraceCapture
+                action = component.DeveloperDiagnostics.ToggleTraceCapture
             });
         }
 
-        if (component?.DeveloperHasTracesForPawn(__instance) == true)
+        if (component?.DeveloperDiagnostics.HasTracesForPawn(__instance) == true)
         {
             gizmos.Add(new Command_Action
             {
@@ -68,7 +67,7 @@ internal static class Patch_Pawn_GetGizmos
                 Order = -93f,
                 action = delegate
                 {
-                    component.DeveloperClearTracesForPawn(__instance);
+                    component.DeveloperDiagnostics.ClearTracesForPawn(__instance);
                 }
             });
         }

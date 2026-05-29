@@ -22,18 +22,18 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
     {
         if (!TryGetHoverContext(out Pawn sourcePawn, out Pawn targetPawn, out Contagion_MapTransmissionComponent component))
         {
-            component?.DeveloperClearHoverPair();
+            component?.DeveloperDiagnostics.ClearHoverPair();
             return;
         }
 
         List<ContagionSpreadBreakdown> breakdowns = BuildBreakdowns(sourcePawn, targetPawn);
         if (breakdowns.Count == 0)
         {
-            component.DeveloperClearHoverPair();
+            component.DeveloperDiagnostics.ClearHoverPair();
             return;
         }
 
-        component.DeveloperSetHoverPair(sourcePawn, targetPawn);
+        component.DeveloperDiagnostics.SetHoverPair(sourcePawn, targetPawn);
         DrawBreakdownReadout(sourcePawn, targetPawn, breakdowns);
     }
 
