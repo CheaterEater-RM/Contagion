@@ -45,9 +45,14 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private List<ContagionTransmissionTrace> _developerTransmissionTraces = new List<ContagionTransmissionTrace>();
 
-    // Runtime-only (not persisted): consumed by Patch_Corpse_SpawnSetup within the same frame as the kill.
-    private readonly HashSet<int> _forceRotPawnIds = new HashSet<int>();
-    private readonly HashSet<int> _butcherBypassPawnIds = new HashSet<int>();
+    // Runtime-only slaughter-override flags (not persisted).
+    // Dictionary value is the game tick when the flag was armed, for stale-entry cleanup.
+    // Mutual exclusivity: arming either clears the other for the same pawn.
+    // Stale entries (animal not slaughtered within the window) are cleaned up in MapComponentTick.
+    private const int SlaughterFlagMaxAgeTicks = 60000; // 1 game-day; any slaughter job completes in seconds
+
+    private readonly Dictionary<int, int> _forceRotPawnIds = new Dictionary<int, int>();
+    private readonly Dictionary<int, int> _butcherBypassPawnIds = new Dictionary<int, int>();
 
     private bool _developerTraceCaptureEnabled = true;
 
@@ -233,11 +238,19 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         _developerForcedArrivalDisease = null;
     }
 
-    public void ArmForceRot(int pawnId) => _forceRotPawnIds.Add(pawnId);
+    public void ArmForceRot(int pawnId)
+    {
+        _butcherBypassPawnIds.Remove(pawnId);
+        _forceRotPawnIds[pawnId] = Find.TickManager.TicksGame;
+    }
 
     public bool ConsumeForceRot(int pawnId) => _forceRotPawnIds.Remove(pawnId);
 
-    public void ArmButcherBypass(int pawnId) => _butcherBypassPawnIds.Add(pawnId);
+    public void ArmButcherBypass(int pawnId)
+    {
+        _forceRotPawnIds.Remove(pawnId);
+        _butcherBypassPawnIds[pawnId] = Find.TickManager.TicksGame;
+    }
 
     public bool ConsumeButcherBypass(int pawnId) => _butcherBypassPawnIds.Remove(pawnId);
 
@@ -449,6 +462,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
 
         CleanupContaminatedVomit();
+        CleanupStaleSlaughterFlags();
 
         if (runEnvironmental)
         {
@@ -556,6 +570,12 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
         float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
 
+        // Per-pass caches: positions are shared across pawns in the same cell (packed pens) and
+        // across profiles. The roof-edge scan and water-radius scan are O(r²) per call; caching
+        // by position amortises the cost across the herd.
+        Dictionary<IntVec3, int> roofEdgeCache = new Dictionary<IntVec3, int>();
+        Dictionary<IntVec3, float> waterProximityCache = new Dictionary<IntVec3, float>();
+
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
             Pawn pawn = spawnedPawns[pawnIndex];
@@ -566,7 +586,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
             for (int profileIndex = 0; profileIndex < environmentalProfiles.Count; profileIndex++)
             {
-                if (TryApplyEnvironmentalExposure(pawn, environmentalProfiles[profileIndex], transmissionMultiplier))
+                if (TryApplyEnvironmentalExposure(pawn, environmentalProfiles[profileIndex], transmissionMultiplier, roofEdgeCache, waterProximityCache))
                 {
                     break;
                 }
@@ -699,7 +719,9 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     private bool TryApplyEnvironmentalExposure(
         Pawn pawn,
         EnvironmentalProfile environmentalProfile,
-        float transmissionMultiplier)
+        float transmissionMultiplier,
+        Dictionary<IntVec3, int> roofEdgeCache,
+        Dictionary<IntVec3, float> waterProximityCache)
     {
         if (!ContagionSeedingCoordinator.TryGetEnvironmentalSeedingContext(
             this,
@@ -724,8 +746,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return false;
         }
 
-        chance *= GetEnvironmentalShelterFactor(pawn.Position, room, ambientTemperature, environmentalProfile.Vector);
-        chance *= GetWaterProximityFactor(pawn.Position, environmentalProfile.Vector);
+        chance *= GetEnvironmentalShelterFactor(pawn.Position, room, ambientTemperature, environmentalProfile.Vector, roofEdgeCache);
+        chance *= GetWaterProximityFactor(pawn.Position, environmentalProfile.Vector, waterProximityCache);
         chance = ContagionTransmissionUtility.BuildSeederChance(
             chance,
             pawn,
@@ -971,6 +993,56 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         _developerTransmissionTraces.RemoveAll(trace => trace == null || !trace.IsValidFor(map));
     }
 
+    private void CleanupStaleSlaughterFlags()
+    {
+        int currentTick = Find.TickManager.TicksGame;
+
+        // Remove entries for any pawn whose slaughter was cancelled or never completed.
+        // Normal flow: flag is consumed in the same frame the corpse spawns; this only
+        // fires for entries that leaked (designation cancelled, pawn escaped, etc.).
+        if (_forceRotPawnIds.Count > 0)
+        {
+            List<int> toRemove = null;
+            foreach (KeyValuePair<int, int> entry in _forceRotPawnIds)
+            {
+                if (currentTick - entry.Value > SlaughterFlagMaxAgeTicks)
+                {
+                    toRemove ??= new List<int>();
+                    toRemove.Add(entry.Key);
+                }
+            }
+
+            if (toRemove != null)
+            {
+                foreach (int id in toRemove)
+                {
+                    _forceRotPawnIds.Remove(id);
+                }
+            }
+        }
+
+        if (_butcherBypassPawnIds.Count > 0)
+        {
+            List<int> toRemove = null;
+            foreach (KeyValuePair<int, int> entry in _butcherBypassPawnIds)
+            {
+                if (currentTick - entry.Value > SlaughterFlagMaxAgeTicks)
+                {
+                    toRemove ??= new List<int>();
+                    toRemove.Add(entry.Key);
+                }
+            }
+
+            if (toRemove != null)
+            {
+                foreach (int id in toRemove)
+                {
+                    _butcherBypassPawnIds.Remove(id);
+                }
+            }
+        }
+    }
+
     private void CleanupContaminatedVomit()
     {
         for (int i = _contaminatedVomitFilth.Count - 1; i >= 0; i--)
@@ -1032,14 +1104,24 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         return Mathf.InverseLerp(vector.minTemperature, vector.peakTemperature, ambientTemperature);
     }
 
-    private float GetEnvironmentalShelterFactor(IntVec3 position, Room room, float ambientTemperature, Vector_Environmental vector)
+    private float GetEnvironmentalShelterFactor(
+        IntVec3 position,
+        Room room,
+        float ambientTemperature,
+        Vector_Environmental vector,
+        Dictionary<IntVec3, int> roofEdgeCache)
     {
         if (room == null || room.UsesOutdoorTemperature || room.PsychologicallyOutdoors)
         {
             return 1f;
         }
 
-        int cellsFromUnroofed = GetCellsFromUnroofed(position, 30);
+        if (!roofEdgeCache.TryGetValue(position, out int cellsFromUnroofed))
+        {
+            cellsFromUnroofed = GetCellsFromUnroofed(position, 30);
+            roofEdgeCache[position] = cellsFromUnroofed;
+        }
+
         float shelterFactor = Mathf.Clamp01(1f - vector.indoorReductionPerCellFromEdge * Mathf.Max(1, cellsFromUnroofed));
         if (ambientTemperature < vector.coolRoomThreshold)
         {
@@ -1084,11 +1166,16 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         return maxRadius;
     }
 
-    private float GetWaterProximityFactor(IntVec3 center, Vector_Environmental vector)
+    private float GetWaterProximityFactor(IntVec3 center, Vector_Environmental vector, Dictionary<IntVec3, float> cache)
     {
         if (vector.waterProximityRadius <= 0 || vector.waterProximityWeight <= 0f)
         {
             return 1f;
+        }
+
+        if (cache.TryGetValue(center, out float cached))
+        {
+            return cached;
         }
 
         int nearbyWaterCells = 0;
@@ -1103,7 +1190,9 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
                     continue;
                 }
 
-                TerrainDef terrain = map.terrainGrid.TerrainAt(candidate);
+                // BaseTerrainAt to avoid counting temporary overlays (flood water, thin ice)
+                // as underlying water — as documented in CLAUDE.md hard rule 11.
+                TerrainDef terrain = map.terrainGrid.BaseTerrainAt(candidate);
                 if (terrain != null && terrain.IsWater)
                 {
                     nearbyWaterCells++;
@@ -1111,7 +1200,9 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             }
         }
 
-        return Mathf.Clamp(1f + nearbyWaterCells * vector.waterProximityWeight, 1f, MaxEnvironmentalWaterFactor);
+        float result = Mathf.Clamp(1f + nearbyWaterCells * vector.waterProximityWeight, 1f, MaxEnvironmentalWaterFactor);
+        cache[center] = result;
+        return result;
     }
 
     private static bool IsOutdoors(Room room)

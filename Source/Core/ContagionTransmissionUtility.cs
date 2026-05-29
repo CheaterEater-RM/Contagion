@@ -273,7 +273,11 @@ public static class ContagionTransmissionUtility
     private static float GetVanillaContractFactor(Pawn target, ResolvedTransmissionProfile resolvedProfile, out HediffDef immunityCause)
     {
         immunityCause = null;
-        if (resolvedProfile.PartsToAffect.NullOrEmpty())
+
+        // Part targeting (e.g. GutWorms → Stomach) is a human-gameplay detail. Animals vary
+        // enormously in body layout and may lack the targeted part entirely, which would block
+        // all seeding. Skip part targeting for animal pawns and use the whole-pawn factor instead.
+        if (resolvedProfile.PartsToAffect.NullOrEmpty() || target.RaceProps?.Animal == true)
         {
             return Mathf.Max(0f, target.health.immunity.DiseaseContractChanceFactor(resolvedProfile.DiseaseDef, out immunityCause));
         }

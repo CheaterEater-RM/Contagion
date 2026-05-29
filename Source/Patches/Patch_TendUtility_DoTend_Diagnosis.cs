@@ -5,30 +5,51 @@ using Verse;
 
 namespace Contagion.Patches;
 
-// When a vet tends the Contagion_AnimalSick hediff, run the diagnosis mechanic:
-//   - True positive + good roll (Medical skill):  reveal the disease (mild active), send letter.
-//   - True positive + bad roll (false negative):  send "nothing found" message. Disease stays hidden.
-//   - False positive (no underlying disease):     send "nothing found" message.
-// The Contagion_AnimalSick hediff is always removed after examination.
+// Two-class pattern:
+//   1. Patch_TendUtility_DoTend_TrackDoctor — prefix/postfix on DoTend to capture the doctor
+//      in a static field for the duration of the call. Single-threaded; static field is safe.
+//   2. Patch_Hediff_Tended_AnimalDiagnosis — postfix on Hediff.Tended, guarded to
+//      Contagion_AnimalSick only. Fires exclusively when the sick-signal hediff is actually
+//      among the hediffs being tended, which is the correct gate for H3.
+
 [HarmonyPatch(typeof(TendUtility), nameof(TendUtility.DoTend))]
-internal static class Patch_TendUtility_DoTend_Diagnosis
+internal static class Patch_TendUtility_DoTend_TrackDoctor
+{
+    internal static Pawn CurrentDoctor;
+
+    public static void Prefix(Pawn doctor)
+    {
+        CurrentDoctor = doctor;
+    }
+
+    public static void Postfix()
+    {
+        CurrentDoctor = null;
+    }
+}
+
+[HarmonyPatch(typeof(Hediff), nameof(Hediff.Tended))]
+internal static class Patch_Hediff_Tended_AnimalDiagnosis
 {
     private const float MildDiagnosedSeverity = 0.10f;
 
-    public static void Postfix(Pawn doctor, Pawn patient, Medicine medicine)
+    public static void Postfix(Hediff __instance, float quality)
     {
-        if (doctor == null || patient == null || patient.RaceProps?.Animal != true)
+        if (__instance.def != ContagionDefOf.Contagion_AnimalSick)
         {
             return;
         }
 
-        Hediff sickHediff = patient.health.hediffSet.GetFirstHediffOfDef(ContagionDefOf.Contagion_AnimalSick);
-        if (sickHediff == null)
+        Pawn patient = __instance.pawn;
+        if (patient?.RaceProps?.Animal != true)
         {
             return;
         }
 
-        patient.health.RemoveHediff(sickHediff);
+        Pawn doctor = Patch_TendUtility_DoTend_TrackDoctor.CurrentDoctor;
+
+        // Remove the sick signal — diagnosis always concludes it, regardless of outcome.
+        patient.health.RemoveHediff(__instance);
 
         ResolvedTransmissionProfile resolvedProfile = ContagionAnimalDiseaseUtility.GetSickSignalProfile(patient);
         if (resolvedProfile == null)
@@ -37,23 +58,20 @@ internal static class Patch_TendUtility_DoTend_Diagnosis
             return;
         }
 
-        // True positive — roll Medical skill for diagnosis accuracy.
-        float diagnosisChance = Mathf.Clamp01(doctor.skills?.GetSkill(SkillDefOf.Medicine)?.Level / 15f ?? 0f);
-        if (!Rand.Chance(diagnosisChance))
+        // True positive — quality already encodes the doctor's Medical skill.
+        if (!Rand.Chance(Mathf.Clamp01(quality)))
         {
             SendExamClearMessage(doctor, patient);
-            ContagionDiagnostics.Trace($"Diagnosis false negative: {doctor.LabelShortCap} missed {resolvedProfile.DiseaseDef.defName} in {patient.LabelShortCap}.");
+            ContagionDiagnostics.Trace($"Diagnosis false negative: {doctor?.LabelShortCap} missed {resolvedProfile.DiseaseDef.defName} in {patient.LabelShortCap}.");
             return;
         }
 
         RevealDiagnosis(patient, resolvedProfile, doctor);
-        ContagionDiagnostics.Trace($"Diagnosis success: {doctor.LabelShortCap} identified {resolvedProfile.DiseaseDef.defName} in {patient.LabelShortCap}.");
+        ContagionDiagnostics.Trace($"Diagnosis success: {doctor?.LabelShortCap} identified {resolvedProfile.DiseaseDef.defName} in {patient.LabelShortCap}.");
     }
 
     private static void RevealDiagnosis(Pawn patient, ResolvedTransmissionProfile resolvedProfile, Pawn doctor)
     {
-        // Remove existing incubation and apply a mild active disease — the diagnosis effectively
-        // collapses the hidden incubation into an early active case.
         Hediff_ContagionIncubation incubation = ContagionDiseaseUtility.FindIncubation(patient, resolvedProfile.DiseaseDef);
         if (incubation != null)
         {
@@ -82,7 +100,7 @@ internal static class Patch_TendUtility_DoTend_Diagnosis
         {
             Find.LetterStack.ReceiveLetter(
                 "Contagion_LetterLabelAnimalDiagnosed".Translate(patient.LabelShortCap, resolvedProfile.DiseaseDef.LabelCap),
-                "Contagion_LetterAnimalDiagnosed".Translate(doctor.LabelShortCap, patient.LabelShortCap, resolvedProfile.DiseaseDef.LabelCap),
+                "Contagion_LetterAnimalDiagnosed".Translate(doctor?.LabelShortCap ?? "?", patient.LabelShortCap, resolvedProfile.DiseaseDef.LabelCap),
                 LetterDefOf.NegativeEvent,
                 patient);
         }
@@ -93,7 +111,7 @@ internal static class Patch_TendUtility_DoTend_Diagnosis
         if (PawnUtility.ShouldSendNotificationAbout(patient) || PawnUtility.ShouldSendNotificationAbout(doctor))
         {
             Messages.Message(
-                "Contagion_MessageAnimalExamClear".Translate(doctor.LabelShortCap, patient.LabelShortCap),
+                "Contagion_MessageAnimalExamClear".Translate(doctor?.LabelShortCap ?? "?", patient.LabelShortCap),
                 patient,
                 MessageTypeDefOf.NeutralEvent,
                 historical: false);

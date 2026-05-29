@@ -91,12 +91,25 @@ public sealed class Comp_ContaminatedFood : ThingComp
         {
             _contaminatedDiseaseDef = otherComp._contaminatedDiseaseDef;
             _contaminationFactor = otherComp._contaminationFactor;
+            _contaminationTick = otherComp._contaminationTick;
             return;
         }
 
         if (_contaminatedDiseaseDef == otherComp._contaminatedDiseaseDef)
         {
-            _contaminationFactor = Mathf.Max(_contaminationFactor, otherComp._contaminationFactor);
+            // Take max factor (worse contamination) but the newer timestamp (fresher item).
+            if (otherComp._contaminationFactor > _contaminationFactor)
+            {
+                _contaminationFactor = otherComp._contaminationFactor;
+            }
+
+            // Newer tick = more recently contaminated; use max so the expiry is based on the
+            // freshest contribution rather than the oldest piece in the merged stack.
+            if (otherComp._contaminationTick > _contaminationTick)
+            {
+                _contaminationTick = otherComp._contaminationTick;
+            }
+
             return;
         }
 
@@ -111,6 +124,7 @@ public sealed class Comp_ContaminatedFood : ThingComp
         {
             _contaminatedDiseaseDef = otherComp._contaminatedDiseaseDef;
             _contaminationFactor = otherComp._contaminationFactor;
+            _contaminationTick = otherComp._contaminationTick;
         }
     }
 
@@ -119,6 +133,12 @@ public sealed class Comp_ContaminatedFood : ThingComp
         base.PostIngested(ingester);
 
         if (ingester == null || _contaminatedDiseaseDef == null)
+        {
+            return;
+        }
+
+        // Caravan contagion is out of scope for v1; only seed disease on mapped pawns.
+        if (ingester.MapHeld == null)
         {
             return;
         }

@@ -113,23 +113,22 @@ public sealed class TransmissionProfile : DefModExtension
     public bool CanTransmitBetween(Pawn source, Pawn target, out float speciesFactor)
     {
         speciesFactor = 1f;
-        if (target == null)
-        {
-            return false;
-        }
-
-        if (CanAffect(target))
-        {
-            return true;
-        }
-
-        if (source == null || crossSpeciesTransmissionFactor <= 0f || !CrossesHumanAnimalBoundary(source, target))
+        if (target == null || !CanAffect(target))
         {
             speciesFactor = 0f;
             return false;
         }
 
-        speciesFactor = crossSpeciesTransmissionFactor;
+        // When the disease affects both species (e.g. gut worms, muscle parasites), pawn-to-pawn
+        // vectors must still respect the cross-species barrier so animals don't catch gut worms from
+        // human vomit or vice versa. Apply crossSpeciesTransmissionFactor whenever source and target
+        // are different species categories. Source null = environmental/acausal seeding, no barrier.
+        if (source != null && CrossesHumanAnimalBoundary(source, target))
+        {
+            speciesFactor = crossSpeciesTransmissionFactor;
+            return speciesFactor > 0f;
+        }
+
         return true;
     }
 

@@ -13,7 +13,9 @@ public static class ContagionAnimalDiseaseUtility
 
     public static HediffDef GetCorpseContagiousDisease(Pawn innerPawn)
     {
-        if (innerPawn?.health?.hediffSet == null)
+        // Design intent: human corpses are unaffected. corpseContagious only applies to
+        // animal carcasses entering the butchery chain.
+        if (innerPawn?.health?.hediffSet == null || innerPawn.RaceProps?.Animal != true)
         {
             return null;
         }
@@ -44,6 +46,9 @@ public static class ContagionAnimalDiseaseUtility
 
     public static ResolvedTransmissionProfile GetSickSignalProfile(Pawn animal)
     {
+        // Only match hidden incubation, not already-visible active disease. If the disease has
+        // been diagnosed and made visible, the health tab already shows it — re-triggering the
+        // sick signal and diagnosis loop would create feedback noise.
         if (animal?.health?.hediffSet == null || animal.RaceProps?.Animal != true)
         {
             return null;
@@ -52,7 +57,12 @@ public static class ContagionAnimalDiseaseUtility
         List<Hediff> hediffs = animal.health.hediffSet.hediffs;
         for (int i = 0; i < hediffs.Count; i++)
         {
-            HediffDef diseaseDef = GetDiseaseDef(hediffs[i]);
+            if (hediffs[i] is not Hediff_ContagionIncubation incubation)
+            {
+                continue;
+            }
+
+            HediffDef diseaseDef = incubation.TargetDiseaseDef;
             if (diseaseDef == null)
             {
                 continue;
