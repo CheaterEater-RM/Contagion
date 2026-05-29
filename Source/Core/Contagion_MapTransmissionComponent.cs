@@ -7,23 +7,11 @@ namespace Contagion;
 
 public sealed class Contagion_MapTransmissionComponent : MapComponent
 {
-    private const int DeveloperTraceMaxCount = 128;
-
     private const int TransmissionCheckInterval = 250;
 
     private const int EnvironmentalCheckInterval = 2500;
 
     private const int DirectorUpdateInterval = 60000;
-
-    private const int TicksPerHour = 2500;
-
-    private const float MinCleanlinessFactor = 0.1f;
-
-    private const float MaxCleanlinessFactor = 3f;
-
-    private const float MaxEnvironmentalWaterFactor = 3f;
-
-    private const float MinFomitePotency = 0.05f;
 
     private List<Filth> _contaminatedVomitFilth = new List<Filth>();
 
@@ -41,81 +29,42 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private ContagionDiseaseDirector _diseaseDirector = new ContagionDiseaseDirector();
 
-    private HediffDef _developerForcedArrivalDisease;
+    private readonly ContagionMapDeveloperDiagnosticsController _developerDiagnosticsController;
 
-    private List<ContagionTransmissionTrace> _developerTransmissionTraces = new List<ContagionTransmissionTrace>();
+    private readonly ContagionMapSlaughterOverrideTracker _slaughterOverrideTracker;
 
-    // Runtime-only slaughter-override flags (not persisted).
-    // Dictionary value is the game tick when the flag was armed, for stale-entry cleanup.
-    // Mutual exclusivity: arming either clears the other for the same pawn.
-    // Stale entries (animal not slaughtered within the window) are cleaned up in MapComponentTick.
-    private const int SlaughterFlagMaxAgeTicks = 60000; // 1 game-day; any slaughter job completes in seconds
+    private readonly ContagionPawnTransmissionProcessor _pawnTransmissionProcessor;
 
-    private readonly Dictionary<int, int> _forceRotPawnIds = new Dictionary<int, int>();
-    private readonly Dictionary<int, int> _butcherBypassPawnIds = new Dictionary<int, int>();
+    private readonly ContagionVomitFomiteTracker _vomitFomiteTracker;
 
-    private bool _developerTraceCaptureEnabled = true;
+    private readonly ContagionEnvironmentalExposureProcessor _environmentalExposureProcessor;
 
-    private Pawn _developerHoverSourcePawn;
-
-    private Pawn _developerHoverTargetPawn;
-
-    private int _developerHoverFrame = -1;
-
-    private sealed class TransmissionSource
-    {
-        public TransmissionSource(Pawn pawn, ResolvedTransmissionProfile resolvedProfile)
-        {
-            Pawn = pawn;
-            ResolvedProfile = resolvedProfile;
-        }
-
-        public Pawn Pawn { get; }
-
-        public ResolvedTransmissionProfile ResolvedProfile { get; }
-
-        public float SuppressionFactor { get; set; } = 1f;
-    }
-
-    private sealed class EnvironmentalProfile
-    {
-        public EnvironmentalProfile(
-            ResolvedTransmissionProfile resolvedProfile,
-            Vector_Environmental vector,
-            Seeder_Environmental seeder,
-            float biomeCommonality)
-        {
-            ResolvedProfile = resolvedProfile;
-            Vector = vector;
-            Seeder = seeder;
-            BiomeCommonality = biomeCommonality;
-        }
-
-        public ResolvedTransmissionProfile ResolvedProfile { get; }
-
-        public Vector_Environmental Vector { get; }
-
-        public Seeder_Environmental Seeder { get; }
-
-        public float BiomeCommonality { get; }
-    }
+    private readonly ContagionMapSeedingState _seedingState;
 
     public Contagion_MapTransmissionComponent(Map map)
         : base(map)
     {
+        _developerDiagnosticsController = new ContagionMapDeveloperDiagnosticsController(map);
+        _slaughterOverrideTracker = new ContagionMapSlaughterOverrideTracker();
+        _pawnTransmissionProcessor = new ContagionPawnTransmissionProcessor(map, _developerDiagnosticsController);
+        _vomitFomiteTracker = new ContagionVomitFomiteTracker(map);
+        _vomitFomiteTracker.Rebind(_contaminatedVomitFilth, _contaminatedVomitDiseases, _contaminatedVomitTicks);
+        _environmentalExposureProcessor = new ContagionEnvironmentalExposureProcessor(this);
+        _seedingState = new ContagionMapSeedingState();
+        _seedingState.Rebind(_seederCooldownDiseases, _seederCooldownKeys, _seederCooldownTicks, _pendingEvents, _diseaseDirector);
     }
 
     public Map Map => map;
 
-    public IReadOnlyList<PendingDiseaseEvent> PendingEvents => _pendingEvents;
+    public IReadOnlyList<PendingDiseaseEvent> PendingEvents => _seedingState.PendingEvents;
 
-    public ContagionDiseaseDirector DiseaseDirector => _diseaseDirector;
+    public ContagionDiseaseDirector DiseaseDirector => _seedingState.DiseaseDirector;
 
-    public HediffDef DeveloperForcedArrivalDisease => _developerForcedArrivalDisease;
+    public HediffDef DeveloperForcedArrivalDisease => _developerDiagnosticsController.ForcedArrivalDisease;
 
-    public IReadOnlyList<ContagionTransmissionTrace> DeveloperTransmissionTraces => _developerTransmissionTraces;
+    public IReadOnlyList<ContagionTransmissionTrace> DeveloperTransmissionTraces => _developerDiagnosticsController.TransmissionTraces;
 
-    public bool DeveloperTraceCaptureEnabled => _developerTraceCaptureEnabled;
+    public bool DeveloperTraceCaptureEnabled => _developerDiagnosticsController.TraceCaptureEnabled;
 
     public override void ExposeData()
     {
@@ -139,120 +88,60 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             _seederCooldownTicks ??= new List<int>();
             _pendingEvents ??= new List<PendingDiseaseEvent>();
             _diseaseDirector ??= new ContagionDiseaseDirector();
-            CleanupContaminatedVomit();
+            _vomitFomiteTracker.Rebind(_contaminatedVomitFilth, _contaminatedVomitDiseases, _contaminatedVomitTicks);
+            _vomitFomiteTracker.Cleanup();
+            _seedingState.Rebind(_seederCooldownDiseases, _seederCooldownKeys, _seederCooldownTicks, _pendingEvents, _diseaseDirector);
         }
     }
 
     public bool IsAtActiveCaseLimit(ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)
     {
-        if (resolvedProfile?.Profile == null)
-        {
-            return false;
-        }
-
-        int activeCaseLimit = seeder?.maxActiveCases > 0 ? seeder.maxActiveCases : resolvedProfile.Profile.maxActiveCases;
-        return ContagionTransmissionUtility.IsProfileActiveOnMap(map, resolvedProfile, activeCaseLimit);
+        return _seedingState.IsAtActiveCaseLimit(map, resolvedProfile, seeder);
     }
 
     public bool CanRunSeeder(ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)
     {
-        if (resolvedProfile?.Profile == null || seeder == null)
-        {
-            return false;
-        }
-
-        if (IsAtActiveCaseLimit(resolvedProfile, seeder))
-        {
-            return false;
-        }
-
-        if (seeder.cooldownDays <= 0f)
-        {
-            return true;
-        }
-
-        string key = GetSeederCooldownKey(seeder);
-        int cooldownTicks = Mathf.RoundToInt(seeder.cooldownDays * 60000f);
-        int currentTick = Find.TickManager.TicksGame;
-        for (int i = 0; i < _seederCooldownDiseases.Count; i++)
-        {
-            if (_seederCooldownDiseases[i] == resolvedProfile.DiseaseDef && _seederCooldownKeys[i] == key)
-            {
-                return currentTick - _seederCooldownTicks[i] >= cooldownTicks;
-            }
-        }
-
-        return true;
+        return _seedingState.CanRunSeeder(map, resolvedProfile, seeder);
     }
 
     public PendingDiseaseEvent GetPendingEvent(HediffDef diseaseDef)
     {
-        if (diseaseDef == null)
-        {
-            return null;
-        }
-
-        for (int i = 0; i < _pendingEvents.Count; i++)
-        {
-            if (_pendingEvents[i]?.diseaseDef == diseaseDef)
-            {
-                return _pendingEvents[i];
-            }
-        }
-
-        return null;
+        return _seedingState.GetPendingEvent(diseaseDef);
     }
 
     public void AddPendingEvent(PendingDiseaseEvent pendingEvent)
     {
-        if (pendingEvent == null)
-        {
-            return;
-        }
-
-        _pendingEvents.Add(pendingEvent);
+        _seedingState.AddPendingEvent(pendingEvent);
     }
 
     public void RemovePendingEvent(PendingDiseaseEvent pendingEvent)
     {
-        if (pendingEvent == null)
-        {
-            return;
-        }
-
-        _pendingEvents.Remove(pendingEvent);
+        _seedingState.RemovePendingEvent(pendingEvent);
     }
 
     public void DeveloperArmForcedArrival(HediffDef diseaseDef)
     {
-        if (diseaseDef == null)
-        {
-            return;
-        }
-
-        _developerForcedArrivalDisease = diseaseDef;
+        _developerDiagnosticsController.ArmForcedArrival(diseaseDef);
     }
 
     public void DeveloperClearForcedArrival()
     {
-        _developerForcedArrivalDisease = null;
+        _developerDiagnosticsController.ClearForcedArrival();
     }
 
     public void ArmForceRot(int pawnId)
     {
-        _butcherBypassPawnIds.Remove(pawnId);
-        _forceRotPawnIds[pawnId] = Find.TickManager.TicksGame;
+        _slaughterOverrideTracker.ArmForceRot(pawnId, Find.TickManager.TicksGame);
     }
 
-    public bool ConsumeForceRot(int pawnId) => _forceRotPawnIds.Remove(pawnId);
+    public bool ConsumeForceRot(int pawnId) => _slaughterOverrideTracker.ConsumeForceRot(pawnId);
 
     public void ArmButcherBypass(int pawnId)
     {
-        _forceRotPawnIds.Remove(pawnId);
-        _butcherBypassPawnIds[pawnId] = Find.TickManager.TicksGame;
+        _slaughterOverrideTracker.ArmButcherBypass(pawnId, Find.TickManager.TicksGame);
     }
 
-    public bool ConsumeButcherBypass(int pawnId) => _butcherBypassPawnIds.Remove(pawnId);
+    public bool ConsumeButcherBypass(int pawnId) => _slaughterOverrideTracker.ConsumeButcherBypass(pawnId);
 
     public void DeveloperRecordTransmissionTrace(
         Pawn sourcePawn,
@@ -260,175 +149,53 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         HediffDef diseaseDef,
         ContagionDebugVectorKind vectorKind)
     {
-        if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true
-            || !_developerTraceCaptureEnabled
-            || sourcePawn == null
-            || targetPawn == null
-            || sourcePawn == targetPawn
-            || diseaseDef == null
-            || sourcePawn.Map != map
-            || targetPawn.Map != map)
-        {
-            return;
-        }
-
-        PruneDeveloperTransmissionTraces();
-        for (int i = 0; i < _developerTransmissionTraces.Count; i++)
-        {
-            if (_developerTransmissionTraces[i]?.Matches(sourcePawn, targetPawn, diseaseDef, vectorKind) == true)
-            {
-                return;
-            }
-        }
-
-        if (_developerTransmissionTraces.Count >= DeveloperTraceMaxCount)
-        {
-            _developerTransmissionTraces.RemoveAt(0);
-        }
-
-        _developerTransmissionTraces.Add(new ContagionTransmissionTrace(
-            sourcePawn,
-            targetPawn,
-            diseaseDef,
-            vectorKind,
-            Find.TickManager.TicksGame));
+        _developerDiagnosticsController.RecordTransmissionTrace(sourcePawn, targetPawn, diseaseDef, vectorKind);
     }
 
     public void DeveloperClearAllTraces()
     {
-        _developerTransmissionTraces.Clear();
+        _developerDiagnosticsController.ClearAllTraces();
     }
 
     public void DeveloperToggleTraceCapture()
     {
-        _developerTraceCaptureEnabled = !_developerTraceCaptureEnabled;
+        _developerDiagnosticsController.ToggleTraceCapture();
     }
 
     public void DeveloperClearTracesForPawn(Pawn pawn)
     {
-        if (pawn == null || _developerTransmissionTraces.Count == 0)
-        {
-            return;
-        }
-
-        _developerTransmissionTraces.RemoveAll(trace => trace == null || trace.Contains(pawn));
+        _developerDiagnosticsController.ClearTracesForPawn(pawn);
     }
 
     public bool DeveloperHasTracesForPawn(Pawn pawn)
     {
-        if (pawn == null)
-        {
-            return false;
-        }
-
-        PruneDeveloperTransmissionTraces();
-        for (int i = 0; i < _developerTransmissionTraces.Count; i++)
-        {
-            if (_developerTransmissionTraces[i]?.Contains(pawn) == true)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return _developerDiagnosticsController.HasTracesForPawn(pawn);
     }
 
     public void DeveloperSetHoverPair(Pawn sourcePawn, Pawn targetPawn)
     {
-        if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true
-            || sourcePawn == null
-            || targetPawn == null
-            || sourcePawn == targetPawn
-            || sourcePawn.Map != map
-            || targetPawn.Map != map)
-        {
-            DeveloperClearHoverPair();
-            return;
-        }
-
-        _developerHoverSourcePawn = sourcePawn;
-        _developerHoverTargetPawn = targetPawn;
-        _developerHoverFrame = Time.frameCount;
+        _developerDiagnosticsController.SetHoverPair(sourcePawn, targetPawn);
     }
 
     public bool DeveloperTryGetHoverPair(out Pawn sourcePawn, out Pawn targetPawn)
     {
-        sourcePawn = null;
-        targetPawn = null;
-
-        if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true)
-        {
-            DeveloperClearHoverPair();
-            return false;
-        }
-
-        if (_developerHoverSourcePawn == null
-            || _developerHoverTargetPawn == null
-            || Time.frameCount - _developerHoverFrame > 1
-            || _developerHoverSourcePawn.Map != map
-            || _developerHoverTargetPawn.Map != map
-            || !_developerHoverSourcePawn.Spawned
-            || !_developerHoverTargetPawn.Spawned)
-        {
-            DeveloperClearHoverPair();
-            return false;
-        }
-
-        sourcePawn = _developerHoverSourcePawn;
-        targetPawn = _developerHoverTargetPawn;
-        return true;
+        return _developerDiagnosticsController.TryGetHoverPair(out sourcePawn, out targetPawn);
     }
 
     public void DeveloperClearHoverPair()
     {
-        _developerHoverSourcePawn = null;
-        _developerHoverTargetPawn = null;
-        _developerHoverFrame = -1;
+        _developerDiagnosticsController.ClearHoverPair();
     }
 
     public void NotifySeederFired(ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)
     {
-        if (resolvedProfile?.DiseaseDef == null || seeder == null || seeder.cooldownDays <= 0f)
-        {
-            return;
-        }
-
-        string key = GetSeederCooldownKey(seeder);
-        int currentTick = Find.TickManager.TicksGame;
-        for (int i = 0; i < _seederCooldownDiseases.Count; i++)
-        {
-            if (_seederCooldownDiseases[i] == resolvedProfile.DiseaseDef && _seederCooldownKeys[i] == key)
-            {
-                _seederCooldownTicks[i] = currentTick;
-                return;
-            }
-        }
-
-        _seederCooldownDiseases.Add(resolvedProfile.DiseaseDef);
-        _seederCooldownKeys.Add(key);
-        _seederCooldownTicks.Add(currentTick);
+        _seedingState.NotifySeederFired(resolvedProfile, seeder);
     }
 
     public override void MapComponentUpdate()
     {
         base.MapComponentUpdate();
-        PruneDeveloperTransmissionTraces();
-
-        if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true || Find.CurrentMap != map)
-        {
-            DeveloperClearHoverPair();
-            return;
-        }
-
-        if (DeveloperTryGetHoverPair(out Pawn hoverSourcePawn, out Pawn hoverTargetPawn))
-        {
-            ContagionDeveloperOverlayDrawer.DrawHoverLine(hoverSourcePawn, hoverTargetPawn);
-        }
-
-        if (_developerTraceCaptureEnabled)
-        {
-            ContagionDeveloperOverlayDrawer.DrawTransmissionTraces(map, _developerTransmissionTraces);
-        }
+        _developerDiagnosticsController.Update();
     }
 
     public override void MapComponentTick()
@@ -453,7 +220,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
         if (runDirector)
         {
-            _diseaseDirector.DailyTick(map);
+            _seedingState.DailyTick(map);
         }
 
         if (!runTransmission && !runEnvironmental)
@@ -461,14 +228,14 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return;
         }
 
-        CleanupContaminatedVomit();
-        CleanupStaleSlaughterFlags();
+        _vomitFomiteTracker.Cleanup();
+        _slaughterOverrideTracker.CleanupStaleEntries(ticksGame);
 
         if (runEnvironmental)
         {
             long environmentalTiming = ContagionDiagnostics.BeginTiming();
             RunGeneralSeederPass(spawnedPawns);
-            RunEnvironmentalExposurePass(spawnedPawns);
+            _environmentalExposureProcessor.RunEnvironmentalExposurePass(spawnedPawns);
             ContagionDiagnostics.EndTiming(ContagionPerformanceMetric.EnvironmentalPass, environmentalTiming);
         }
 
@@ -478,790 +245,23 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
 
         long transmissionTiming = ContagionDiagnostics.BeginTiming();
-        RunFomiteExposurePass(spawnedPawns);
+        _vomitFomiteTracker.RunFomiteExposurePass(spawnedPawns);
 
         if (spawnedPawns.Count >= 2)
         {
-            RunPawnTransmissionPass(spawnedPawns);
+            _pawnTransmissionProcessor.RunPawnTransmissionPass(spawnedPawns);
         }
 
         ContagionDiagnostics.EndTiming(ContagionPerformanceMetric.TransmissionPass, transmissionTiming);
     }
 
-    private void RunPawnTransmissionPass(IReadOnlyList<Pawn> spawnedPawns)
-    {
-        List<TransmissionSource> sources = GatherTransmissionSources(spawnedPawns);
-        if (sources.Count == 0)
-        {
-            return;
-        }
-
-        // Suppression depends only on (map, disease), so compute it once per disease for the pass.
-        Dictionary<HediffDef, float> suppressionByDisease = new Dictionary<HediffDef, float>();
-        for (int i = 0; i < sources.Count; i++)
-        {
-            TransmissionSource source = sources[i];
-            HediffDef diseaseDef = source.ResolvedProfile.DiseaseDef;
-            if (!suppressionByDisease.TryGetValue(diseaseDef, out float suppression))
-            {
-                suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, source.ResolvedProfile);
-                suppressionByDisease[diseaseDef] = suppression;
-            }
-
-            source.SuppressionFactor = suppression;
-        }
-
-        for (int sourceIndex = 0; sourceIndex < sources.Count; sourceIndex++)
-        {
-            TransmissionSource source = sources[sourceIndex];
-            for (int targetIndex = 0; targetIndex < spawnedPawns.Count; targetIndex++)
-            {
-                Pawn targetPawn = spawnedPawns[targetIndex];
-                if (targetPawn == source.Pawn)
-                {
-                    continue;
-                }
-
-                TryTransmit(source, targetPawn);
-            }
-        }
-    }
-
     public void NotifyVomitFilthCreated(Filth filth, Pawn sourcePawn)
     {
-        if (filth == null || sourcePawn == null || sourcePawn.Map != map)
-        {
-            return;
-        }
-
-        foreach (ResolvedTransmissionProfile resolvedProfile in ContagionDiseaseUtility.GetContagiousProfiles(sourcePawn))
-        {
-            if (!ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Fomite fomiteVector) || !fomiteVector.contaminatesVomit)
-            {
-                continue;
-            }
-
-            int index = _contaminatedVomitFilth.IndexOf(filth);
-            if (index >= 0)
-            {
-                _contaminatedVomitDiseases[index] = resolvedProfile.DiseaseDef;
-                _contaminatedVomitTicks[index] = Find.TickManager.TicksGame;
-            }
-            else
-            {
-                _contaminatedVomitFilth.Add(filth);
-                _contaminatedVomitDiseases.Add(resolvedProfile.DiseaseDef);
-                _contaminatedVomitTicks.Add(Find.TickManager.TicksGame);
-            }
-
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.VomitFilthContaminated);
-            ContagionDiagnostics.Trace($"Vomit contaminated: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap}.");
-            return;
-        }
-    }
-
-    private void RunEnvironmentalExposurePass(IReadOnlyList<Pawn> spawnedPawns)
-    {
-        List<EnvironmentalProfile> environmentalProfiles = GatherEnvironmentalProfiles();
-        if (environmentalProfiles.Count == 0)
-        {
-            return;
-        }
-
-        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
-
-        // Per-pass caches: positions are shared across pawns in the same cell (packed pens) and
-        // across profiles. The roof-edge scan and water-radius scan are O(r²) per call; caching
-        // by position amortises the cost across the herd.
-        Dictionary<IntVec3, int> roofEdgeCache = new Dictionary<IntVec3, int>();
-        Dictionary<IntVec3, float> waterProximityCache = new Dictionary<IntVec3, float>();
-
-        for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
-        {
-            Pawn pawn = spawnedPawns[pawnIndex];
-            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != map)
-            {
-                continue;
-            }
-
-            for (int profileIndex = 0; profileIndex < environmentalProfiles.Count; profileIndex++)
-            {
-                if (TryApplyEnvironmentalExposure(pawn, environmentalProfiles[profileIndex], transmissionMultiplier, roofEdgeCache, waterProximityCache))
-                {
-                    break;
-                }
-            }
-        }
-    }
-
-    private void RunFomiteExposurePass(IReadOnlyList<Pawn> spawnedPawns)
-    {
-        if (_contaminatedVomitFilth.Count == 0)
-        {
-            return;
-        }
-
-        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
-        Dictionary<HediffDef, float> suppressionByDisease = new Dictionary<HediffDef, float>();
-        for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
-        {
-            Pawn pawn = spawnedPawns[pawnIndex];
-            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != map)
-            {
-                continue;
-            }
-
-            for (int contaminationIndex = 0; contaminationIndex < _contaminatedVomitFilth.Count; contaminationIndex++)
-            {
-                Filth filth = _contaminatedVomitFilth[contaminationIndex];
-                if (filth == null || filth.Position != pawn.Position)
-                {
-                    continue;
-                }
-
-                if (!DiseaseProfileCache.TryGetResolvedProfile(_contaminatedVomitDiseases[contaminationIndex], out ResolvedTransmissionProfile resolvedProfile)
-                    || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Fomite fomiteVector))
-                {
-                    continue;
-                }
-
-                float potencyFactor = GetFomitePotencyFactor(_contaminatedVomitTicks[contaminationIndex], fomiteVector.potencyDecayPerHour);
-                if (potencyFactor <= MinFomitePotency)
-                {
-                    continue;
-                }
-
-                float suppression = 1f;
-                if (ContagionTransmissionUtility.IsSuppressionTarget(pawn))
-                {
-                    if (!suppressionByDisease.TryGetValue(resolvedProfile.DiseaseDef, out suppression))
-                    {
-                        suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile);
-                        suppressionByDisease[resolvedProfile.DiseaseDef] = suppression;
-                    }
-                }
-
-                ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteAttempted);
-                float chance = ContagionTransmissionUtility.BuildSeederChance(
-                    fomiteVector.baseChancePerContact * potencyFactor * suppression,
-                    pawn,
-                    resolvedProfile,
-                    map,
-                    transmissionMultiplier,
-                    out HediffDef _);
-                if (!Rand.Chance(Mathf.Clamp01(chance)))
-                {
-                    continue;
-                }
-
-                if (ContagionDiseaseUtility.TrySeedIncubation(
-                    pawn,
-                    resolvedProfile.DiseaseDef,
-                    resolvedProfile.PartsToAffect,
-                    ContagionDiagnosticOrigin.Spread,
-                    out HediffDef _))
-                {
-                    ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteSeeded);
-                    ContagionDiagnostics.Trace($"Fomite transmission: {resolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap} from vomit filth.");
-                    break;
-                }
-            }
-        }
-    }
-
-    private static List<TransmissionSource> GatherTransmissionSources(IReadOnlyList<Pawn> spawnedPawns)
-    {
-        List<TransmissionSource> sources = new List<TransmissionSource>();
-
-        for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
-        {
-            Pawn pawn = spawnedPawns[pawnIndex];
-            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.health?.hediffSet == null)
-            {
-                continue;
-            }
-
-            foreach (ResolvedTransmissionProfile resolvedProfile in ContagionDiseaseUtility.GetContagiousProfiles(pawn))
-            {
-                sources.Add(new TransmissionSource(pawn, resolvedProfile));
-            }
-        }
-
-        return sources;
-    }
-
-    private bool TryTransmit(TransmissionSource source, Pawn targetPawn)
-    {
-        if (targetPawn == null || targetPawn.Dead || !targetPawn.Spawned || targetPawn.Map != map)
-        {
-            return false;
-        }
-
-        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
-
-        for (int vectorIndex = 0; vectorIndex < source.ResolvedProfile.Profile.vectors.Count; vectorIndex++)
-        {
-            TransmissionVector vector = source.ResolvedProfile.Profile.vectors[vectorIndex];
-            if (vector is Vector_Airborne airborne && TryTransmitAirborne(source, targetPawn, airborne, transmissionMultiplier))
-            {
-                return true;
-            }
-
-            if (vector is Vector_Proximity proximity && TryTransmitProximity(source, targetPawn, proximity, transmissionMultiplier))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private bool TryApplyEnvironmentalExposure(
-        Pawn pawn,
-        EnvironmentalProfile environmentalProfile,
-        float transmissionMultiplier,
-        Dictionary<IntVec3, int> roofEdgeCache,
-        Dictionary<IntVec3, float> waterProximityCache)
-    {
-        if (!ContagionSeedingCoordinator.TryGetEnvironmentalSeedingContext(
-            this,
-            environmentalProfile.ResolvedProfile,
-            environmentalProfile.Seeder,
-            out PendingDiseaseEvent windowEvent,
-            out float seedingMultiplier))
-        {
-            return false;
-        }
-
-        ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalAttempted);
-        Room room = pawn.Position.GetRoom(map);
-        float ambientTemperature = GetAmbientTemperature(room);
-        float chance = environmentalProfile.Vector.baseChancePerCheck
-            * environmentalProfile.Seeder.baseChanceMultiplier
-            * environmentalProfile.BiomeCommonality
-            * seedingMultiplier;
-        chance *= GetEnvironmentalTemperatureFactor(ambientTemperature, environmentalProfile.Vector);
-        if (chance <= 0f)
-        {
-            return false;
-        }
-
-        chance *= GetEnvironmentalShelterFactor(pawn.Position, room, ambientTemperature, environmentalProfile.Vector, roofEdgeCache);
-        chance *= GetWaterProximityFactor(pawn.Position, environmentalProfile.Vector, waterProximityCache);
-        chance = ContagionTransmissionUtility.BuildSeederChance(
-            chance,
-            pawn,
-            environmentalProfile.ResolvedProfile,
-            map,
-            transmissionMultiplier,
-            out HediffDef _);
-        if (!Rand.Chance(Mathf.Clamp01(chance)))
-        {
-            return false;
-        }
-
-        bool seeded = ContagionDiseaseUtility.TrySeedIncubation(
-            pawn,
-            environmentalProfile.ResolvedProfile.DiseaseDef,
-            environmentalProfile.ResolvedProfile.PartsToAffect,
-            ContagionDiagnosticOrigin.Incidence,
-            out HediffDef _);
-        if (seeded)
-        {
-            ContagionSeedingCoordinator.NotifyEnvironmentalSeeded(this, environmentalProfile.ResolvedProfile, environmentalProfile.Seeder, windowEvent);
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalSeeded);
-            ContagionDiagnostics.Trace($"Environmental transmission: {environmentalProfile.ResolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap}.");
-        }
-
-        return seeded;
-    }
-
-    private bool TryTransmitAirborne(
-        TransmissionSource source,
-        Pawn targetPawn,
-        Vector_Airborne vector,
-        float transmissionMultiplier)
-    {
-        if (!source.Pawn.Position.InHorDistOf(targetPawn.Position, vector.maxRange))
-        {
-            return false;
-        }
-
-        ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneAttempted);
-        float distance = GetHorizontalDistance(source.Pawn.Position, targetPawn.Position);
-        bool sourceRoofed = map.roofGrid.Roofed(source.Pawn.Position);
-        bool targetRoofed = map.roofGrid.Roofed(targetPawn.Position);
-        bool hasLineOfSight = GenSight.LineOfSight(source.Pawn.Position, targetPawn.Position, map);
-        float enclosureFactor = sourceRoofed && targetRoofed ? 1f : vector.outdoorFactor;
-        float obstructionFactor = hasLineOfSight ? 1f : vector.obstructedFactor;
-        float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
-        float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn) ? source.SuppressionFactor : 1f;
-        if (!ContagionDeveloperDiagnosticsUtility.TryBuildAirborneBreakdown(
-            source.Pawn,
-            targetPawn,
-            source.ResolvedProfile,
-            vector,
-            map,
-            transmissionMultiplier,
-            distance,
-            GetDistanceFactor(distance, vector.distanceFalloffRate),
-            enclosureFactor,
-            obstructionFactor,
-            maskFactor,
-            suppressionFactor,
-            out ContagionSpreadBreakdown breakdown))
-        {
-            return false;
-        }
-
-        if (!Rand.Chance(Mathf.Clamp01(breakdown.FinalChance)))
-        {
-            return false;
-        }
-
-        bool seeded = ContagionDiseaseUtility.TrySeedIncubation(
-            targetPawn,
-            source.ResolvedProfile.DiseaseDef,
-            source.ResolvedProfile.PartsToAffect,
-            source.Pawn,
-            ContagionDiagnosticOrigin.Spread,
-            out HediffDef _);
-        if (seeded)
-        {
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneSeeded);
-            DeveloperRecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Airborne);
-        }
-
-        return seeded;
-    }
-
-    private bool TryTransmitProximity(
-        TransmissionSource source,
-        Pawn targetPawn,
-        Vector_Proximity vector,
-        float transmissionMultiplier)
-    {
-        if (!source.Pawn.Position.InHorDistOf(targetPawn.Position, vector.maxRange))
-        {
-            return false;
-        }
-
-        ContagionDiagnostics.Record(ContagionDiagnosticCounter.ProximityAttempted);
-        float distance = GetHorizontalDistance(source.Pawn.Position, targetPawn.Position);
-        Room sourceRoom = source.Pawn.Position.GetRoom(map);
-        Room targetRoom = targetPawn.Position.GetRoom(map);
-        float outdoorFactor = IsOutdoors(sourceRoom) || IsOutdoors(targetRoom) ? vector.outdoorFactor : 1f;
-        float cleanlinessFactor = GetLocalCleanlinessFactor(targetPawn.Position, targetRoom, vector.cleanlinessImpact, vector.outdoorFilthRadius);
-        float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
-        float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn) ? source.SuppressionFactor : 1f;
-        if (!ContagionDeveloperDiagnosticsUtility.TryBuildProximityBreakdown(
-            source.Pawn,
-            targetPawn,
-            source.ResolvedProfile,
-            vector,
-            map,
-            transmissionMultiplier,
-            distance,
-            GetDistanceFactor(distance, vector.distanceFalloffRate),
-            outdoorFactor,
-            cleanlinessFactor,
-            maskFactor,
-            suppressionFactor,
-            out ContagionSpreadBreakdown breakdown))
-        {
-            return false;
-        }
-
-        if (!Rand.Chance(Mathf.Clamp01(breakdown.FinalChance)))
-        {
-            return false;
-        }
-
-        bool seeded = ContagionDiseaseUtility.TrySeedIncubation(
-            targetPawn,
-            source.ResolvedProfile.DiseaseDef,
-            source.ResolvedProfile.PartsToAffect,
-            source.Pawn,
-            ContagionDiagnosticOrigin.Spread,
-            out HediffDef _);
-        if (seeded)
-        {
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ProximitySeeded);
-            DeveloperRecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Proximity);
-        }
-
-        return seeded;
-    }
-
-    private List<EnvironmentalProfile> GatherEnvironmentalProfiles()
-    {
-        List<EnvironmentalProfile> environmentalProfiles = new List<EnvironmentalProfile>();
-
-        foreach (ResolvedTransmissionProfile resolvedProfile in DiseaseProfileCache.AllProfiles)
-        {
-            if (!TryGetEnvironmentalSettings(resolvedProfile.Profile, out Vector_Environmental vector, out Seeder_Environmental seeder))
-            {
-                continue;
-            }
-
-            float biomeCommonality = GetBiomeDiseaseCommonality(resolvedProfile);
-            if (biomeCommonality <= 0f)
-            {
-                continue;
-            }
-
-            environmentalProfiles.Add(new EnvironmentalProfile(resolvedProfile, vector, seeder, biomeCommonality));
-        }
-
-        return environmentalProfiles;
-    }
-
-    private float GetBiomeDiseaseCommonality(ResolvedTransmissionProfile resolvedProfile)
-    {
-        if (resolvedProfile?.LinkedIncidentDef == null || map?.Biome == null)
-        {
-            return 0f;
-        }
-
-        return Mathf.Max(0f, map.Biome.CommonalityOfDisease(resolvedProfile.LinkedIncidentDef));
-    }
-
-    private static bool TryGetEnvironmentalSettings(
-        TransmissionProfile profile,
-        out Vector_Environmental vector,
-        out Seeder_Environmental seeder)
-    {
-        vector = null;
-        seeder = null;
-
-        if (profile?.vectors == null || profile.seeders == null)
-        {
-            return false;
-        }
-
-        for (int i = 0; i < profile.vectors.Count; i++)
-        {
-            if (profile.vectors[i] is Vector_Environmental environmentalVector)
-            {
-                vector = environmentalVector;
-                break;
-            }
-        }
-
-        if (vector == null)
-        {
-            return false;
-        }
-
-        for (int i = 0; i < profile.seeders.Count; i++)
-        {
-            if (profile.seeders[i] is Seeder_Environmental environmentalSeeder)
-            {
-                seeder = environmentalSeeder;
-                break;
-            }
-        }
-
-        return seeder != null;
-    }
-
-    private static float GetHorizontalDistance(IntVec3 first, IntVec3 second)
-    {
-        float deltaX = first.x - second.x;
-        float deltaZ = first.z - second.z;
-        return Mathf.Sqrt(deltaX * deltaX + deltaZ * deltaZ);
-    }
-
-    private static float GetDistanceFactor(float distance, float distanceFalloffRate)
-    {
-        return Mathf.Exp(-Mathf.Max(0.01f, distanceFalloffRate) * distance);
-    }
-
-    private float GetFomitePotencyFactor(int contaminationTick, float potencyDecayPerHour)
-    {
-        float elapsedHours = Mathf.Max(0f, (Find.TickManager.TicksGame - contaminationTick) / (float)TicksPerHour);
-        return Mathf.Exp(-Mathf.Max(0f, potencyDecayPerHour) * elapsedHours);
-    }
-
-    private void PruneDeveloperTransmissionTraces()
-    {
-        if (_developerTransmissionTraces.Count == 0)
-        {
-            return;
-        }
-
-        _developerTransmissionTraces.RemoveAll(trace => trace == null || !trace.IsValidFor(map));
-    }
-
-    private void CleanupStaleSlaughterFlags()
-    {
-        int currentTick = Find.TickManager.TicksGame;
-
-        // Remove entries for any pawn whose slaughter was cancelled or never completed.
-        // Normal flow: flag is consumed in the same frame the corpse spawns; this only
-        // fires for entries that leaked (designation cancelled, pawn escaped, etc.).
-        if (_forceRotPawnIds.Count > 0)
-        {
-            List<int> toRemove = null;
-            foreach (KeyValuePair<int, int> entry in _forceRotPawnIds)
-            {
-                if (currentTick - entry.Value > SlaughterFlagMaxAgeTicks)
-                {
-                    toRemove ??= new List<int>();
-                    toRemove.Add(entry.Key);
-                }
-            }
-
-            if (toRemove != null)
-            {
-                foreach (int id in toRemove)
-                {
-                    _forceRotPawnIds.Remove(id);
-                }
-            }
-        }
-
-        if (_butcherBypassPawnIds.Count > 0)
-        {
-            List<int> toRemove = null;
-            foreach (KeyValuePair<int, int> entry in _butcherBypassPawnIds)
-            {
-                if (currentTick - entry.Value > SlaughterFlagMaxAgeTicks)
-                {
-                    toRemove ??= new List<int>();
-                    toRemove.Add(entry.Key);
-                }
-            }
-
-            if (toRemove != null)
-            {
-                foreach (int id in toRemove)
-                {
-                    _butcherBypassPawnIds.Remove(id);
-                }
-            }
-        }
-    }
-
-    private void CleanupContaminatedVomit()
-    {
-        for (int i = _contaminatedVomitFilth.Count - 1; i >= 0; i--)
-        {
-            Filth filth = _contaminatedVomitFilth[i];
-            HediffDef diseaseDef = i < _contaminatedVomitDiseases.Count ? _contaminatedVomitDiseases[i] : null;
-            int contaminationTick = i < _contaminatedVomitTicks.Count ? _contaminatedVomitTicks[i] : 0;
-            bool remove = filth == null || filth.Destroyed || !filth.Spawned || filth.Map != map || diseaseDef == null;
-
-            if (!remove
-                && (!DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile)
-                    || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Fomite fomiteVector)
-                    || GetFomitePotencyFactor(contaminationTick, fomiteVector.potencyDecayPerHour) <= MinFomitePotency))
-            {
-                remove = true;
-            }
-
-            if (!remove)
-            {
-                continue;
-            }
-
-            _contaminatedVomitFilth.RemoveAt(i);
-
-            if (i < _contaminatedVomitDiseases.Count)
-            {
-                _contaminatedVomitDiseases.RemoveAt(i);
-            }
-
-            if (i < _contaminatedVomitTicks.Count)
-            {
-                _contaminatedVomitTicks.RemoveAt(i);
-            }
-        }
-    }
-
-    private float GetAmbientTemperature(Room room)
-    {
-        if (room == null || room.UsesOutdoorTemperature)
-        {
-            return map.mapTemperature.OutdoorTemp;
-        }
-
-        return room.Temperature;
-    }
-
-    private static float GetEnvironmentalTemperatureFactor(float ambientTemperature, Vector_Environmental vector)
-    {
-        if (ambientTemperature <= vector.minTemperature)
-        {
-            return 0f;
-        }
-
-        if (ambientTemperature >= vector.peakTemperature)
-        {
-            return 1f;
-        }
-
-        return Mathf.InverseLerp(vector.minTemperature, vector.peakTemperature, ambientTemperature);
-    }
-
-    private float GetEnvironmentalShelterFactor(
-        IntVec3 position,
-        Room room,
-        float ambientTemperature,
-        Vector_Environmental vector,
-        Dictionary<IntVec3, int> roofEdgeCache)
-    {
-        if (room == null || room.UsesOutdoorTemperature || room.PsychologicallyOutdoors)
-        {
-            return 1f;
-        }
-
-        if (!roofEdgeCache.TryGetValue(position, out int cellsFromUnroofed))
-        {
-            cellsFromUnroofed = GetCellsFromUnroofed(position, 30);
-            roofEdgeCache[position] = cellsFromUnroofed;
-        }
-
-        float shelterFactor = Mathf.Clamp01(1f - vector.indoorReductionPerCellFromEdge * Mathf.Max(1, cellsFromUnroofed));
-        if (ambientTemperature < vector.coolRoomThreshold)
-        {
-            shelterFactor *= Mathf.InverseLerp(vector.minTemperature, vector.coolRoomThreshold, ambientTemperature);
-        }
-
-        return shelterFactor;
+        _vomitFomiteTracker.NotifyVomitFilthCreated(filth, sourcePawn);
     }
 
     private void RunGeneralSeederPass(IReadOnlyList<Pawn> spawnedPawns)
     {
         ContagionSeedingCoordinator.RunGeneralSeeding(this, spawnedPawns);
-    }
-
-    private int GetCellsFromUnroofed(IntVec3 center, int maxRadius)
-    {
-        if (!center.InBounds(map) || !map.roofGrid.Roofed(center))
-        {
-            return 0;
-        }
-
-        for (int radius = 1; radius <= maxRadius; radius++)
-        {
-            for (int x = center.x - radius; x <= center.x + radius; x++)
-            {
-                for (int z = center.z - radius; z <= center.z + radius; z++)
-                {
-                    if (x != center.x - radius && x != center.x + radius && z != center.z - radius && z != center.z + radius)
-                    {
-                        continue;
-                    }
-
-                    IntVec3 candidate = new IntVec3(x, 0, z);
-                    if (candidate.InBounds(map) && !map.roofGrid.Roofed(candidate))
-                    {
-                        return radius;
-                    }
-                }
-            }
-        }
-
-        return maxRadius;
-    }
-
-    private float GetWaterProximityFactor(IntVec3 center, Vector_Environmental vector, Dictionary<IntVec3, float> cache)
-    {
-        if (vector.waterProximityRadius <= 0 || vector.waterProximityWeight <= 0f)
-        {
-            return 1f;
-        }
-
-        if (cache.TryGetValue(center, out float cached))
-        {
-            return cached;
-        }
-
-        int nearbyWaterCells = 0;
-        int radius = vector.waterProximityRadius;
-        for (int x = center.x - radius; x <= center.x + radius; x++)
-        {
-            for (int z = center.z - radius; z <= center.z + radius; z++)
-            {
-                IntVec3 candidate = new IntVec3(x, 0, z);
-                if (!candidate.InBounds(map) || !center.InHorDistOf(candidate, radius))
-                {
-                    continue;
-                }
-
-                // BaseTerrainAt to avoid counting temporary overlays (flood water, thin ice)
-                // as underlying water — as documented in CLAUDE.md hard rule 11.
-                TerrainDef terrain = map.terrainGrid.BaseTerrainAt(candidate);
-                if (terrain != null && terrain.IsWater)
-                {
-                    nearbyWaterCells++;
-                }
-            }
-        }
-
-        float result = Mathf.Clamp(1f + nearbyWaterCells * vector.waterProximityWeight, 1f, MaxEnvironmentalWaterFactor);
-        cache[center] = result;
-        return result;
-    }
-
-    private static bool IsOutdoors(Room room)
-    {
-        return room == null || room.PsychologicallyOutdoors;
-    }
-
-    private float GetLocalCleanlinessFactor(IntVec3 position, Room room, float cleanlinessImpact, int outdoorFilthRadius)
-    {
-        if (cleanlinessImpact <= 0f)
-        {
-            return 1f;
-        }
-
-        if (room == null || room.PsychologicallyOutdoors)
-        {
-            return GetOutdoorFilthCleanlinessFactor(position, cleanlinessImpact, outdoorFilthRadius);
-        }
-
-        float cleanliness = room.GetStat(RoomStatDefOf.Cleanliness);
-        return Mathf.Clamp(1f - cleanliness * cleanlinessImpact, MinCleanlinessFactor, MaxCleanlinessFactor);
-    }
-
-    private float GetOutdoorFilthCleanlinessFactor(IntVec3 center, float cleanlinessImpact, int outdoorFilthRadius)
-    {
-        if (outdoorFilthRadius <= 0)
-        {
-            return 1f;
-        }
-
-        int filthCount = 0;
-        for (int x = center.x - outdoorFilthRadius; x <= center.x + outdoorFilthRadius; x++)
-        {
-            for (int z = center.z - outdoorFilthRadius; z <= center.z + outdoorFilthRadius; z++)
-            {
-                IntVec3 candidate = new IntVec3(x, 0, z);
-                if (!candidate.InBounds(map) || !center.InHorDistOf(candidate, outdoorFilthRadius))
-                {
-                    continue;
-                }
-
-                List<Thing> things = candidate.GetThingList(map);
-                for (int i = 0; i < things.Count; i++)
-                {
-                    if (things[i] is Filth)
-                    {
-                        filthCount++;
-                    }
-                }
-            }
-        }
-
-        float area = Mathf.Max(1f, (2 * outdoorFilthRadius + 1) * (2 * outdoorFilthRadius + 1));
-        float filthDensity = filthCount / area;
-        return Mathf.Clamp(1f + filthDensity * cleanlinessImpact, MinCleanlinessFactor, MaxCleanlinessFactor);
-    }
-
-    private static string GetSeederCooldownKey(TransmissionSeeder seeder)
-    {
-        return seeder.GetType().FullName;
     }
 }

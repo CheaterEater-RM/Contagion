@@ -558,7 +558,7 @@ The existing diagnostics counters remain the lightweight default. A separate **D
 - The mode is **developer-only**. It is meant for testers running RimWorld with `Prefs.DevMode` on, not for normal players.
 - If the enum changes, it must be **append-only**. `ContagionDiagnosticsMode` is persisted by ordinal value, so `Developer` is added at the end rather than replacing or reordering existing values.
 - Interactive diagnostic state is **runtime-only**. No queued test action, selected disease override, hovered-target cache, or temporary UI selection should be scribed into saves.
-- Runtime ownership should still be map-scoped, not static. A Contagion map component can own developer traces and queued one-shot commands without exposing them to `ExposeData()`.
+- Runtime ownership should still be map-scoped, not static. A Contagion map component remains the save/load and public façade boundary, while delegating developer controls, runtime-only one-shot commands, and transmission processors to internal helpers so those concerns do not collapse back into one monolithic class.
 
 ### Mode 2 director forcing
 
