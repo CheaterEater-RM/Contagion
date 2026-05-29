@@ -18,9 +18,32 @@ public sealed class Comp_ContaminatedFood : ThingComp
 
     private const float MaxCleanlinessFactor = 3f;
 
+    private const int TicksPerDay = 60000;
+
     private HediffDef _contaminatedDiseaseDef;
 
     private float _contaminationFactor = 1f;
+
+    private int _contaminationTick = -1;
+
+    public bool IsContaminated => _contaminatedDiseaseDef != null;
+
+    public HediffDef ContaminatedDiseaseDef => _contaminatedDiseaseDef;
+
+    public float ContaminationFactor => _contaminationFactor;
+
+    // Called by the butchering postfix to stamp contamination from an infected animal's products.
+    public void SetContamination(HediffDef diseaseDef, float factor)
+    {
+        if (diseaseDef == null || factor <= 0f)
+        {
+            return;
+        }
+
+        _contaminatedDiseaseDef = diseaseDef;
+        _contaminationFactor = Mathf.Clamp(factor, MinCleanlinessFactor, MaxCleanlinessFactor);
+        _contaminationTick = Find.TickManager.TicksGame;
+    }
 
     public override void Notify_RecipeProduced(Pawn pawn)
     {
@@ -47,6 +70,7 @@ public sealed class Comp_ContaminatedFood : ThingComp
 
             _contaminatedDiseaseDef = resolvedProfile.DiseaseDef;
             _contaminationFactor = sourceInfectivity * GetCleanlinessFactor(pawn.GetRoom(), foodborneVector.cleanlinessImpact);
+            _contaminationTick = Find.TickManager.TicksGame;
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
             ContagionDiagnostics.Trace($"Meal contaminated: {_contaminatedDiseaseDef.defName} by {pawn.LabelShortCap}.");
             return;
@@ -106,6 +130,12 @@ public sealed class Comp_ContaminatedFood : ThingComp
             return;
         }
 
+        if (IsContaminationExpired(foodborneVector))
+        {
+            ClearContamination();
+            return;
+        }
+
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneAttempted);
         // No spread suppression here: foodborne infection comes from a contaminated-food source, not
         // herd transmission between pawns, so it does not scale with the colony infection fraction.
@@ -137,6 +167,7 @@ public sealed class Comp_ContaminatedFood : ThingComp
         base.PostExposeData();
         Scribe_Defs.Look(ref _contaminatedDiseaseDef, "contaminatedDiseaseDef");
         Scribe_Values.Look(ref _contaminationFactor, "contaminationFactor", 1f);
+        Scribe_Values.Look(ref _contaminationTick, "contaminationTick", -1);
         _contaminationFactor = Mathf.Clamp(_contaminationFactor, MinCleanlinessFactor, MaxCleanlinessFactor);
     }
 
@@ -144,6 +175,18 @@ public sealed class Comp_ContaminatedFood : ThingComp
     {
         _contaminatedDiseaseDef = null;
         _contaminationFactor = 1f;
+        _contaminationTick = -1;
+    }
+
+    private bool IsContaminationExpired(Vector_Foodborne vector)
+    {
+        if (vector.contaminationExpiryDays <= 0f || _contaminationTick < 0)
+        {
+            return false;
+        }
+
+        int expiryTicks = Mathf.RoundToInt(vector.contaminationExpiryDays * TicksPerDay);
+        return Find.TickManager.TicksGame - _contaminationTick > expiryTicks;
     }
 
     private static float GetCleanlinessFactor(Room room, float cleanlinessImpact)

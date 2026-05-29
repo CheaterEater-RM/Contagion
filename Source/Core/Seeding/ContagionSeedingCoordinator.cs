@@ -1267,7 +1267,26 @@ public static class ContagionSeedingCoordinator
 
     private static bool UsesEnvironmentalSeedingOnly(TransmissionProfile profile)
     {
-        return GetSeeder<Seeder_Storyteller>(profile) == null && GetSeeder<Seeder_Environmental>(profile) != null;
+        // True when the disease resolves only through environmental exposure — no arrival
+        // carriers and no animal-linked handler seeding. Storyteller and acausal seeders are
+        // compatible: Storyteller is the Mode 1 trigger that opens the window, and acausal
+        // is the isolated-colony backstop. Neither implies a "carrier arrives" resolution.
+        if (GetSeeder<Seeder_Environmental>(profile) == null)
+        {
+            return false;
+        }
+
+        if (GetSeeder<Seeder_Arrival>(profile) != null)
+        {
+            return false;
+        }
+
+        if (GetSeeder<Seeder_AnimalLinked>(profile) != null)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static TSeeder GetSeeder<TSeeder>(TransmissionProfile profile)

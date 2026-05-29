@@ -71,6 +71,11 @@ public sealed class TransmissionProfile : DefModExtension
 
     public float corpseInfectivityDecayPerDay = 0.5f;
 
+    // When true, infected animals display a visible "sick" signal hediff that handlers can notice
+    // (Animals skill roll) and doctors can diagnose (Medical skill roll). Used by gut worms and plague
+    // to make animal carriers legible without requiring the player to inspect every animal's health tab.
+    public bool showsSickSignal;
+
     public float carrierChance;
 
     public HediffDef carrierHediffDef;
@@ -240,6 +245,11 @@ public sealed class Vector_Foodborne : TransmissionVector
     public float baseChancePerMeal = 0.08f;
 
     public float cleanlinessImpact = 1f;
+
+    // Contamination baked into Comp_ContaminatedFood at production time expires after this many
+    // days, preventing very old preserved food from triggering new outbreaks.
+    // 0 = no expiry.
+    public float contaminationExpiryDays = 30f;
 }
 
 public sealed class Vector_Lovin : TransmissionVector

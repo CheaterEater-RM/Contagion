@@ -45,6 +45,10 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private List<ContagionTransmissionTrace> _developerTransmissionTraces = new List<ContagionTransmissionTrace>();
 
+    // Runtime-only (not persisted): consumed by Patch_Corpse_SpawnSetup within the same frame as the kill.
+    private readonly HashSet<int> _forceRotPawnIds = new HashSet<int>();
+    private readonly HashSet<int> _butcherBypassPawnIds = new HashSet<int>();
+
     private bool _developerTraceCaptureEnabled = true;
 
     private Pawn _developerHoverSourcePawn;
@@ -228,6 +232,14 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     {
         _developerForcedArrivalDisease = null;
     }
+
+    public void ArmForceRot(int pawnId) => _forceRotPawnIds.Add(pawnId);
+
+    public bool ConsumeForceRot(int pawnId) => _forceRotPawnIds.Remove(pawnId);
+
+    public void ArmButcherBypass(int pawnId) => _butcherBypassPawnIds.Add(pawnId);
+
+    public bool ConsumeButcherBypass(int pawnId) => _butcherBypassPawnIds.Remove(pawnId);
 
     public void DeveloperRecordTransmissionTrace(
         Pawn sourcePawn,

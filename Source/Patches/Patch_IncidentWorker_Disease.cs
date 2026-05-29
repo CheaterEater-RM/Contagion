@@ -56,7 +56,28 @@ internal static class Patch_IncidentWorker_Disease_Helper
 
     public static bool UsesEnvironmentalSeedingOnly(TransmissionProfile profile)
     {
-        return GetStorytellerSeeder(profile) == null && GetEnvironmentalSeeder(profile) != null;
+        // Mirror of ContagionSeedingCoordinator.UsesEnvironmentalSeedingOnly: environmental window
+        // path is used when no arrival or animal-linked seeders are present, regardless of whether
+        // a Seeder_Storyteller exists (it just triggers the window in Mode 1).
+        if (GetEnvironmentalSeeder(profile) == null)
+        {
+            return false;
+        }
+
+        if (profile?.seeders == null)
+        {
+            return true;
+        }
+
+        for (int i = 0; i < profile.seeders.Count; i++)
+        {
+            if (profile.seeders[i] is Seeder_Arrival || profile.seeders[i] is Seeder_AnimalLinked)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 
