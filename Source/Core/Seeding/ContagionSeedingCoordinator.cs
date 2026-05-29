@@ -1265,7 +1265,7 @@ public static class ContagionSeedingCoordinator
         return order;
     }
 
-    private static bool UsesEnvironmentalSeedingOnly(TransmissionProfile profile)
+    internal static bool UsesEnvironmentalSeedingOnly(TransmissionProfile profile)
     {
         // True when the disease resolves only through environmental exposure — no arrival
         // carriers and no animal-linked handler seeding. Storyteller and acausal seeders are
@@ -1292,19 +1292,7 @@ public static class ContagionSeedingCoordinator
     private static TSeeder GetSeeder<TSeeder>(TransmissionProfile profile)
         where TSeeder : TransmissionSeeder
     {
-        if (profile?.seeders == null)
-        {
-            return null;
-        }
-
-        for (int i = 0; i < profile.seeders.Count; i++)
-        {
-            if (profile.seeders[i] is TSeeder typedSeeder)
-            {
-                return typedSeeder;
-            }
-        }
-
-        return null;
+        ContagionDiseaseUtility.TryGetSeeder(profile, out TSeeder seeder);
+        return seeder;
     }
 }

@@ -403,6 +403,28 @@ public static class ContagionDiseaseUtility
         return false;
     }
 
+    public static bool TryGetSeeder<TSeeder>(TransmissionProfile profile, out TSeeder seeder)
+        where TSeeder : TransmissionSeeder
+    {
+        seeder = null;
+
+        if (profile?.seeders == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < profile.seeders.Count; i++)
+        {
+            if (profile.seeders[i] is TSeeder typedSeeder)
+            {
+                seeder = typedSeeder;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static int GetIncubationDurationTicks(TransmissionProfile profile)
     {
         float multiplier = Contagion_Mod.Settings?.incubationLengthMultiplier ?? 1f;

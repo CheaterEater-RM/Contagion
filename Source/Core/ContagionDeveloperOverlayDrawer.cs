@@ -13,10 +13,6 @@ public static class ContagionDeveloperOverlayDrawer
 
     private const float MinVisibleNominalChance = 0.00005f;
 
-    private const float MinCleanlinessFactor = 0.1f;
-
-    private const float MaxCleanlinessFactor = 3f;
-
     private static readonly Color HoverLineColor = new Color(0.15f, 0.92f, 1f, 0.82f);
 
     private static readonly Color TraceAirborneColor = new Color(0.18f, 0.82f, 1f, 0.72f);
@@ -130,9 +126,9 @@ public static class ContagionDeveloperOverlayDrawer
                 if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Airborne airborne)
                     && sourcePawn.Position.InHorDistOf(cell, airborne.maxRange))
                 {
-                    float distance = GetHorizontalDistance(sourcePawn.Position, cell);
+                    float distance = ContagionTransmissionUtility.GetHorizontalDistance(sourcePawn.Position, cell);
                     bool targetRoofed = map.roofGrid.Roofed(cell);
-                    float distanceFactor = GetDistanceFactor(distance, airborne.distanceFalloffRate);
+                    float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(distance, airborne.distanceFalloffRate);
                     float enclosureFactor = sourceRoofed && targetRoofed ? 1f : airborne.outdoorFactor;
                     float obstructionFactor = GenSight.LineOfSight(sourcePawn.Position, cell, map) ? 1f : airborne.obstructedFactor;
                     ContagionDeveloperDiagnosticsUtility.TryBuildNominalAirborneBreakdown(
@@ -155,11 +151,14 @@ public static class ContagionDeveloperOverlayDrawer
                 if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Proximity proximity)
                     && sourcePawn.Position.InHorDistOf(cell, proximity.maxRange))
                 {
-                    float distance = GetHorizontalDistance(sourcePawn.Position, cell);
+                    float distance = ContagionTransmissionUtility.GetHorizontalDistance(sourcePawn.Position, cell);
                     Room targetRoom = cell.GetRoom(map);
-                    float distanceFactor = GetDistanceFactor(distance, proximity.distanceFalloffRate);
-                    float outdoorFactor = IsOutdoors(sourceRoom) || IsOutdoors(targetRoom) ? proximity.outdoorFactor : 1f;
-                    float cleanlinessFactor = GetLocalCleanlinessFactor(map, cell, targetRoom, proximity.cleanlinessImpact, proximity.outdoorFilthRadius);
+                    float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(distance, proximity.distanceFalloffRate);
+                    float outdoorFactor = ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
+                        ? proximity.outdoorFactor
+                        : 1f;
+                    float cleanlinessFactor = ContagionTransmissionUtility.GetLocalCleanlinessFactor(
+                        cell, targetRoom, map, proximity.cleanlinessImpact, proximity.outdoorFilthRadius);
                     ContagionDeveloperDiagnosticsUtility.TryBuildNominalProximityBreakdown(
                         sourcePawn,
                         resolvedProfile,
@@ -259,18 +258,6 @@ public static class ContagionDeveloperOverlayDrawer
             0);
     }
 
-    private static float GetHorizontalDistance(IntVec3 first, IntVec3 second)
-    {
-        float deltaX = first.x - second.x;
-        float deltaZ = first.z - second.z;
-        return Mathf.Sqrt(deltaX * deltaX + deltaZ * deltaZ);
-    }
-
-    private static float GetDistanceFactor(float distance, float distanceFalloffRate)
-    {
-        return Mathf.Exp(-Mathf.Max(0.01f, distanceFalloffRate) * distance);
-    }
-
     private static float GetDisplayStrength(float chance, float strongestChance)
     {
         if (chance <= 0f || strongestChance <= 0f)
@@ -280,61 +267,6 @@ public static class ContagionDeveloperOverlayDrawer
 
         float normalizedChance = Mathf.Clamp01(chance / strongestChance);
         return Mathf.Pow(normalizedChance, 0.65f);
-    }
-
-    private static bool IsOutdoors(Room room)
-    {
-        return room == null || room.PsychologicallyOutdoors;
-    }
-
-    private static float GetLocalCleanlinessFactor(Map map, IntVec3 position, Room room, float cleanlinessImpact, int outdoorFilthRadius)
-    {
-        if (cleanlinessImpact <= 0f)
-        {
-            return 1f;
-        }
-
-        if (room == null || room.PsychologicallyOutdoors)
-        {
-            return GetOutdoorFilthCleanlinessFactor(map, position, cleanlinessImpact, outdoorFilthRadius);
-        }
-
-        float cleanliness = room.GetStat(RoomStatDefOf.Cleanliness);
-        return Mathf.Clamp(1f - cleanliness * cleanlinessImpact, MinCleanlinessFactor, MaxCleanlinessFactor);
-    }
-
-    private static float GetOutdoorFilthCleanlinessFactor(Map map, IntVec3 center, float cleanlinessImpact, int outdoorFilthRadius)
-    {
-        if (map == null || outdoorFilthRadius <= 0)
-        {
-            return 1f;
-        }
-
-        int filthCount = 0;
-        for (int x = center.x - outdoorFilthRadius; x <= center.x + outdoorFilthRadius; x++)
-        {
-            for (int z = center.z - outdoorFilthRadius; z <= center.z + outdoorFilthRadius; z++)
-            {
-                IntVec3 candidate = new IntVec3(x, 0, z);
-                if (!candidate.InBounds(map) || !center.InHorDistOf(candidate, outdoorFilthRadius))
-                {
-                    continue;
-                }
-
-                List<Thing> things = candidate.GetThingList(map);
-                for (int i = 0; i < things.Count; i++)
-                {
-                    if (things[i] is Filth)
-                    {
-                        filthCount++;
-                    }
-                }
-            }
-        }
-
-        float area = Mathf.Max(1f, (2 * outdoorFilthRadius + 1) * (2 * outdoorFilthRadius + 1));
-        float filthDensity = filthCount / area;
-        return Mathf.Clamp(1f + filthDensity * cleanlinessImpact, MinCleanlinessFactor, MaxCleanlinessFactor);
     }
 
     private static Color GetTraceColor(ContagionDebugVectorKind vectorKind)

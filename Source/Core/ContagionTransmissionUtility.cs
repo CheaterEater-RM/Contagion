@@ -348,6 +348,77 @@ public static class ContagionTransmissionUtility
         return product;
     }
 
+    public static float GetHorizontalDistance(IntVec3 first, IntVec3 second)
+    {
+        float deltaX = first.x - second.x;
+        float deltaZ = first.z - second.z;
+        return Mathf.Sqrt(deltaX * deltaX + deltaZ * deltaZ);
+    }
+
+    public static float GetDistanceFactor(float distance, float distanceFalloffRate)
+    {
+        return Mathf.Exp(-Mathf.Max(0.01f, distanceFalloffRate) * distance);
+    }
+
+    public static bool IsOutdoors(Room room)
+    {
+        return room == null || room.PsychologicallyOutdoors;
+    }
+
+    public static float GetLocalCleanlinessFactor(IntVec3 position, Room room, Map map, float cleanlinessImpact, int outdoorFilthRadius)
+    {
+        if (cleanlinessImpact <= 0f)
+        {
+            return 1f;
+        }
+
+        if (room == null || room.PsychologicallyOutdoors)
+        {
+            return GetOutdoorFilthCleanlinessFactor(position, map, cleanlinessImpact, outdoorFilthRadius);
+        }
+
+        float cleanliness = room.GetStat(RoomStatDefOf.Cleanliness);
+        return Mathf.Clamp(1f - cleanliness * cleanlinessImpact, MinCleanlinessFactor, MaxCleanlinessFactor);
+    }
+
+    private const float MinCleanlinessFactor = 0.1f;
+
+    private const float MaxCleanlinessFactor = 3f;
+
+    private static float GetOutdoorFilthCleanlinessFactor(IntVec3 center, Map map, float cleanlinessImpact, int outdoorFilthRadius)
+    {
+        if (map == null || outdoorFilthRadius <= 0)
+        {
+            return 1f;
+        }
+
+        int filthCount = 0;
+        for (int x = center.x - outdoorFilthRadius; x <= center.x + outdoorFilthRadius; x++)
+        {
+            for (int z = center.z - outdoorFilthRadius; z <= center.z + outdoorFilthRadius; z++)
+            {
+                IntVec3 candidate = new IntVec3(x, 0, z);
+                if (!candidate.InBounds(map) || !center.InHorDistOf(candidate, outdoorFilthRadius))
+                {
+                    continue;
+                }
+
+                List<Thing> things = candidate.GetThingList(map);
+                for (int i = 0; i < things.Count; i++)
+                {
+                    if (things[i] is Filth)
+                    {
+                        filthCount++;
+                    }
+                }
+            }
+        }
+
+        float area = Mathf.Max(1f, (2 * outdoorFilthRadius + 1) * (2 * outdoorFilthRadius + 1));
+        float filthDensity = filthCount / area;
+        return Mathf.Clamp(1f + filthDensity * cleanlinessImpact, MinCleanlinessFactor, MaxCleanlinessFactor);
+    }
+
     private static SimpleCurve CreateDefaultActiveInfectivityCurve()
     {
         SimpleCurve curve = new SimpleCurve();

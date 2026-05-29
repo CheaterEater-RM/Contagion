@@ -7,10 +7,6 @@ namespace Contagion;
 
 internal sealed class ContagionPawnTransmissionProcessor
 {
-    private const float MinCleanlinessFactor = 0.1f;
-
-    private const float MaxCleanlinessFactor = 3f;
-
     private readonly Map _map;
 
     private readonly ContagionMapDeveloperDiagnosticsController _developerDiagnosticsController;
@@ -133,7 +129,7 @@ internal sealed class ContagionPawnTransmissionProcessor
         }
 
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneAttempted);
-        float distance = GetHorizontalDistance(source.Pawn.Position, targetPawn.Position);
+        float distance = ContagionTransmissionUtility.GetHorizontalDistance(source.Pawn.Position, targetPawn.Position);
         bool sourceRoofed = _map.roofGrid.Roofed(source.Pawn.Position);
         bool targetRoofed = _map.roofGrid.Roofed(targetPawn.Position);
         bool hasLineOfSight = GenSight.LineOfSight(source.Pawn.Position, targetPawn.Position, _map);
@@ -149,7 +145,7 @@ internal sealed class ContagionPawnTransmissionProcessor
             _map,
             transmissionMultiplier,
             distance,
-            GetDistanceFactor(distance, vector.distanceFalloffRate),
+            ContagionTransmissionUtility.GetDistanceFactor(distance, vector.distanceFalloffRate),
             enclosureFactor,
             obstructionFactor,
             maskFactor,
@@ -192,11 +188,14 @@ internal sealed class ContagionPawnTransmissionProcessor
         }
 
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.ProximityAttempted);
-        float distance = GetHorizontalDistance(source.Pawn.Position, targetPawn.Position);
+        float distance = ContagionTransmissionUtility.GetHorizontalDistance(source.Pawn.Position, targetPawn.Position);
         Room sourceRoom = source.Pawn.Position.GetRoom(_map);
         Room targetRoom = targetPawn.Position.GetRoom(_map);
-        float outdoorFactor = IsOutdoors(sourceRoom) || IsOutdoors(targetRoom) ? vector.outdoorFactor : 1f;
-        float cleanlinessFactor = GetLocalCleanlinessFactor(targetPawn.Position, targetRoom, vector.cleanlinessImpact, vector.outdoorFilthRadius);
+        float outdoorFactor = ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
+            ? vector.outdoorFactor
+            : 1f;
+        float cleanlinessFactor = ContagionTransmissionUtility.GetLocalCleanlinessFactor(
+            targetPawn.Position, targetRoom, _map, vector.cleanlinessImpact, vector.outdoorFilthRadius);
         float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
         float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn) ? source.SuppressionFactor : 1f;
         if (!ContagionDeveloperDiagnosticsUtility.TryBuildProximityBreakdown(
@@ -207,7 +206,7 @@ internal sealed class ContagionPawnTransmissionProcessor
             _map,
             transmissionMultiplier,
             distance,
-            GetDistanceFactor(distance, vector.distanceFalloffRate),
+            ContagionTransmissionUtility.GetDistanceFactor(distance, vector.distanceFalloffRate),
             outdoorFactor,
             cleanlinessFactor,
             maskFactor,
@@ -236,72 +235,5 @@ internal sealed class ContagionPawnTransmissionProcessor
         }
 
         return seeded;
-    }
-
-    private static float GetHorizontalDistance(IntVec3 first, IntVec3 second)
-    {
-        float deltaX = first.x - second.x;
-        float deltaZ = first.z - second.z;
-        return Mathf.Sqrt(deltaX * deltaX + deltaZ * deltaZ);
-    }
-
-    private static float GetDistanceFactor(float distance, float distanceFalloffRate)
-    {
-        return Mathf.Exp(-Mathf.Max(0.01f, distanceFalloffRate) * distance);
-    }
-
-    private static bool IsOutdoors(Room room)
-    {
-        return room == null || room.PsychologicallyOutdoors;
-    }
-
-    private float GetLocalCleanlinessFactor(IntVec3 position, Room room, float cleanlinessImpact, int outdoorFilthRadius)
-    {
-        if (cleanlinessImpact <= 0f)
-        {
-            return 1f;
-        }
-
-        if (room == null || room.PsychologicallyOutdoors)
-        {
-            return GetOutdoorFilthCleanlinessFactor(position, cleanlinessImpact, outdoorFilthRadius);
-        }
-
-        float cleanliness = room.GetStat(RoomStatDefOf.Cleanliness);
-        return Mathf.Clamp(1f - cleanliness * cleanlinessImpact, MinCleanlinessFactor, MaxCleanlinessFactor);
-    }
-
-    private float GetOutdoorFilthCleanlinessFactor(IntVec3 center, float cleanlinessImpact, int outdoorFilthRadius)
-    {
-        if (outdoorFilthRadius <= 0)
-        {
-            return 1f;
-        }
-
-        int filthCount = 0;
-        for (int x = center.x - outdoorFilthRadius; x <= center.x + outdoorFilthRadius; x++)
-        {
-            for (int z = center.z - outdoorFilthRadius; z <= center.z + outdoorFilthRadius; z++)
-            {
-                IntVec3 candidate = new IntVec3(x, 0, z);
-                if (!candidate.InBounds(_map) || !center.InHorDistOf(candidate, outdoorFilthRadius))
-                {
-                    continue;
-                }
-
-                List<Thing> things = candidate.GetThingList(_map);
-                for (int i = 0; i < things.Count; i++)
-                {
-                    if (things[i] is Filth)
-                    {
-                        filthCount++;
-                    }
-                }
-            }
-        }
-
-        float area = Mathf.Max(1f, (2 * outdoorFilthRadius + 1) * (2 * outdoorFilthRadius + 1));
-        float filthDensity = filthCount / area;
-        return Mathf.Clamp(1f + filthDensity * cleanlinessImpact, MinCleanlinessFactor, MaxCleanlinessFactor);
     }
 }
