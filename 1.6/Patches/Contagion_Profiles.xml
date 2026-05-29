@@ -178,6 +178,12 @@
         <pendingWindowDays>5</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
+        <affectsAnimals>true</affectsAnimals>
+        <!-- Animal_Plague is the animal-variant hediff: same disease cluster, 48h tend cycle instead of 12h. -->
+        <animalVariantDef>Animal_Plague</animalVariantDef>
+        <crossSpeciesTransmissionFactor>0.5</crossSpeciesTransmissionFactor>
+        <corpseContagious>true</corpseContagious>
+        <showsSickSignal>true</showsSickSignal>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <sourceInfectivityFactors>
           <li Class="Contagion.SourceFactor_Trait">
@@ -229,70 +235,7 @@
             <cooldownDays>15</cooldownDays>
           </li>
         </seeders>
-        <maxActiveCases>4</maxActiveCases>
-      </li>
-    </value>
-  </Operation>
-
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Animal_Plague" and not(modExtensions)]</xpath>
-    <value>
-      <modExtensions />
-    </value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Animal_Plague" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
-    <value>
-      <li Class="Contagion.TransmissionProfile">
-        <incubationDays>1.0</incubationDays>
-        <pendingWindowDays>5</pendingWindowDays>
-        <immunityDurationDays>0</immunityDurationDays>
-        <affectsHumans>false</affectsHumans>
-        <affectsAnimals>true</affectsAnimals>
-        <activeInfectivityCurve>
-          <points>
-            <li>(0.00, 0.2)</li>
-            <li>(0.20, 0.8)</li>
-            <li>(0.60, 1.0)</li>
-            <li>(0.90, 0.4)</li>
-            <li>(1.00, 0.0)</li>
-          </points>
-        </activeInfectivityCurve>
-        <vectors>
-          <li Class="Contagion.Vector_Proximity">
-            <baseChancePerCheck>0.025</baseChancePerCheck>
-            <maxRange>6</maxRange>
-            <distanceFalloffRate>0.35</distanceFalloffRate>
-            <cleanlinessImpact>1.0</cleanlinessImpact>
-            <outdoorFactor>0.75</outdoorFactor>
-            <outdoorFilthRadius>4</outdoorFilthRadius>
-            <maskTargetEffectiveness>0.4</maskTargetEffectiveness>
-            <maskSourceEffectiveness>0.3</maskSourceEffectiveness>
-            <!-- Plague spreads by contact/fleas, not the airways, so gene airway immunity (breathless) does not help. -->
-            <airwayImmunityFactor>0</airwayImmunityFactor>
-          </li>
-        </vectors>
-        <seeders>
-          <li Class="Contagion.Seeder_Storyteller">
-            <seedCountRange>1~1</seedCountRange>
-            <cooldownDays>15</cooldownDays>
-          </li>
-          <li Class="Contagion.Seeder_AnimalLinked">
-            <mtbDays>120</mtbDays>
-            <cooldownDays>15</cooldownDays>
-            <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
-            <handlerBias>2.0</handlerBias>
-          </li>
-          <li Class="Contagion.Seeder_Arrival">
-            <arrivalChance>0.01</arrivalChance>
-            <cooldownDays>3</cooldownDays>
-          </li>
-          <li Class="Contagion.Seeder_Acausal">
-            <mtbDays>180</mtbDays>
-            <cooldownDays>15</cooldownDays>
-          </li>
-        </seeders>
-        <maxActiveCases>4</maxActiveCases>
+        <maxActiveCases>6</maxActiveCases>
       </li>
     </value>
   </Operation>

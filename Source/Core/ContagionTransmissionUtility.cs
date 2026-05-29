@@ -16,7 +16,8 @@ public static class ContagionTransmissionUtility
             return 0f;
         }
 
-        Hediff_ContagionIncubation incubation = ContagionDiseaseUtility.FindIncubation(source, resolvedProfile.DiseaseDef);
+        HediffDef sourceDef = resolvedProfile.ResolveHediffForPawn(source);
+        Hediff_ContagionIncubation incubation = ContagionDiseaseUtility.FindIncubation(source, sourceDef);
         if (incubation != null)
         {
             SimpleCurve curve = vector?.incubationInfectivityCurveOverride ?? resolvedProfile.Profile.incubationInfectivityCurve;
@@ -27,7 +28,7 @@ public static class ContagionTransmissionUtility
         for (int i = 0; i < hediffs.Count; i++)
         {
             Hediff hediff = hediffs[i];
-            if (hediff?.def != resolvedProfile.DiseaseDef)
+            if (hediff?.def != sourceDef)
             {
                 continue;
             }
@@ -63,9 +64,10 @@ public static class ContagionTransmissionUtility
             return 0f;
         }
 
-        if (target.health.hediffSet.HasHediff(resolvedProfile.DiseaseDef)
-            || ContagionDiseaseUtility.FindIncubation(target, resolvedProfile.DiseaseDef) != null
-            || ContagionDiseaseUtility.HasTemporaryImmunity(target, resolvedProfile.DiseaseDef))
+        HediffDef targetDef = resolvedProfile.ResolveHediffForPawn(target);
+        if (target.health.hediffSet.HasHediff(targetDef)
+            || ContagionDiseaseUtility.FindIncubation(target, targetDef) != null
+            || ContagionDiseaseUtility.HasTemporaryImmunity(target, targetDef))
         {
             return 0f;
         }
@@ -235,8 +237,8 @@ public static class ContagionTransmissionUtility
                 continue;
             }
 
-            if (pawn.health.hediffSet.HasHediff(resolvedProfile.DiseaseDef)
-                || ContagionDiseaseUtility.FindIncubation(pawn, resolvedProfile.DiseaseDef) != null)
+            if (pawn.health.hediffSet.HasHediff(resolvedProfile.ResolveHediffForPawn(pawn))
+                || ContagionDiseaseUtility.FindIncubation(pawn, resolvedProfile.ResolveHediffForPawn(pawn)) != null)
             {
                 infected++;
             }
@@ -260,8 +262,9 @@ public static class ContagionTransmissionUtility
                 continue;
             }
 
-            if (pawn.health.hediffSet.HasHediff(resolvedProfile.DiseaseDef)
-                || ContagionDiseaseUtility.FindIncubation(pawn, resolvedProfile.DiseaseDef) != null)
+            HediffDef pawnDef = resolvedProfile.ResolveHediffForPawn(pawn);
+            if (pawn.health.hediffSet.HasHediff(pawnDef)
+                || ContagionDiseaseUtility.FindIncubation(pawn, pawnDef) != null)
             {
                 count++;
             }
@@ -277,9 +280,10 @@ public static class ContagionTransmissionUtility
         // Part targeting (e.g. GutWorms → Stomach) is a human-gameplay detail. Animals vary
         // enormously in body layout and may lack the targeted part entirely, which would block
         // all seeding. Skip part targeting for animal pawns and use the whole-pawn factor instead.
+        HediffDef contractDef = resolvedProfile.ResolveHediffForPawn(target);
         if (resolvedProfile.PartsToAffect.NullOrEmpty() || target.RaceProps?.Animal == true)
         {
-            return Mathf.Max(0f, target.health.immunity.DiseaseContractChanceFactor(resolvedProfile.DiseaseDef, out immunityCause));
+            return Mathf.Max(0f, target.health.immunity.DiseaseContractChanceFactor(contractDef, out immunityCause));
         }
 
         float bestFactor = 0f;
@@ -292,7 +296,7 @@ public static class ContagionTransmissionUtility
                 continue;
             }
 
-            float partFactor = target.health.immunity.DiseaseContractChanceFactor(resolvedProfile.DiseaseDef, out HediffDef partImmunityCause, part);
+            float partFactor = target.health.immunity.DiseaseContractChanceFactor(contractDef, out HediffDef partImmunityCause, part);
             if (partFactor > bestFactor)
             {
                 bestFactor = partFactor;

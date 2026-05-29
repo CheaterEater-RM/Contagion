@@ -162,7 +162,7 @@ internal sealed class ContagionPawnTransmissionProcessor
 
         bool seeded = ContagionDiseaseUtility.TrySeedIncubation(
             targetPawn,
-            source.ResolvedProfile.DiseaseDef,
+            source.ResolvedProfile.ResolveHediffForPawn(targetPawn),
             source.ResolvedProfile.PartsToAffect,
             source.Pawn,
             ContagionDiagnosticOrigin.Spread,
@@ -223,7 +223,7 @@ internal sealed class ContagionPawnTransmissionProcessor
 
         bool seeded = ContagionDiseaseUtility.TrySeedIncubation(
             targetPawn,
-            source.ResolvedProfile.DiseaseDef,
+            source.ResolvedProfile.ResolveHediffForPawn(targetPawn),
             source.ResolvedProfile.PartsToAffect,
             source.Pawn,
             ContagionDiagnosticOrigin.Spread,

@@ -325,7 +325,6 @@ public sealed class ContagionDiseaseDirector : IExposable
         }
 
         if (defName == "Plague"
-            || defName == "Animal_Plague"
             || defName == "Malaria"
             || defName == "SleepingSickness")
         {

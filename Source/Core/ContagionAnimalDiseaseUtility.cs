@@ -32,7 +32,9 @@ public static class ContagionAnimalDiseaseUtility
             if (DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile)
                 && resolvedProfile.Profile.corpseContagious)
             {
-                return diseaseDef;
+                // Return the primary def so downstream callers (meat contamination, food
+                // exposure) always work with the human-variant hediff, not the animal variant.
+                return resolvedProfile.DiseaseDef;
             }
         }
 

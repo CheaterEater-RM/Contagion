@@ -119,8 +119,7 @@ Strategies are reinterpretations of the existing seeder classes — same data, s
 |---|---|---|
 | Flu | Arrival → Acausal | 15 days |
 | Animal_Flu | Animal-arrival → Acausal | 15 days |
-| Plague | Animal-contact → Arrival → Acausal | 5 days |
-| Animal_Plague | Animal-contact → Animal-arrival → Acausal | 5 days |
+| Plague (unified) | Animal-contact → Arrival → Acausal | 5 days |
 | GutWorms | Acausal (immediate, no wait) | 0 days |
 | Malaria | Environmental window | converts to a time-bounded environmental event |
 | SleepingSickness | Environmental window | converts to a time-bounded environmental event |
@@ -491,8 +490,7 @@ Vanilla disease profiles are patched onto their `HediffDef` in `1.6/Patches/Cont
 |---|---|---|---|---|---|---|
 | Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival | 1.5 d | none* | Human | Seasonal (winter-peaking); `maxActiveCases` 5 |
 | Animal_Flu | Airborne, Fomite | Storyteller, Arrival | 1.5 d | none* | Animal | Species-isolated; safe to butcher (no `corpseContagious`) |
-| Plague | Proximity (cleanliness) | Storyteller, AnimalLinked | 1.0 d | none* | Human | `airwayImmunityFactor` 0; `maxActiveCases` 4 |
-| Animal_Plague | Proximity | Storyteller, Arrival | 1.0 d | none* | Animal | Species-isolated |
+| Plague | Proximity (cleanliness) | Storyteller, AnimalLinked, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; `maxActiveCases` 6 |
 | GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; `maxActiveCases` 3; `spreadSuppressionScale 0` |
 | MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; foodborne-only human chain; `maxActiveCases` 4; `spreadSuppressionScale 0` |
 | Malaria | Environmental | Environmental | 2.0 d | none* | Human | `outbreakNotification None`, `spreadSuppressionScale 0`, seasonal |
@@ -676,7 +674,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 **Implemented and stable:** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns, pending events, director state) and contaminated-meal/raw-meat comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`); Mode 1 and Mode 2 seeding orchestration; `UsesEnvironmentalSeedingOnly` updated to allow Storyteller + Environmental combinations (gut worms, muscle parasites); `selfSchedules` auto-incident generation; the full animal disease chain — `corpseContagious` death hook (rotten corpse on infected animal death), `showsSickSignal` detection via `AnimalChat` interaction (Animals skill roll), `Contagion_AnimalSick` hediff, diagnosis via `TendUtility.DoTend` (Medical skill roll, true/false positive/negative outcomes), auto-slaughter exclusion for sick animals, slaughter gizmos (dispose / butcher-anyway with bypass flags), `Patch_Corpse_ButcherProducts` (Animals skill check, contaminated raw meat), `Patch_GenRecipe_MakeRecipeProducts` (ingredient contamination with cooking reduction factors), `CookingContaminationExtension` on RecipeDefs, `Comp_ContaminatedFood` extended to raw meat and kibble with timestamp + expiry; gut worms redesigned to water-environmental + affectsAnimals + fomite + foodborne; muscle parasites (vanilla Core `MuscleParasites`, patched with `TransmissionProfile`) given soil-environmental + foodborne chain, `corpseContagious`, `showsSickSignal`.
 
-**Pending — tuning pass.** Starting numbers for pending windows, director parameters, group arrival exposure policies, and the new environmental/butchering disease parameters are first-pass guesses. Play-testing and adjustment are needed before v1 ships.
+**Pending — tuning pass.** Starting numbers for pending windows, director parameters, group arrival exposure policies, plague `crossSpeciesTransmissionFactor`, and the new environmental/butchering disease parameters are first-pass guesses. Play-testing and adjustment are needed before v1 ships.
 
 **Reserved — see below.** Carrier state, caravan spread, and `Vector_Lovin` are intentionally schema-only with no engine implementation in v1. `corpseInfectivityDecayPerDay` (corpses as active proximity/fomite sources with decay) is also reserved — `corpseContagious` currently only makes the corpse rotten on death, not a spreading source.
 
@@ -688,7 +686,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 - **Carrier state** (`carrierChance`, `carrierHediffDef`) — Typhoid-Mary dynamics: a chance on recovery to become an asymptomatic contagious carrier with its own (flat, low) infectivity curve.
 - **Caravan spread** (`spreadsDuringCaravan`) — requires a world/caravan transmission model, deliberately deferred.
 - **`Vector_Lovin`** — STD-style transmission; needs a `JobDriver_Lovin` completion hook.
-- **Unified plague** — Animal_Plague and Plague are currently separate species-isolated profiles. A future pass would merge them with `crossSpeciesTransmissionFactor > 0` so livestock-to-handler plague transmission works through proximity rather than the current AnimalLinked seeder. Kept in mind when designing the animal disease infrastructure — the `showsSickSignal` and `corpseContagious` flags are generic enough to apply to plague without code changes.
+- *(Unified plague — completed. `Plague` now owns both species via `animalVariantDef Animal_Plague`. Cross-species transmission factor 0.5. Corpse contagious. Sick signal enabled.)*
 - **Future vector types** (need their own design pass): `Vector_Combat`/`Vector_MeleeDamage` (bites/melee — rage viruses, scaria, zombies) and `Vector_Pregnancy` (mother-to-child, Biotech).
 - **Transmission directionality** — the C# vector API should accept the profile/role so future asymmetric concepts (animal reservoirs, environmental-only sources) are expressible without symmetric source/target assumptions.
 
@@ -704,7 +702,8 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Social = boosted respiratory, separate vector class | Enables composition (social-only diseases) without a second social system |
 | Fomites scoped to vomit only | Visible and cleanable; no invisible contamination |
 | No cross-species transmission by default (float, not bool) | Keeps animal husbandry from being punishing; float is strictly more expressive |
-| Plague seeds onto humans gated by animal presence | No cross-species system needed; narrative framing handles it |
+| Unified plague: one profile, two hediffs | `Plague` (12 h tend) for humans, `Animal_Plague` (48 h tend) for animals — same transmission cluster, species-tuned treatment curves. `animalVariantDef` on the primary profile drives hediff selection at application time; `DiseaseProfileCache` indexes the variant def back to the primary profile so carriers of either hediff are correctly identified. |
+| `crossSpeciesTransmissionFactor 0.5` for plague | Plague crosses species fairly readily (flea vector doesn't care about species), but with a 50% barrier. First-pass value; needs tuning. |
 | Penoxycyline via `DiseaseContractChanceFactor` / `Factor_Hediff` | Stays vanilla-compatible; no hardcoded list |
 | Susceptibility/source factors as polymorphic XML lists | New modifiers need no C#; enables the sister-mod soft API |
 | Suppression target-gated to player faction | A fully-infected colony must not throttle unrelated visitors/raiders |

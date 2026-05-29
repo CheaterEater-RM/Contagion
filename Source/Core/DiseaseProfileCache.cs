@@ -32,6 +32,16 @@ public sealed class ResolvedTransmissionProfile
     public bool UsesFallbackParts { get; }
 
     public bool HasResolvedParts => !PartsToAffect.NullOrEmpty();
+
+    // Returns the hediff that should be applied to this specific pawn.
+    // Non-humanlike targets of a profile that declares animalVariantDef receive the variant
+    // (e.g. Animal_Plague) rather than the primary (e.g. Plague) so each species gets
+    // its own tuned tend cycle and stats while sharing all transmission logic.
+    public HediffDef ResolveHediffForPawn(Pawn pawn)
+    {
+        HediffDef variant = Profile.animalVariantDef;
+        return variant != null && pawn != null && !pawn.RaceProps.Humanlike ? variant : DiseaseDef;
+    }
 }
 
 public static class DiseaseProfileCache
@@ -113,6 +123,25 @@ public static class DiseaseProfileCache
                 linkedIncidentDef,
                 resolvedParts,
                 usesFallbackParts);
+        }
+
+        // Register animal variant hediffs so animals carrying the variant are recognised as
+        // carriers of the primary profile. After this, TryGetResolvedProfile(Animal_Plague)
+        // returns the same ResolvedTransmissionProfile as TryGetResolvedProfile(Plague).
+        var variantMappings = new List<(HediffDef variant, ResolvedTransmissionProfile profile)>();
+        foreach (KeyValuePair<HediffDef, ResolvedTransmissionProfile> kvp in _profilesByDisease)
+        {
+            if (kvp.Value.Profile.animalVariantDef != null)
+            {
+                variantMappings.Add((kvp.Value.Profile.animalVariantDef, kvp.Value));
+            }
+        }
+        foreach ((HediffDef variant, ResolvedTransmissionProfile profile) in variantMappings)
+        {
+            if (!_profilesByDisease.ContainsKey(variant))
+            {
+                _profilesByDisease[variant] = profile;
+            }
         }
 
         if (Prefs.DevMode)

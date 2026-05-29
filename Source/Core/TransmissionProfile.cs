@@ -40,6 +40,12 @@ public sealed class TransmissionProfile : DefModExtension
 
     public bool affectsAnimals;
 
+    // When affectsAnimals is true and this is set, non-humanlike targets receive this hediff
+    // instead of the primary disease def. Lets a single profile own both the human variant
+    // (e.g. Plague, 12 h tend) and the animal variant (e.g. Animal_Plague, 48 h tend) while
+    // sharing all transmission logic, seeder config, and carrier scanning.
+    public HediffDef animalVariantDef;
+
     public float crossSpeciesTransmissionFactor;
 
     public List<TransmissionVector> vectors;
