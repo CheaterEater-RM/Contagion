@@ -18,46 +18,11 @@ internal static class Patch_IncidentWorker_Disease_Helper
         return diseaseDef != null && DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out resolvedProfile);
     }
 
-    public static Seeder_Storyteller GetStorytellerSeeder(TransmissionProfile profile)
-    {
-        if (profile?.seeders == null)
-        {
-            return null;
-        }
-
-        for (int i = 0; i < profile.seeders.Count; i++)
-        {
-            if (profile.seeders[i] is Seeder_Storyteller storytellerSeeder)
-            {
-                return storytellerSeeder;
-            }
-        }
-
-        return null;
-    }
-
-    public static Seeder_Environmental GetEnvironmentalSeeder(TransmissionProfile profile)
-    {
-        if (profile?.seeders == null)
-        {
-            return null;
-        }
-
-        for (int i = 0; i < profile.seeders.Count; i++)
-        {
-            if (profile.seeders[i] is Seeder_Environmental environmentalSeeder)
-            {
-                return environmentalSeeder;
-            }
-        }
-
-        return null;
-    }
+    public static bool TryGetStorytellerSeeder(TransmissionProfile profile, out Seeder_Storyteller seeder)
+        => ContagionDiseaseUtility.TryGetSeeder(profile, out seeder);
 
     public static bool UsesEnvironmentalSeedingOnly(TransmissionProfile profile)
-    {
-        return GetStorytellerSeeder(profile) == null && GetEnvironmentalSeeder(profile) != null;
-    }
+        => ContagionSeedingCoordinator.UsesEnvironmentalSeedingOnly(profile);
 }
 
 [HarmonyPatch(typeof(IncidentWorker_Disease), nameof(IncidentWorker_Disease.ApplyToPawns))]
@@ -87,7 +52,7 @@ internal static class Patch_IncidentWorker_Disease_ApplyToPawns
             return false;
         }
 
-        if (Patch_IncidentWorker_Disease_Helper.GetStorytellerSeeder(resolvedProfile.Profile) == null)
+        if (!Patch_IncidentWorker_Disease_Helper.TryGetStorytellerSeeder(resolvedProfile.Profile, out Seeder_Storyteller storytellerSeeder))
         {
             return true;
         }
@@ -106,8 +71,6 @@ internal static class Patch_IncidentWorker_Disease_ApplyToPawns
             __result = new List<Pawn>();
             return false;
         }
-
-        Seeder_Storyteller storytellerSeeder = Patch_IncidentWorker_Disease_Helper.GetStorytellerSeeder(resolvedProfile.Profile);
         Map map = pawnList[0].Map;
         if (map?.GetComponent<Contagion_MapTransmissionComponent>()?.CanRunSeeder(resolvedProfile, storytellerSeeder) == false)
         {

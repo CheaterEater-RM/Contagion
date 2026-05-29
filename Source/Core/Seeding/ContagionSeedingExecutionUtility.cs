@@ -54,7 +54,7 @@ public static class ContagionSeedingExecutionUtility
 
             if (ContagionDiseaseUtility.TrySeedIncubation(
                 pawn,
-                resolvedProfile.DiseaseDef,
+                resolvedProfile.ResolveHediffForPawn(pawn),
                 resolvedProfile.PartsToAffect,
                 ContagionDiagnosticOrigin.Incidence,
                 out HediffDef seedImmunityCause))
@@ -130,7 +130,7 @@ public static class ContagionSeedingExecutionUtility
 
         return ContagionDiseaseUtility.TrySeedIncubation(
             pawn,
-            resolvedProfile.DiseaseDef,
+            resolvedProfile.ResolveHediffForPawn(pawn),
             resolvedProfile.PartsToAffect,
             origin,
             out immunityCause);
@@ -166,7 +166,8 @@ public static class ContagionSeedingExecutionUtility
             return false;
         }
 
-        if (!ContagionDiseaseUtility.CanContractDiseaseNow(pawn, resolvedProfile.DiseaseDef, resolvedProfile.PartsToAffect, out immunityCause))
+        HediffDef targetDef = resolvedProfile.ResolveHediffForPawn(pawn);
+        if (!ContagionDiseaseUtility.CanContractDiseaseNow(pawn, targetDef, resolvedProfile.PartsToAffect, out immunityCause))
         {
             return false;
         }
@@ -174,7 +175,7 @@ public static class ContagionSeedingExecutionUtility
         List<Hediff> addedHediffs = new List<Hediff>();
         bool applied = HediffGiverUtility.TryApply(
             pawn,
-            resolvedProfile.DiseaseDef,
+            targetDef,
             resolvedProfile.PartsToAffect,
             outAddedHediffs: addedHediffs);
         if (!applied)
@@ -185,13 +186,13 @@ public static class ContagionSeedingExecutionUtility
         for (int i = 0; i < addedHediffs.Count; i++)
         {
             Hediff hediff = addedHediffs[i];
-            if (hediff?.def == resolvedProfile.DiseaseDef)
+            if (hediff?.def == targetDef)
             {
                 hediff.Severity = Mathf.Min(hediff.def.maxSeverity, MildDiseaseSeverity);
             }
         }
 
-        TaleRecorder.RecordTale(TaleDefOf.IllnessRevealed, pawn, resolvedProfile.DiseaseDef);
+        TaleRecorder.RecordTale(TaleDefOf.IllnessRevealed, pawn, targetDef);
         ContagionDiagnostics.RecordApplicationResult(origin, seeded: true, immunityCause: null);
         return true;
     }

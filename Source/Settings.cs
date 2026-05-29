@@ -337,10 +337,10 @@ public sealed class Contagion_Mod : Mod
         }
 
         listing.Label("Contagion_DeveloperForceArrivalHeader".Translate());
-        if (component.DeveloperForcedArrivalDisease != null)
+        if (component.DeveloperDiagnostics.ForcedArrivalDisease != null)
         {
             listing.SubLabel(
-                "Contagion_DeveloperForcedArrivalSummary".Translate(component.DeveloperForcedArrivalDisease.LabelCap).Resolve(),
+                "Contagion_DeveloperForcedArrivalSummary".Translate(component.DeveloperDiagnostics.ForcedArrivalDisease.LabelCap).Resolve(),
                 1f);
         }
         else
@@ -365,21 +365,21 @@ public sealed class Contagion_Mod : Mod
             }
         }
 
-        if (component.DeveloperForcedArrivalDisease != null
+        if (component.DeveloperDiagnostics.ForcedArrivalDisease != null
             && listing.ButtonText("Contagion_DeveloperClearForcedArrival".Translate()))
         {
-            component.DeveloperClearForcedArrival();
+            component.DeveloperDiagnostics.ClearForcedArrival();
         }
 
         listing.Gap(4f);
         listing.Label("Contagion_DeveloperTraceHeader".Translate());
         listing.SubLabel(
-            "Contagion_DeveloperTraceCount".Translate(component.DeveloperTransmissionTraces.Count).Resolve(),
+            "Contagion_DeveloperTraceCount".Translate(component.DeveloperDiagnostics.TransmissionTraces.Count).Resolve(),
             1f);
-        if (component.DeveloperTransmissionTraces.Count > 0
+        if (component.DeveloperDiagnostics.TransmissionTraces.Count > 0
             && listing.ButtonText("Contagion_DeveloperClearAllTraces".Translate()))
         {
-            component.DeveloperClearAllTraces();
+            component.DeveloperDiagnostics.ClearAllTraces();
         }
     }
 
@@ -405,7 +405,7 @@ public sealed class Contagion_Mod : Mod
                 resolvedProfile.DiseaseDef.LabelCap.Resolve(),
                 delegate
                 {
-                    component.DeveloperArmForcedArrival(resolvedProfile.DiseaseDef);
+                    component.DeveloperDiagnostics.ArmForcedArrival(resolvedProfile.DiseaseDef);
                 }));
         }
 

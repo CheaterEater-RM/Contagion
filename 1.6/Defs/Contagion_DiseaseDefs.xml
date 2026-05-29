@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- New disease HediffDefs added by Contagion (if any).
+     MuscleParasites is a vanilla Core hediff (Disease_MuscleParasites incident also exists);
+     Contagion patches a TransmissionProfile onto it rather than defining a new def. -->
+<Defs>
+</Defs>

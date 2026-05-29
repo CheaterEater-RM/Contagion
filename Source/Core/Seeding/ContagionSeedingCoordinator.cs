@@ -422,7 +422,7 @@ public static class ContagionSeedingCoordinator
             List<ArrivalCandidate> forcedArrivalCandidates = FilterArrivalCandidates(arrivalCandidates, forcedDisease);
             if (IsForcedArrivalGroupQualifying(forcedArrivalCandidates, groupPawns, map))
             {
-                component.DeveloperClearForcedArrival();
+                component.DeveloperDiagnostics.ClearForcedArrival();
                 arrivalCandidates = forcedArrivalCandidates;
                 forcedArrivalApplied = true;
             }
@@ -1184,15 +1184,15 @@ public static class ContagionSeedingCoordinator
 
         if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true)
         {
-            if (component.DeveloperForcedArrivalDisease != null)
+            if (component.DeveloperDiagnostics.ForcedArrivalDisease != null)
             {
-                component.DeveloperClearForcedArrival();
+                component.DeveloperDiagnostics.ClearForcedArrival();
             }
 
             return null;
         }
 
-        return component.DeveloperForcedArrivalDisease;
+        return component.DeveloperDiagnostics.ForcedArrivalDisease;
     }
 
     private static List<ArrivalCandidate> FilterArrivalCandidates(List<ArrivalCandidate> arrivalCandidates, HediffDef diseaseDef)
@@ -1265,27 +1265,34 @@ public static class ContagionSeedingCoordinator
         return order;
     }
 
-    private static bool UsesEnvironmentalSeedingOnly(TransmissionProfile profile)
+    internal static bool UsesEnvironmentalSeedingOnly(TransmissionProfile profile)
     {
-        return GetSeeder<Seeder_Storyteller>(profile) == null && GetSeeder<Seeder_Environmental>(profile) != null;
+        // True when the disease resolves only through environmental exposure — no arrival
+        // carriers and no animal-linked handler seeding. Storyteller and acausal seeders are
+        // compatible: Storyteller is the Mode 1 trigger that opens the window, and acausal
+        // is the isolated-colony backstop. Neither implies a "carrier arrives" resolution.
+        if (GetSeeder<Seeder_Environmental>(profile) == null)
+        {
+            return false;
+        }
+
+        if (GetSeeder<Seeder_Arrival>(profile) != null)
+        {
+            return false;
+        }
+
+        if (GetSeeder<Seeder_AnimalLinked>(profile) != null)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static TSeeder GetSeeder<TSeeder>(TransmissionProfile profile)
         where TSeeder : TransmissionSeeder
     {
-        if (profile?.seeders == null)
-        {
-            return null;
-        }
-
-        for (int i = 0; i < profile.seeders.Count; i++)
-        {
-            if (profile.seeders[i] is TSeeder typedSeeder)
-            {
-                return typedSeeder;
-            }
-        }
-
-        return null;
+        ContagionDiseaseUtility.TryGetSeeder(profile, out TSeeder seeder);
+        return seeder;
     }
 }

@@ -12,6 +12,8 @@ public static class ContagionDefOf
 
     public static HediffDef Contagion_TraitSeedCooldown;
 
+    public static HediffDef Contagion_AnimalSick;
+
     static ContagionDefOf()
     {
         DefOfHelper.EnsureInitializedInCtor(typeof(ContagionDefOf));

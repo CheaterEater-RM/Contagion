@@ -1,7 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Patch>
+  <!-- ── Prepared meals ─────────────────────────────────────────────────────────────── -->
   <Operation Class="PatchOperationAdd">
     <xpath>Defs/ThingDef[@Name="MealBaseIngredientless" and not(comps/li[@Class="Contagion.CompProperties_ContaminatedFood"])]/comps</xpath>
+    <value>
+      <li Class="Contagion.CompProperties_ContaminatedFood" />
+    </value>
+  </Operation>
+
+  <!-- ── Raw meat ───────────────────────────────────────────────────────────────────── -->
+  <!-- Step 1: ensure comps node exists on meat ThingDefs that don't have one. -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[thingCategories/li="MeatRaw" and not(comps)]</xpath>
+    <value>
+      <comps />
+    </value>
+  </Operation>
+  <!-- Step 2: add the comp (skips defs that already have it). -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[thingCategories/li="MeatRaw" and not(comps/li[@Class="Contagion.CompProperties_ContaminatedFood"])]/comps</xpath>
+    <value>
+      <li Class="Contagion.CompProperties_ContaminatedFood" />
+    </value>
+  </Operation>
+
+  <!-- ── Kibble ─────────────────────────────────────────────────────────────────────── -->
+  <!-- Kibble can be fed to and eaten by pawns. It's made from raw meat so can carry
+       contamination; moderate cooking reduction is applied at recipe time. -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Kibble" and not(comps)]</xpath>
+    <value>
+      <comps />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Kibble" and not(comps/li[@Class="Contagion.CompProperties_ContaminatedFood"])]/comps</xpath>
     <value>
       <li Class="Contagion.CompProperties_ContaminatedFood" />
     </value>

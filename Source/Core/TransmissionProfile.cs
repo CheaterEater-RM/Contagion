@@ -40,7 +40,18 @@ public sealed class TransmissionProfile : DefModExtension
 
     public bool affectsAnimals;
 
+    // When affectsAnimals is true and this is set, non-humanlike targets receive this hediff
+    // instead of the primary disease def. Lets a single profile own both the human variant
+    // (e.g. Plague, 12 h tend) and the animal variant (e.g. Animal_Plague, 48 h tend) while
+    // sharing all transmission logic, seeder config, and carrier scanning.
+    public HediffDef animalVariantDef;
+
     public float crossSpeciesTransmissionFactor;
+
+    // Applied when both source and target are animals but of different races (e.g. chicken → pig).
+    // Default 1.0 = no barrier between animal species. Set below 1.0 to model diseases that spread
+    // freely within a species but poorly across species boundaries (avian flu analogy).
+    public float animalCrossSpeciesFactor = 1f;
 
     public List<TransmissionVector> vectors;
 
@@ -70,6 +81,11 @@ public sealed class TransmissionProfile : DefModExtension
     public bool corpseContagious;
 
     public float corpseInfectivityDecayPerDay = 0.5f;
+
+    // When true, infected animals display a visible "sick" signal hediff that handlers can notice
+    // (Animals skill roll) and doctors can diagnose (Medical skill roll). Used by gut worms and plague
+    // to make animal carriers legible without requiring the player to inspect every animal's health tab.
+    public bool showsSickSignal;
 
     public float carrierChance;
 
@@ -108,23 +124,31 @@ public sealed class TransmissionProfile : DefModExtension
     public bool CanTransmitBetween(Pawn source, Pawn target, out float speciesFactor)
     {
         speciesFactor = 1f;
-        if (target == null)
-        {
-            return false;
-        }
-
-        if (CanAffect(target))
-        {
-            return true;
-        }
-
-        if (source == null || crossSpeciesTransmissionFactor <= 0f || !CrossesHumanAnimalBoundary(source, target))
+        if (target == null || !CanAffect(target))
         {
             speciesFactor = 0f;
             return false;
         }
 
-        speciesFactor = crossSpeciesTransmissionFactor;
+        // When the disease affects both species (e.g. gut worms, muscle parasites), pawn-to-pawn
+        // vectors must still respect the cross-species barrier so animals don't catch gut worms from
+        // human vomit or vice versa. Apply crossSpeciesTransmissionFactor whenever source and target
+        // are different species categories. Source null = environmental/acausal seeding, no barrier.
+        if (source != null && CrossesHumanAnimalBoundary(source, target))
+        {
+            speciesFactor = crossSpeciesTransmissionFactor;
+            return speciesFactor > 0f;
+        }
+
+        // Inter-animal species barrier: a different factor applies when both source and target are
+        // animals but of different races. Models diseases like avian flu that spread freely within
+        // a species but only rarely jump to other animal species.
+        if (source != null && animalCrossSpeciesFactor < 1f && BothAnimalsButDifferentSpecies(source, target))
+        {
+            speciesFactor = animalCrossSpeciesFactor;
+            return animalCrossSpeciesFactor > 0f;
+        }
+
         return true;
     }
 
@@ -132,6 +156,11 @@ public sealed class TransmissionProfile : DefModExtension
     {
         return (first.RaceProps.Humanlike && second.RaceProps.Animal)
             || (first.RaceProps.Animal && second.RaceProps.Humanlike);
+    }
+
+    private static bool BothAnimalsButDifferentSpecies(Pawn first, Pawn second)
+    {
+        return first.RaceProps.Animal && second.RaceProps.Animal && first.def != second.def;
     }
 }
 
@@ -240,6 +269,11 @@ public sealed class Vector_Foodborne : TransmissionVector
     public float baseChancePerMeal = 0.08f;
 
     public float cleanlinessImpact = 1f;
+
+    // Contamination baked into Comp_ContaminatedFood at production time expires after this many
+    // days, preventing very old preserved food from triggering new outbreaks.
+    // 0 = no expiry.
+    public float contaminationExpiryDays = 30f;
 }
 
 public sealed class Vector_Lovin : TransmissionVector

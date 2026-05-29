@@ -1,6 +1,6 @@
 # Contagion — Design
 
-*Single source of truth for the Contagion mod's design. Last updated 2026-05-28.*
+*Single source of truth for the Contagion mod's design. Last updated 2026-05-29.*
 
 For vanilla code paths and hook points, see the engineering companion `IMPLEMENTATION.md`. For agent rules and repo conventions, see `CLAUDE.md`.
 
@@ -119,8 +119,7 @@ Strategies are reinterpretations of the existing seeder classes — same data, s
 |---|---|---|
 | Flu | Arrival → Acausal | 15 days |
 | Animal_Flu | Animal-arrival → Acausal | 15 days |
-| Plague | Animal-contact → Arrival → Acausal | 5 days |
-| Animal_Plague | Animal-contact → Animal-arrival → Acausal | 5 days |
+| Plague (unified) | Animal-contact → Arrival → Acausal | 5 days |
 | GutWorms | Acausal (immediate, no wait) | 0 days |
 | Malaria | Environmental window | converts to a time-bounded environmental event |
 | SleepingSickness | Environmental window | converts to a time-bounded environmental event |
@@ -215,13 +214,14 @@ The entire modder-facing contract, attached to any `HediffDef` to make it contag
 | `maxActiveCases` | int | 0 (= no limit) | Suppress all seeding at/above this active+incubating count |
 | `spreadSuppressionScale` | float | 1.0 | Per-disease scaling of colony spread suppression (0 = exempt) |
 | `outbreakNotification` | enum | FirstCase | Player notification mode: `None` / `FirstCase` / `EveryCase` |
-| `corpseContagious` | bool | false | *Reserved:* dead pawns as contagion sources |
-| `corpseInfectivityDecayPerDay` | float | 0.5 | *Reserved:* daily decay of corpse infectivity |
+| `corpseContagious` | bool | false | When true, the animal's corpse spawns immediately rotten (unbutcherable). Used by diseases that spread through meat (gut worms, muscle parasites). Humans only: human corpses are unaffected. |
+| `showsSickSignal` | bool | false | When true, handlers who interact with an infected animal may notice a "sick" signal hediff that prompts a vet visit. Enables the animal disease chain — see [Animal Disease Chain](#animal-disease-chain). |
+| `corpseInfectivityDecayPerDay` | float | 0.5 | *Reserved:* per-day infectivity decay of a contagious corpse as a proximity/fomite source. Not yet implemented. |
 | `carrierChance` | float | 0.0 | *Reserved:* probability of becoming an asymptomatic carrier on recovery |
 | `carrierHediffDef` | HediffDef | null | *Reserved:* hediff applied to carriers |
 | `spreadsDuringCaravan` | bool | false | *Reserved* for future caravan support |
 
-`Reserved` fields are present in the schema (so modders can plan) but have **no engine implementation in v1.** See [Reserved & Future Work](#reserved--future-work).
+Fields marked *Reserved* are present in the schema (so modders can plan) but have no engine implementation in v1. See [Reserved & Future Work](#reserved--future-work).
 
 ### SeasonalInfectivity
 
@@ -382,8 +382,26 @@ Contaminated **vomit** filth (scoped to vomit so contamination is visible and cl
 - `contaminatesVomit` (true), `baseChancePerContact` (0.03), `potencyDecayPerHour` (0.1)
 
 ### Vector_Foodborne
-Transmission through prepared meals (gut worms; a flu-infected cook contaminating food). A `ThingComp` on meals captures the cooking pawn at production; ingestion rolls for transmission. Kitchen cleanliness modifies the chance. Not subject to spread suppression.
-- `baseChancePerMeal` (0.08), `cleanlinessImpact` (1.0)
+Transmission through food — both from infected cooks producing contaminated meals and from contaminated raw meat being cooked into meals. `Comp_ContaminatedFood` sits on prepared meals, raw meat (all `MeatRaw` category items), and kibble. Contamination is baked in at production time and decays to zero after `contaminationExpiryDays` so year-old preserved food cannot start new outbreaks. Kitchen cleanliness modifies the contamination factor at cook time. Not subject to spread suppression.
+
+**Contamination sources:**
+- *Infected cook:* `Comp_ContaminatedFood.Notify_RecipeProduced` checks the cook's active disease profiles for a foodborne vector. Infectivity × kitchen cleanliness factor is stamped onto the meal.
+- *Infected meat (butchering chain):* `Patch_Corpse_ButcherProducts` stamps raw meat with full (1.0) contamination when the butchered animal carried a `corpseContagious` disease. An Animals-skill check lets the butcher notice and discard the products instead.
+- *Ingredient propagation:* `Patch_GenRecipe_MakeRecipeProducts` picks up contamination from any raw ingredient and propagates it to the produced meal, reduced by the recipe's `CookingContaminationExtension.reductionFactor`.
+
+**Cooking reduction factors** (lower = safer):
+| Food type | Factor |
+|---|---|
+| Survival meal | 0.05 |
+| Lavish meal (all variants) | 0.10 |
+| Fine meal (all variants) | 0.20 (code default) |
+| Simple meal | 0.35 |
+| Kibble | 0.60 |
+| Pemmican | 0.70 |
+| Raw meat | 1.0 (no reduction) |
+| Nutrient paste | 0 (dispenser bypasses `MakeRecipeProducts` entirely — always safe) |
+
+- `baseChancePerMeal` (0.08), `cleanlinessImpact` (1.0), `contaminationExpiryDays` (30)
 
 ### Vector_Lovin
 *Reserved extensibility hook.* Not used by any shipped disease and **not currently wired to a job hook.** Present so future STD-style mods can use the framework.
@@ -403,27 +421,84 @@ Shared base fields: `cooldownDays` (minimum gap between events of this type — 
 | `Seeder_Arrival` | Fulfillment: the next eligible arriving group resolves the pending event into a capped group payload. | Continuous group exposure roll; if exposed, one disease and a capped carrier payload. | `arrivalChance` |
 | `Seeder_Environmental` | Fulfillment: opens a time-bounded environmental exposure window with `infectionBudget`. | Continuous environmental exposure (no event window). | `baseChanceMultiplier`, `windowDays` (Mode 1), `infectionBudget` (Mode 1) |
 | `Seeder_AnimalLinked` | Fulfillment: requires animal presence; resolves onto a handler-biased pawn within the window. | Continuous MTB seeding biased to handlers. | `mtbDays` (Mode 2), `requiresAnimalsOnMap`, `handlerBias` |
-| `Seeder_Acausal` | Pending-event expiry fallback, or immediate resolution for diseases with no outside path (gut worms). | Continuous MTB backstop for isolated colonies. | `mtbDays` (Mode 2) |
+| `Seeder_Acausal` | Pending-event expiry fallback for diseases whose other strategies failed to resolve within the window. | Continuous MTB backstop for isolated colonies. | `mtbDays` (Mode 2) |
+
+---
+
+## Animal Disease Chain
+
+For diseases where `corpseContagious true` and `showsSickSignal true`, Contagion runs a full animal carrier pipeline. This is the primary introduction mechanism for gut worms and muscle parasites. The chain has three stages:
+
+### Stage 1 — Animal acquisition (environmental vector)
+
+Wild and outdoor animals are exposed through `Vector_Environmental` just like human pawns. Animals kept indoors (roofed barn) receive the existing `indoorReductionPerCellFromEdge` shelter reduction, so they accumulate much less exposure than animals grazing outside. This naturally distinguishes:
+
+- **Wild animals** on the map: full outdoor exposure, high carrier rate.
+- **Outdoor livestock** (open pens): moderate exposure.
+- **Indoor livestock** (roofed barns): minimal to zero exposure.
+
+Because `crossSpeciesTransmissionFactor 0.0` blocks the pawn-to-pawn vectors, the environmental vector is the *only* way animals acquire the disease. Person-to-animal spread through proximity/airborne does not occur.
+
+### Stage 2 — Detection and diagnosis ("Sick" signal)
+
+Infected animals do not immediately reveal their condition. Detection is handler-driven:
+
+- **Detection:** When a colonist performs an `AnimalChat` interaction with an infected animal (training, tending, feeding), they roll `Animals skill / 20` as a detection chance. On success, the `Contagion_AnimalSick` hediff is applied — a visible, tendable signal that appears in the animal's health bar. A 3% false-positive rate applies to uninfected animals, so not every sick signal indicates real disease.
+- **Sick signal behavior:** `Contagion_AnimalSick` is static (no severity progression) and self-clears in 7–10 days if untreated. It blocks the animal from the auto-slaughter queue while present.
+- **Diagnosis:** When a doctor tends `Contagion_AnimalSick`, they roll `Medicine skill / 15` as a diagnosis success chance:
+  - **True positive, skill passes:** Incubation collapses to mild active disease (severity 0.1). A letter fires. The player now sees the disease in the health tab.
+  - **True positive, skill fails (false negative):** Sick signal cleared, disease stays hidden. The animal can get "sick" again on the next handler interaction.
+  - **False positive (no underlying disease):** Sick signal cleared. "Nothing concerning found" message.
+
+The Medical skill requirement for diagnosis is intentional: a dedicated animal handler colony with no medic may miss infections that a mixed colony would catch quickly.
+
+### Stage 3 — Butchering (human exposure)
+
+Slaughtering or butchering a carrier animal is the primary way the disease enters the human population.
+
+**Auto-slaughter exclusion:** Sick-signalled animals (`Contagion_AnimalSick` present) are excluded from the auto-slaughter queue. The player must resolve the signal before the animal is automatically queued for slaughter.
+
+**Gizmos on colony animals:**
+- *Slaughter and dispose* — available on all colony animals. Arms a force-rot flag and adds a slaughter designation. The corpse spawns rotten (non-butcherable) regardless of disease state. Use when you suspect infection and do not want to risk the butchering chain.
+- *Slaughter and butcher anyway* — only available when `Contagion_AnimalSick` is present. Arms a butcher-bypass flag. The corpse spawns fresh and butcherable despite the disease. Risk is accepted knowingly; meat contamination still fires.
+
+**Rotten corpse on death:** When a `corpseContagious` animal dies (disease, old age, or any other cause), its corpse spawns immediately in the `Rotting` stage via `CompRottable.RotImmediately()`. Rotten corpses are not butcherable and are hauled away as garbage automatically. This is the safe default — the player must actively override it via the "butcher anyway" gizmo.
+
+**Butchering contamination:** `Patch_Corpse_ButcherProducts` runs when an infected corpse is butchered:
+1. Roll `Animals skill / 15` on the butcher as a notice chance.
+2. **Notice:** All products are discarded, the butcher sends an alert, the remnants are forbidden.
+3. **Miss:** Each raw meat product that has `Comp_ContaminatedFood` receives `contaminationFactor 1.0` (full contamination). The contamination timestamp is set; expiry applies after `contaminationExpiryDays`.
+
+**Ingredient propagation:** `Patch_GenRecipe_MakeRecipeProducts` propagates contamination from raw ingredients to cooked products, reduced by the recipe's `CookingContaminationExtension.reductionFactor`. See [Vector_Foodborne](#vector_foodborne) for the full reduction table.
+
+**Human infection from food:** `Comp_ContaminatedFood.PostIngested` rolls for infection at ingestion, checking expiry before rolling. The disease's `affectsHumans true` allows the `CanAffect` check to pass.
+
+### Animal Flu — explicitly excluded
+
+Animal flu has `affectsHumans false` and no `corpseContagious`, so:
+- Butchering flu-infected animals produces clean meat.
+- The `Patch_Corpse_ButcherProducts` hook checks `resolvedProfile.Profile.affectsHumans` before contaminating; it skips flu-infected corpses.
+- No "sick" signal for animal flu (no `showsSickSignal`), so no vet-visit overhead.
 
 ---
 
 ## Shipped Disease Configurations
 
-All seven profiles are patched onto vanilla hediffs in `1.6/Patches/Contagion_Profiles.xml` using the flat two-step `PatchOperationAdd` pattern.
+Vanilla disease profiles are patched onto their `HediffDef` in `1.6/Patches/Contagion_Profiles.xml`. `Contagion_MuscleParsites` is a new `HediffDef` defined in `1.6/Defs/Contagion_DiseaseDefs.xml`.
 
 | Disease | Vectors | Seeders | Incubation | Immunity | Species | Notes |
 |---|---|---|---|---|---|---|
 | Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival | 1.5 d | none* | Human | Seasonal (winter-peaking); `maxActiveCases` 5 |
-| Animal_Flu | Airborne, Fomite | Storyteller, Arrival | 1.5 d | none* | Animal | Species-isolated |
-| Plague | Proximity (cleanliness) | Storyteller, AnimalLinked | 1.0 d | none* | Human | `airwayImmunityFactor` 0; `maxActiveCases` 4 |
-| Animal_Plague | Proximity | Storyteller, Arrival | 1.0 d | none* | Animal | Species-isolated |
-| GutWorms | Foodborne | Storyteller, Acausal | 3.0 d | 15 d | Human | `targetBodyParts: Stomach`; `maxActiveCases` 3 |
+| Animal_Flu | Airborne, Fomite | Storyteller, Arrival | 1.5 d | none* | Animal | Species-isolated; safe to butcher (no `corpseContagious`) |
+| Plague | Proximity (cleanliness) | Storyteller, AnimalLinked, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; `maxActiveCases` 6 |
+| GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; `maxActiveCases` 3; `spreadSuppressionScale 0` |
+| MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; foodborne-only human chain; `maxActiveCases` 4; `spreadSuppressionScale 0` |
 | Malaria | Environmental | Environmental | 2.0 d | none* | Human | `outbreakNotification None`, `spreadSuppressionScale 0`, seasonal |
 | SleepingSickness | Environmental | Environmental | 2.5 d | none* | Human | Tropical-weighted; `outbreakNotification None`, `spreadSuppressionScale 0` |
 
-\* Diseases that have a vanilla natural-immunity race set `immunityDurationDays 0` and rely on vanilla immunity to prevent reinfection. Only non-immunizable diseases (gut worms) need mod-owned temporary immunity.
+\* Diseases with a vanilla immunity race set `immunityDurationDays 0` and rely on vanilla immunity to prevent reinfection. Non-immunizable diseases (gut worms, muscle parasites) use mod-owned temporary immunity.
 
-**Food poisoning is out of scope for v1.** Vanilla food poisoning already works well as a consequence of dirty kitchens / unskilled cooks; making it contagious would change the food-safety loop without clear benefit. `Vector_Foodborne` covers the real case (a sick cook contaminating meals). Modders who want contagious food poisoning can add a `TransmissionProfile` to a custom hediff — the system supports it.
+**Food poisoning is out of scope for v1.** Vanilla food poisoning already works well; making it contagious would change the food-safety loop without clear benefit. `Vector_Foodborne` covers the real case (a sick cook or infected meat contaminating meals). Modders who want contagious food poisoning can add a `TransmissionProfile` to a custom hediff — the system supports it.
 
 ---
 
@@ -438,6 +513,8 @@ The mod adds no quarantine mechanics; existing systems produce quarantine behavi
 - **Cleaning** removes contaminated vomit and lowers proximity-vector cleanliness pressure; dedicated cleaners gain value during outbreaks.
 - **Masks & respiratory protection** reduce airborne/social/contact transmission for wearer and bystanders via `ToxicEnvironmentResistance`. Outfitting a caregiver or sick pawn with a gas mask is meaningful counterplay using existing gear.
 - **Penoxycyline** works exactly as vanilla (malaria, plague, sleeping sickness) through `DiseaseContractChanceFactor` and/or a `Factor_Hediff` entry — no separate hardcoded list.
+- **Animal husbandry** matters for food-borne diseases. Animals kept in roofed barns accumulate far less environmental exposure than outdoor grazers. Skilled handlers notice sick animals sooner. Diagnosing infected animals before slaughter prevents contaminated meat from entering the food supply. Assigning a dedicated vet and cooking in a clean kitchen compound the safety margin.
+- **Butchering choices:** The "slaughter and dispose" gizmo is a zero-risk removal of a suspected animal. Choosing "slaughter and butcher anyway" accepts disease risk in exchange for resources. This is an explicit player decision, not an invisible random event.
 
 ---
 
@@ -479,7 +556,7 @@ The existing diagnostics counters remain the lightweight default. A separate **D
 - The mode is **developer-only**. It is meant for testers running RimWorld with `Prefs.DevMode` on, not for normal players.
 - If the enum changes, it must be **append-only**. `ContagionDiagnosticsMode` is persisted by ordinal value, so `Developer` is added at the end rather than replacing or reordering existing values.
 - Interactive diagnostic state is **runtime-only**. No queued test action, selected disease override, hovered-target cache, or temporary UI selection should be scribed into saves.
-- Runtime ownership should still be map-scoped, not static. A Contagion map component can own developer traces and queued one-shot commands without exposing them to `ExposeData()`.
+- Runtime ownership should still be map-scoped, not static. A Contagion map component remains the save/load and public façade boundary, while delegating developer controls, runtime-only one-shot commands, and transmission processors to internal helpers so those concerns do not collapse back into one monolithic class.
 
 ### Mode 2 director forcing
 
@@ -593,22 +670,23 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 ## Implementation Status & Known Gaps
 
-*As of 2026-05-28. All vectors, seeding orchestration, and arrival hooks are complete and stable; the build is clean (0 warnings, 0 errors).*
+*As of 2026-05-29. All vectors, seeding orchestration, arrival hooks, and the animal disease chain are complete and stable; the build is clean (0 warnings, 0 errors).*
 
-**Implemented and stable:** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns, pending events, director state) and contaminated-meal comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`); Mode 1 (pending events with per-disease fulfillment chains) and Mode 2 (Contagion-driven with the disease director) seeding orchestration; seeding mode settings UI and translation keys; XML profiles updated with `pendingWindowDays`, `windowDays`, and `infectionBudget`.
+**Implemented and stable:** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns, pending events, director state) and contaminated-meal/raw-meat comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`); Mode 1 and Mode 2 seeding orchestration; `UsesEnvironmentalSeedingOnly` updated to allow Storyteller + Environmental combinations (gut worms, muscle parasites); `selfSchedules` auto-incident generation; the full animal disease chain — `corpseContagious` death hook (rotten corpse on infected animal death), `showsSickSignal` detection via `AnimalChat` interaction (Animals skill roll), `Contagion_AnimalSick` hediff, diagnosis via `TendUtility.DoTend` (Medical skill roll, true/false positive/negative outcomes), auto-slaughter exclusion for sick animals, slaughter gizmos (dispose / butcher-anyway with bypass flags), `Patch_Corpse_ButcherProducts` (Animals skill check, contaminated raw meat), `Patch_GenRecipe_MakeRecipeProducts` (ingredient contamination with cooking reduction factors), `CookingContaminationExtension` on RecipeDefs, `Comp_ContaminatedFood` extended to raw meat and kibble with timestamp + expiry; gut worms redesigned to water-environmental + affectsAnimals + fomite + foodborne; muscle parasites (vanilla Core `MuscleParasites`, patched with `TransmissionProfile`) given soil-environmental + foodborne chain, `corpseContagious`, `showsSickSignal`.
 
-**Pending — tuning pass.** Starting numbers for pending windows, director parameters, and group arrival exposure policies are first-pass guesses. Play-testing and adjustment are needed before v1 ships.
+**Pending — tuning pass.** Starting numbers for pending windows, director parameters, group arrival exposure policies, plague `crossSpeciesTransmissionFactor`, and the new environmental/butchering disease parameters are first-pass guesses. Play-testing and adjustment are needed before v1 ships.
 
-**Reserved — see below.** Corpse contagion, carrier state, caravan spread, and `Vector_Lovin` are intentionally schema-only with no engine implementation in v1.
+**Reserved — see below.** Carrier state, caravan spread, and `Vector_Lovin` are intentionally schema-only with no engine implementation in v1. `corpseInfectivityDecayPerDay` (corpses as active proximity/fomite sources with decay) is also reserved — `corpseContagious` currently only makes the corpse rotten on death, not a spreading source.
 
 ---
 
 ## Reserved & Future Work
 
-- **Corpse contagion** (`corpseContagious`, `corpseInfectivityDecayPerDay`) — corpses of pawns who died with the disease as proximity/fomite sources, decaying daily; cremation/burial removes them. Extensibility hook for plague-pit/zombie diseases. Default off.
+- **Corpse as active contagion source** (`corpseInfectivityDecayPerDay`) — `corpseContagious` already makes infected animal corpses rotten-on-death so they can't be butchered. The next step — corpses of animals or humans as proximity/fomite sources while they decay — is still reserved. This would require a per-corpse infectivity component and cleanup hooks for cremation/burial.
 - **Carrier state** (`carrierChance`, `carrierHediffDef`) — Typhoid-Mary dynamics: a chance on recovery to become an asymptomatic contagious carrier with its own (flat, low) infectivity curve.
 - **Caravan spread** (`spreadsDuringCaravan`) — requires a world/caravan transmission model, deliberately deferred.
 - **`Vector_Lovin`** — STD-style transmission; needs a `JobDriver_Lovin` completion hook.
+- *(Unified plague — completed. `Plague` now owns both species via `animalVariantDef Animal_Plague`. Cross-species transmission factor 0.5. Corpse contagious. Sick signal enabled.)*
 - **Future vector types** (need their own design pass): `Vector_Combat`/`Vector_MeleeDamage` (bites/melee — rage viruses, scaria, zombies) and `Vector_Pregnancy` (mother-to-child, Biotech).
 - **Transmission directionality** — the C# vector API should accept the profile/role so future asymmetric concepts (animal reservoirs, environmental-only sources) are expressible without symmetric source/target assumptions.
 
@@ -624,7 +702,8 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Social = boosted respiratory, separate vector class | Enables composition (social-only diseases) without a second social system |
 | Fomites scoped to vomit only | Visible and cleanable; no invisible contamination |
 | No cross-species transmission by default (float, not bool) | Keeps animal husbandry from being punishing; float is strictly more expressive |
-| Plague seeds onto humans gated by animal presence | No cross-species system needed; narrative framing handles it |
+| Unified plague: one profile, two hediffs | `Plague` (12 h tend) for humans, `Animal_Plague` (48 h tend) for animals — same transmission cluster, species-tuned treatment curves. `animalVariantDef` on the primary profile drives hediff selection at application time; `DiseaseProfileCache` indexes the variant def back to the primary profile so carriers of either hediff are correctly identified. |
+| `crossSpeciesTransmissionFactor 0.5` for plague | Plague crosses species fairly readily (flea vector doesn't care about species), but with a 50% barrier. First-pass value; needs tuning. |
 | Penoxycyline via `DiseaseContractChanceFactor` / `Factor_Hediff` | Stays vanilla-compatible; no hardcoded list |
 | Susceptibility/source factors as polymorphic XML lists | New modifiers need no C#; enables the sister-mod soft API |
 | Suppression target-gated to player faction | A fully-infected colony must not throttle unrelated visitors/raiders |
@@ -632,7 +711,8 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Reserved fields shipped in schema | Modders can plan for corpse/carrier/caravan without waiting on the engine |
 | Two seeding modes (storyteller-driven default, Contagion-driven opt-in) | Vanilla cadence preserved as default; opt-in continuous pressure for sim-leaning players; mode toggle keeps the mental model clear per player |
 | Mode 1: pending events with per-disease fulfillment chains | Replaces four parallel independent seeders with one scheduler + ranked strategies — clearer mental model, unified semantics, and the strategy/window can be tuned per disease |
-| Mode 1 plague window 5 days, gut worms 0 days | Tight windows preserve storyteller event-spacing — a long pending window would let a disease event collide with raids the storyteller deliberately spaced apart. Gut worms have no outside vector, so immediate acausal resolution is correct |
+| Mode 1 plague window 5 days | Tight windows preserve storyteller event-spacing — a long pending window would let a disease event collide with raids the storyteller deliberately spaced apart |
+| Gut worms and muscle parasites use Seeder_Environmental as primary Mode 1 trigger | Storyteller pick opens a water/soil environmental window rather than seeding a carrier directly. `UsesEnvironmentalSeedingOnly` was extended to permit Storyteller + Environmental combinations, with Storyteller acting purely as the Mode 1 scheduler. Acausal seeder retained as a long-MTB isolated-colony backstop |
 | Mode 1 arrival fulfillment = next eligible group (deterministic exposure) | Avoids unbounded pending-event growth on low-traffic maps while allowing large groups to carry a capped, sublinear payload |
 | Mode 1 environmental: time-bounded window with infection budget | Event-scoped budget is distinct from colony-wide `maxActiveCases` — matches vanilla's "outbreak happens then ends" feel rather than turning environmental disease into a permanent biome hazard |
 | Mode 2: storyteller incidents cancelled for profiled diseases | Mode 2 owns pacing; letting the storyteller inject extra events would undermine the director cadence the player is learning to read |
@@ -644,6 +724,13 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Developer controls live in mod settings, not a separate map tab | The user explicitly wants the mode toggle and director action in the in-game settings surface; map-specific actions there must disable cleanly when no current map exists |
 | The nominal spread overlay is target-agnostic by design | Its job is to visualize distance and geometry around a contagious source, not to predict exact chance for every possible pawn |
 | Successful transmissions leave bounded runtime trace lines | This gives post-event attribution without introducing persistent forensic state into saves |
+| Infected animal corpses rot immediately on death | Rotten corpses can't be butchered and are auto-hauled as garbage — the safe default with no player input required. The butcher-bypass gizmo is an explicit opt-in to accept risk, not a required step in the normal flow |
+| Sick signal detection tied to AnimalChat interaction | Fires naturally during handler routines (training, feeding, tending) without a new dedicated job or polling system. Animals that are never handled may never show the signal — rewarding attentive husbandry |
+| Diagnosis is a skill roll on tending, not a separate inspection job | Reuses the existing vet-tending loop. False negatives feel like skill-based variance rather than arbitrary RNG because the cause (low medicine skill) is visible and fixable |
+| False positives on healthy animals at 3% per interaction | Makes the sick signal a diagnostic signal rather than a certainty. Players learn to diagnose rather than immediately slaughter any animal flagged "sick." False positive rate is low enough that it's noise, not harassment |
+| Cooking factor 0 for nutrient paste via dispenser exclusion | The nutrient paste dispenser does not call `MakeRecipeProducts`, so it bypasses the contamination chain automatically. No special-case code needed; the design is self-enforcing |
+| Muscle parasites separate from gut worms, no vomiting | Different disease character (muscle weakness vs gut disruption), different narrative origin (meat vs water), different player-facing spread path. Combining them would collapse a meaningful distinction |
+| Muscle parasites uses the vanilla Disease_MuscleParasites incident | Vanilla Core already defines this incident; no selfSchedules or hand-authored incident needed. Contagion intercepts the storyteller pick as it would for any other profiled disease and opens an environmental window |
 
 ---
 

@@ -32,4 +32,21 @@
     <isBad>false</isBad>
     <scenarioCanAdd>false</scenarioCanAdd>
   </HediffDef>
+
+  <!-- Visible signal that a handler noticed something wrong with an animal. A vet tends it to
+       diagnose: reveals the underlying disease on success, or clears as false positive/negative. -->
+  <HediffDef>
+    <defName>Contagion_AnimalSick</defName>
+    <label>sick</label>
+    <description>This animal appears unwell. A veterinarian should examine it — the cause may be serious or nothing at all.</description>
+    <initialSeverity>0.05</initialSeverity>
+    <isBad>true</isBad>
+    <tendable>true</tendable>
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <comps>
+      <li Class="HediffCompProperties_Disappears">
+        <disappearsAfterTicks>420000~600000</disappearsAfterTicks>
+      </li>
+    </comps>
+  </HediffDef>
 </Defs>
