@@ -8,13 +8,43 @@ public static class ContagionAnimalDiseaseUtility
 {
     public static bool IsAnimalCorpseContagious(Pawn innerPawn)
     {
-        return GetCorpseContagiousDisease(innerPawn) != null;
+        return GetAnimalCorpseContagiousDisease(innerPawn) != null;
     }
 
-    public static HediffDef GetCorpseContagiousDisease(Pawn innerPawn)
+    public static bool IsHumanCorpseContagious(Pawn innerPawn)
     {
-        // Design intent: human corpses are unaffected. corpseContagious only applies to
-        // animal carcasses entering the butchery chain.
+        return GetHumanCorpseContagiousDisease(innerPawn) != null;
+    }
+
+    public static HediffDef GetHumanCorpseContagiousDisease(Pawn innerPawn)
+    {
+        if (innerPawn?.health?.hediffSet == null || innerPawn.RaceProps?.Humanlike != true)
+        {
+            return null;
+        }
+
+        List<Hediff> hediffs = innerPawn.health.hediffSet.hediffs;
+        for (int i = 0; i < hediffs.Count; i++)
+        {
+            HediffDef diseaseDef = GetDiseaseDef(hediffs[i]);
+            if (diseaseDef == null)
+            {
+                continue;
+            }
+
+            if (DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile)
+                && resolvedProfile.Profile.corpseContagious
+                && resolvedProfile.Profile.affectsHumans)
+            {
+                return resolvedProfile.DiseaseDef;
+            }
+        }
+
+        return null;
+    }
+
+    public static HediffDef GetAnimalCorpseContagiousDisease(Pawn innerPawn)
+    {
         if (innerPawn?.health?.hediffSet == null || innerPawn.RaceProps?.Animal != true)
         {
             return null;

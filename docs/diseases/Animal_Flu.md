@@ -120,7 +120,11 @@ None configured.
 
 ## Species Isolation
 
-`affectsHumans false`, `affectsAnimals true`. No `crossSpeciesTransmissionFactor` set. Animal flu cannot infect humans under any circumstances, and human flu cannot infect animals. Butchering a flu-infected animal produces clean meat (`corpseContagious false`).
+`affectsHumans false`, `affectsAnimals true`. Animal flu cannot infect humans under any circumstances, and human flu cannot infect animals. Butchering a flu-infected animal produces clean meat (`corpseContagious false`).
+
+### Inter-animal cross-species barrier
+
+`animalCrossSpeciesFactor 0.10`. Transmission between animals of **different races** (e.g. chicken → pig, duck → cow) runs at 10% of same-species efficiency. A sick flock is very unlikely to spontaneously infect other animal types sharing the same barn, though rare cross-species jumps remain possible — consistent with how avian influenza occasionally spills into mammals. Same-race transmission (chicken → chicken) is unaffected.
 
 ---
 
@@ -138,3 +142,4 @@ None configured.
 - No seasonal variation is currently configured. A mild winter peak or a flat year-round profile may both be defensible (animal flu outbreaks in real farming are year-round), but it is worth making a deliberate choice.
 - The fomite vector does not use an override curve, so animal flu vomit is somewhat infectious from severity 0.0. Whether this is the intended behavior (messier animals) or an oversight (should match the human flu pattern of high-severity-only vomit) should be decided.
 - `maxActiveCases 5` means the entire herd could theoretically be infected before seeding suppresses. Since herds vary in size widely, this number may need to be relative or biased by animal count rather than a flat cap.
+- `animalCrossSpeciesFactor 0.08` is a first-pass value. If mixed-species herds are still seeing consistent spillover in testing, lower it toward 0.02–0.04. If cross-species transmission feels too theoretical, leave it as-is.

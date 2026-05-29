@@ -114,6 +114,10 @@
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
+        <!-- Species-specific barrier: flu spreads freely within a species but jumps between
+             animal species at only ~8% efficiency — avian flu analogy. A sick chicken won't
+             reliably infect a pig in the same barn, though rare cross-species jumps still occur. -->
+        <animalCrossSpeciesFactor>0.10</animalCrossSpeciesFactor>
         <incubationInfectivityCurve>
           <points>
             <li>(0.0, 0.0)</li>

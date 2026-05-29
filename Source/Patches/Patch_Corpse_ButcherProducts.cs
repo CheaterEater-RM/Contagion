@@ -6,8 +6,14 @@ using Verse;
 
 namespace Contagion.Patches;
 
-// When an infected animal is butchered, either the butcher notices and discards the carcass
+// When an infected corpse is butchered, either the butcher notices and discards the carcass
 // (skill check pass) or contamination is baked into the raw meat (skill check fail).
+//
+// For human corpses the butcher can also be directly exposed through contact — an additional
+// independent chance that runs only on the failure path after products are yielded.
+//
+// Notice chance uses a sigmoid of combined domain + cooking skill (domain = Animals for
+// animals, Medicine for humanlike): ~75% at combined 10, ~95% at combined 15, hard cap 99.5%.
 //
 // IEnumerable<Thing> postfix: Harmony pipes __result through this method so we can
 // conditionally yield or modify items before they reach GenRecipe.
@@ -26,7 +32,16 @@ internal static class Patch_Corpse_ButcherProducts
             yield break;
         }
 
-        HediffDef contagiousDisease = ContagionAnimalDiseaseUtility.GetCorpseContagiousDisease(__instance.InnerPawn);
+        Pawn innerPawn = __instance.InnerPawn;
+        bool isAnimal = innerPawn.RaceProps?.Animal == true;
+        bool isHuman = innerPawn.RaceProps?.Humanlike == true;
+
+        HediffDef contagiousDisease = isAnimal
+            ? ContagionAnimalDiseaseUtility.GetAnimalCorpseContagiousDisease(innerPawn)
+            : isHuman
+                ? ContagionAnimalDiseaseUtility.GetHumanCorpseContagiousDisease(innerPawn)
+                : null;
+
         if (contagiousDisease == null
             || !DiseaseProfileCache.TryGetResolvedProfile(contagiousDisease, out ResolvedTransmissionProfile resolvedProfile)
             || !resolvedProfile.Profile.affectsHumans)
@@ -39,15 +54,12 @@ internal static class Patch_Corpse_ButcherProducts
             yield break;
         }
 
-        // Skill check: Animals skill determines whether the butcher notices before finishing.
-        float noticeChance = butcher?.skills != null
-            ? Mathf.Clamp01(butcher.skills.GetSkill(SkillDefOf.Animals).Level / 15f)
-            : 0f;
+        float noticeChance = ComputeNoticeChance(butcher, isHuman);
 
         if (Rand.Chance(noticeChance))
         {
             // Butcher noticed — discard all products, forbid and alert.
-            NotifyButcherNoticed(butcher, __instance, contagiousDisease);
+            NotifyButcherNoticed(butcher, __instance, contagiousDisease, isHuman);
             yield break;
         }
 
@@ -59,14 +71,55 @@ internal static class Patch_Corpse_ButcherProducts
             {
                 comp.SetContamination(contagiousDisease, 1.0f);
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
-                ContagionDiagnostics.Trace($"Butchery contamination: {contagiousDisease.defName} baked into {item.def.defName} from {__instance.InnerPawn.LabelShortCap}.");
+                ContagionDiagnostics.Trace($"Butchery contamination: {contagiousDisease.defName} baked into {item.def.defName} from {innerPawn.LabelShortCap}.");
             }
 
             yield return item;
         }
+
+        // Human corpse: butcher who didn't notice is directly exposed through contact.
+        if (isHuman && butcher != null)
+        {
+            TryExposeButcher(butcher, innerPawn, contagiousDisease, resolvedProfile);
+        }
     }
 
-    private static void NotifyButcherNoticed(Pawn butcher, Corpse corpse, HediffDef disease)
+    // Sigmoid of (domain skill + Cooking), capped at 99.5%.
+    // k=0.37, x0=7 → ~75% at combined 10, ~95% at combined 15.
+    private static float ComputeNoticeChance(Pawn butcher, bool isHuman)
+    {
+        if (butcher?.skills == null)
+        {
+            return 0f;
+        }
+
+        SkillDef domainSkill = isHuman ? SkillDefOf.Medicine : SkillDefOf.Animals;
+        float domain = butcher.skills.GetSkill(domainSkill).Level;
+        float cooking = butcher.skills.GetSkill(SkillDefOf.Cooking).Level;
+        float combined = domain + cooking;
+
+        float sigmoid = 1f / (1f + Mathf.Exp(-0.37f * (combined - 7f)));
+        return Mathf.Min(sigmoid, 0.995f);
+    }
+
+    // 35% base contact-exposure chance; full immunity checks applied inside TrySeedIncubation.
+    private static void TryExposeButcher(Pawn butcher, Pawn corpseInnerPawn, HediffDef disease, ResolvedTransmissionProfile resolvedProfile)
+    {
+        if (!Rand.Chance(0.35f))
+        {
+            return;
+        }
+
+        ContagionDiseaseUtility.TrySeedIncubation(
+            butcher,
+            disease,
+            resolvedProfile.PartsToAffect,
+            corpseInnerPawn,
+            ContagionDiagnosticOrigin.Spread,
+            out _);
+    }
+
+    private static void NotifyButcherNoticed(Pawn butcher, Corpse corpse, HediffDef disease, bool isHuman)
     {
         if (butcher == null || corpse == null)
         {
@@ -86,8 +139,9 @@ internal static class Patch_Corpse_ButcherProducts
             return;
         }
 
+        string messageKey = isHuman ? "Contagion_MessageButcherNoticedHuman" : "Contagion_MessageButcherNoticed";
         Messages.Message(
-            "Contagion_MessageButcherNoticed".Translate(butcher.LabelShortCap, corpse.InnerPawn?.LabelShortCap ?? corpse.Label, disease.LabelCap),
+            messageKey.Translate(butcher.LabelShortCap, corpse.InnerPawn?.LabelShortCap ?? corpse.Label, disease.LabelCap),
             butcher,
             MessageTypeDefOf.CautionInput,
             historical: false);
