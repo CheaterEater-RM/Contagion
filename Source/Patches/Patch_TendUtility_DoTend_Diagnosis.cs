@@ -72,24 +72,31 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
 
     private static void RevealDiagnosis(Pawn patient, ResolvedTransmissionProfile resolvedProfile, Pawn doctor)
     {
-        Hediff_ContagionIncubation incubation = ContagionDiseaseUtility.FindIncubation(patient, resolvedProfile.DiseaseDef);
+        HediffDef targetDiseaseDef = resolvedProfile.ResolveHediffForPawn(patient);
+        Hediff_ContagionIncubation incubation = ContagionDiseaseUtility.FindIncubation(patient, targetDiseaseDef);
+        if (incubation == null && targetDiseaseDef != resolvedProfile.DiseaseDef)
+        {
+            incubation = ContagionDiseaseUtility.FindIncubation(patient, resolvedProfile.DiseaseDef);
+        }
+
         if (incubation != null)
         {
             patient.health.RemoveHediff(incubation);
         }
 
         var addedHediffs = new System.Collections.Generic.List<Hediff>();
+        var partsToAffect = ContagionDiseaseUtility.ResolvePartsForPawn(patient, resolvedProfile, resolvedProfile.PartsToAffect);
         bool applied = HediffGiverUtility.TryApply(
             patient,
-            resolvedProfile.DiseaseDef,
-            resolvedProfile.PartsToAffect,
+            targetDiseaseDef,
+            partsToAffect,
             outAddedHediffs: addedHediffs);
 
         if (applied)
         {
             foreach (Hediff hediff in addedHediffs)
             {
-                if (hediff?.def == resolvedProfile.DiseaseDef)
+                if (hediff?.def == targetDiseaseDef)
                 {
                     hediff.Severity = Mathf.Min(hediff.def.maxSeverity, MildDiagnosedSeverity);
                 }
@@ -99,8 +106,8 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
         if (PawnUtility.ShouldSendNotificationAbout(patient) || PawnUtility.ShouldSendNotificationAbout(doctor))
         {
             Find.LetterStack.ReceiveLetter(
-                "Contagion_LetterLabelAnimalDiagnosed".Translate(patient.LabelShortCap, resolvedProfile.DiseaseDef.LabelCap),
-                "Contagion_LetterAnimalDiagnosed".Translate(doctor?.LabelShortCap ?? "?", patient.LabelShortCap, resolvedProfile.DiseaseDef.LabelCap),
+                "Contagion_LetterLabelAnimalDiagnosed".Translate(patient.LabelShortCap, targetDiseaseDef.LabelCap),
+                "Contagion_LetterAnimalDiagnosed".Translate(doctor?.LabelShortCap ?? "?", patient.LabelShortCap, targetDiseaseDef.LabelCap),
                 LetterDefOf.NegativeEvent,
                 patient);
         }

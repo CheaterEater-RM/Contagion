@@ -11,6 +11,10 @@ internal sealed class ContagionPawnTransmissionProcessor
 
     private readonly ContagionMapDeveloperDiagnosticsController _developerDiagnosticsController;
 
+    private readonly SpatialPawnIndex _spatialIndex = new SpatialPawnIndex();
+
+    private readonly List<Pawn> _rangeQueryBuffer = new List<Pawn>();
+
     private sealed class TransmissionSource
     {
         public TransmissionSource(Pawn pawn, ResolvedTransmissionProfile resolvedProfile)
@@ -54,12 +58,19 @@ internal sealed class ContagionPawnTransmissionProcessor
             source.SuppressionFactor = suppression;
         }
 
+        _spatialIndex.Build(spawnedPawns);
+
         for (int sourceIndex = 0; sourceIndex < sources.Count; sourceIndex++)
         {
             TransmissionSource source = sources[sourceIndex];
-            for (int targetIndex = 0; targetIndex < spawnedPawns.Count; targetIndex++)
+            float maxRange = GetMaxVectorRange(source.ResolvedProfile.Profile);
+
+            _rangeQueryBuffer.Clear();
+            _spatialIndex.CollectPawnsInRange(source.Pawn.Position, maxRange, _rangeQueryBuffer);
+
+            for (int targetIndex = 0; targetIndex < _rangeQueryBuffer.Count; targetIndex++)
             {
-                Pawn targetPawn = spawnedPawns[targetIndex];
+                Pawn targetPawn = _rangeQueryBuffer[targetIndex];
                 if (targetPawn == source.Pawn)
                 {
                     continue;
@@ -89,6 +100,29 @@ internal sealed class ContagionPawnTransmissionProcessor
         }
 
         return sources;
+    }
+
+    private static float GetMaxVectorRange(TransmissionProfile profile)
+    {
+        float maxRange = 0f;
+        if (profile.vectors == null)
+        {
+            return maxRange;
+        }
+
+        for (int i = 0; i < profile.vectors.Count; i++)
+        {
+            if (profile.vectors[i] is Vector_Airborne airborne)
+            {
+                maxRange = Mathf.Max(maxRange, airborne.maxRange);
+            }
+            else if (profile.vectors[i] is Vector_Proximity proximity)
+            {
+                maxRange = Mathf.Max(maxRange, proximity.maxRange);
+            }
+        }
+
+        return maxRange;
     }
 
     private bool TryTransmit(TransmissionSource source, Pawn targetPawn)
@@ -235,5 +269,54 @@ internal sealed class ContagionPawnTransmissionProcessor
         }
 
         return seeded;
+    }
+
+    private sealed class SpatialPawnIndex
+    {
+        private const int BucketSize = 16;
+
+        private readonly Dictionary<(int, int), List<Pawn>> _buckets = new Dictionary<(int, int), List<Pawn>>();
+
+        public void Build(IReadOnlyList<Pawn> pawns)
+        {
+            _buckets.Clear();
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                if (pawn == null || !pawn.Spawned)
+                {
+                    continue;
+                }
+
+                (int, int) bucket = (pawn.Position.x / BucketSize, pawn.Position.z / BucketSize);
+                if (!_buckets.TryGetValue(bucket, out List<Pawn> list))
+                {
+                    _buckets[bucket] = list = new List<Pawn>(4);
+                }
+
+                list.Add(pawn);
+            }
+        }
+
+        public void CollectPawnsInRange(IntVec3 center, float range, List<Pawn> result)
+        {
+            int searchRadius = (int)(range / BucketSize) + 1;
+            int cx = center.x / BucketSize;
+            int cz = center.z / BucketSize;
+
+            for (int bx = cx - searchRadius; bx <= cx + searchRadius; bx++)
+            {
+                for (int bz = cz - searchRadius; bz <= cz + searchRadius; bz++)
+                {
+                    if (_buckets.TryGetValue((bx, bz), out List<Pawn> bucket))
+                    {
+                        for (int i = 0; i < bucket.Count; i++)
+                        {
+                            result.Add(bucket[i]);
+                        }
+                    }
+                }
+            }
+        }
     }
 }

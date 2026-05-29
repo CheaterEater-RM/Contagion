@@ -52,7 +52,8 @@ internal sealed class ContagionEnvironmentalExposureProcessor
 
         float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
         Dictionary<IntVec3, int> roofEdgeCache = new Dictionary<IntVec3, int>();
-        Dictionary<IntVec3, float> waterProximityCache = new Dictionary<IntVec3, float>();
+        Dictionary<Vector_Environmental, Dictionary<IntVec3, float>> waterProximityCache =
+            new Dictionary<Vector_Environmental, Dictionary<IntVec3, float>>();
 
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
@@ -77,7 +78,7 @@ internal sealed class ContagionEnvironmentalExposureProcessor
         EnvironmentalProfile environmentalProfile,
         float transmissionMultiplier,
         Dictionary<IntVec3, int> roofEdgeCache,
-        Dictionary<IntVec3, float> waterProximityCache)
+        Dictionary<Vector_Environmental, Dictionary<IntVec3, float>> waterProximityCache)
     {
         if (!ContagionSeedingCoordinator.TryGetEnvironmentalSeedingContext(
             _owner,
@@ -286,14 +287,23 @@ internal sealed class ContagionEnvironmentalExposureProcessor
         return maxRadius;
     }
 
-    private float GetWaterProximityFactor(IntVec3 center, Vector_Environmental vector, Dictionary<IntVec3, float> cache)
+    private float GetWaterProximityFactor(
+        IntVec3 center,
+        Vector_Environmental vector,
+        Dictionary<Vector_Environmental, Dictionary<IntVec3, float>> cache)
     {
         if (vector.waterProximityRadius <= 0 || vector.waterProximityWeight <= 0f)
         {
             return 1f;
         }
 
-        if (cache.TryGetValue(center, out float cached))
+        if (!cache.TryGetValue(vector, out Dictionary<IntVec3, float> vectorCache))
+        {
+            vectorCache = new Dictionary<IntVec3, float>();
+            cache[vector] = vectorCache;
+        }
+
+        if (vectorCache.TryGetValue(center, out float cached))
         {
             return cached;
         }
@@ -319,7 +329,7 @@ internal sealed class ContagionEnvironmentalExposureProcessor
         }
 
         float result = Mathf.Clamp(1f + nearbyWaterCells * vector.waterProximityWeight, 1f, MaxEnvironmentalWaterFactor);
-        cache[center] = result;
+        vectorCache[center] = result;
         return result;
     }
 }

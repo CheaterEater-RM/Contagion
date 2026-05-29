@@ -9,11 +9,8 @@ namespace Contagion.Patches;
 // When an infected corpse is butchered, either the butcher notices and discards the carcass
 // (skill check pass) or contamination is baked into the raw meat (skill check fail).
 //
-// For human corpses the butcher can also be directly exposed through contact — an additional
-// independent chance that runs only on the failure path after products are yielded.
-//
-// Notice chance uses a sigmoid of combined domain + cooking skill (domain = Animals for
-// animals, Medicine for humanlike): ~75% at combined 10, ~95% at combined 15, hard cap 99.5%.
+// Notice chance uses a sigmoid of combined Animals + Cooking skill:
+// ~75% at combined 10, ~95% at combined 15, hard cap 99.5%.
 //
 // IEnumerable<Thing> postfix: Harmony pipes __result through this method so we can
 // conditionally yield or modify items before they reach GenRecipe.
@@ -54,12 +51,12 @@ internal static class Patch_Corpse_ButcherProducts
             yield break;
         }
 
-        float noticeChance = ComputeNoticeChance(butcher, isHuman);
+        float noticeChance = ComputeNoticeChance(butcher);
 
         if (Rand.Chance(noticeChance))
         {
             // Butcher noticed — discard all products, forbid and alert.
-            NotifyButcherNoticed(butcher, __instance, contagiousDisease, isHuman);
+            NotifyButcherNoticed(butcher, __instance, contagiousDisease);
             yield break;
         }
 
@@ -76,25 +73,18 @@ internal static class Patch_Corpse_ButcherProducts
 
             yield return item;
         }
-
-        // Human corpse: butcher who didn't notice is directly exposed through contact.
-        if (isHuman && butcher != null)
-        {
-            TryExposeButcher(butcher, innerPawn, contagiousDisease, resolvedProfile);
-        }
     }
 
-    // Sigmoid of (domain skill + Cooking), capped at 99.5%.
+    // Sigmoid of (Animals skill + Cooking), capped at 99.5%.
     // k=0.37, x0=7 → ~75% at combined 10, ~95% at combined 15.
-    private static float ComputeNoticeChance(Pawn butcher, bool isHuman)
+    private static float ComputeNoticeChance(Pawn butcher)
     {
         if (butcher?.skills == null)
         {
             return 0f;
         }
 
-        SkillDef domainSkill = isHuman ? SkillDefOf.Medicine : SkillDefOf.Animals;
-        float domain = butcher.skills.GetSkill(domainSkill).Level;
+        float domain = butcher.skills.GetSkill(SkillDefOf.Animals).Level;
         float cooking = butcher.skills.GetSkill(SkillDefOf.Cooking).Level;
         float combined = domain + cooking;
 
@@ -102,24 +92,7 @@ internal static class Patch_Corpse_ButcherProducts
         return Mathf.Min(sigmoid, 0.995f);
     }
 
-    // 35% base contact-exposure chance; full immunity checks applied inside TrySeedIncubation.
-    private static void TryExposeButcher(Pawn butcher, Pawn corpseInnerPawn, HediffDef disease, ResolvedTransmissionProfile resolvedProfile)
-    {
-        if (!Rand.Chance(0.35f))
-        {
-            return;
-        }
-
-        ContagionDiseaseUtility.TrySeedIncubation(
-            butcher,
-            disease,
-            resolvedProfile.PartsToAffect,
-            corpseInnerPawn,
-            ContagionDiagnosticOrigin.Spread,
-            out _);
-    }
-
-    private static void NotifyButcherNoticed(Pawn butcher, Corpse corpse, HediffDef disease, bool isHuman)
+    private static void NotifyButcherNoticed(Pawn butcher, Corpse corpse, HediffDef disease)
     {
         if (butcher == null || corpse == null)
         {
@@ -139,9 +112,8 @@ internal static class Patch_Corpse_ButcherProducts
             return;
         }
 
-        string messageKey = isHuman ? "Contagion_MessageButcherNoticedHuman" : "Contagion_MessageButcherNoticed";
         Messages.Message(
-            messageKey.Translate(butcher.LabelShortCap, corpse.InnerPawn?.LabelShortCap ?? corpse.Label, disease.LabelCap),
+            "Contagion_MessageButcherNoticed".Translate(butcher.LabelShortCap, corpse.InnerPawn?.LabelShortCap ?? corpse.Label, disease.LabelCap),
             butcher,
             MessageTypeDefOf.CautionInput,
             historical: false);

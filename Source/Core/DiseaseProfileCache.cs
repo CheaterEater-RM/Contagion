@@ -55,7 +55,7 @@ public static class DiseaseProfileCache
         get
         {
             EnsureInitialized();
-            return _profilesByDisease.Values;
+            return _profilesByDisease.Values.Distinct();
         }
     }
 

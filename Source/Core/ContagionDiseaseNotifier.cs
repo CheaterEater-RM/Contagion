@@ -48,7 +48,7 @@ internal static class ContagionDiseaseNotifier
         }
 
         if (resolvedProfile.Profile.outbreakNotification == OutbreakNotificationMode.FirstCase
-            && HasOtherVisibleNotifiableCaseOnMap(map, pawn, diseaseDef))
+            && HasOtherVisibleNotifiableCaseOnMap(map, pawn, resolvedProfile))
         {
             return;
         }
@@ -61,7 +61,7 @@ internal static class ContagionDiseaseNotifier
             pawn);
     }
 
-    private static bool HasOtherVisibleNotifiableCaseOnMap(Map map, Pawn currentPawn, HediffDef diseaseDef)
+    private static bool HasOtherVisibleNotifiableCaseOnMap(Map map, Pawn currentPawn, ResolvedTransmissionProfile profile)
     {
         IReadOnlyList<Pawn> spawnedPawns = map?.mapPawns?.AllPawnsSpawned;
         if (spawnedPawns == null)
@@ -77,7 +77,7 @@ internal static class ContagionDiseaseNotifier
                 continue;
             }
 
-            if (HasVisibleDisease(otherPawn, diseaseDef))
+            if (HasVisibleProfileDisease(otherPawn, profile))
             {
                 return true;
             }
@@ -86,10 +86,10 @@ internal static class ContagionDiseaseNotifier
         return false;
     }
 
-    private static bool HasVisibleDisease(Pawn pawn, HediffDef diseaseDef)
+    private static bool HasVisibleProfileDisease(Pawn pawn, ResolvedTransmissionProfile profile)
     {
         List<Hediff> hediffs = pawn?.health?.hediffSet?.hediffs;
-        if (hediffs == null || diseaseDef == null)
+        if (hediffs == null)
         {
             return false;
         }
@@ -97,7 +97,13 @@ internal static class ContagionDiseaseNotifier
         for (int i = 0; i < hediffs.Count; i++)
         {
             Hediff hediff = hediffs[i];
-            if (hediff?.def == diseaseDef && hediff.Visible)
+            if (hediff == null || !hediff.Visible)
+            {
+                continue;
+            }
+
+            if (DiseaseProfileCache.TryGetResolvedProfile(hediff.def, out ResolvedTransmissionProfile hediffProfile)
+                && hediffProfile == profile)
             {
                 return true;
             }

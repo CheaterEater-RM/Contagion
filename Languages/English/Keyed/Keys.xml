@@ -102,7 +102,6 @@
 
   <!-- Butchering contamination -->
   <Contagion_MessageButcherNoticed>{0} noticed signs of infection while butchering {1} ({2}) and discarded all the products.</Contagion_MessageButcherNoticed>
-  <Contagion_MessageButcherNoticedHuman>{0} recognized signs of infection on the body of {1} ({2}) and discarded all the products.</Contagion_MessageButcherNoticedHuman>
 
   <!-- Animal sick signal and diagnosis -->
   <Contagion_AnimalSickDetected>{0} noticed that {1} seems unwell. A vet should examine the animal.</Contagion_AnimalSickDetected>
