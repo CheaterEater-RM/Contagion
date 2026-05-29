@@ -51,7 +51,7 @@ internal static class Patch_Corpse_ButcherProducts
             yield break;
         }
 
-        float noticeChance = ComputeNoticeChance(butcher);
+        float noticeChance = ComputeNoticeChance(butcher, isHuman);
 
         if (Rand.Chance(noticeChance))
         {
@@ -75,16 +75,19 @@ internal static class Patch_Corpse_ButcherProducts
         }
     }
 
-    // Sigmoid of (Animals skill + Cooking), capped at 99.5%.
+    // Sigmoid of (Domain skill + Cooking), capped at 99.5%.
+    // Domain skill is Medicine for human corpses, Animals for animal corpses.
     // k=0.37, x0=7 → ~75% at combined 10, ~95% at combined 15.
-    private static float ComputeNoticeChance(Pawn butcher)
+    private static float ComputeNoticeChance(Pawn butcher, bool isHumanCorpse)
     {
         if (butcher?.skills == null)
         {
             return 0f;
         }
 
-        float domain = butcher.skills.GetSkill(SkillDefOf.Animals).Level;
+        float domain = isHumanCorpse 
+            ? butcher.skills.GetSkill(SkillDefOf.Medicine).Level 
+            : butcher.skills.GetSkill(SkillDefOf.Animals).Level;
         float cooking = butcher.skills.GetSkill(SkillDefOf.Cooking).Level;
         float combined = domain + cooking;
 

@@ -48,12 +48,5 @@ internal static class Patch_Corpse_SpawnSetup
                 compRottable.RotImmediately();
             }
         }
-        else if (innerPawn.RaceProps?.Humanlike == true)
-        {
-            if (ContagionAnimalDiseaseUtility.IsHumanCorpseContagious(innerPawn))
-            {
-                compRottable.RotImmediately();
-            }
-        }
     }
 }
