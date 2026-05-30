@@ -50,7 +50,7 @@ No arrival fulfillment. No animal-linked seeder. Muscle parasites enter exclusiv
 ### What drives the environmental risk
 
 - Soil contamination, not water. Parasite eggs survive in animal faeces deposited on the ground.
-- Temperature: broad cold tolerance (`minTemperature −15°C`) but peak in mild weather (`peakTemperature 18°C`).
+- Temperature: moderate cold tolerance (`minTemperature −5°C`) — eggs survive mild frost but die in sustained arctic conditions. Peak in mild weather (`peakTemperature 18°C`).
 - Lower water dependency than gut worms (`waterProximityRadius 6`, `waterProximityWeight 0.02`).
 - Very strong indoor protection: `indoorReductionPerCellFromEdge 0.20` — animals in roofed barns are almost fully protected. This disease is specifically a grazing-animal disease.
 
@@ -79,7 +79,7 @@ Parasites exist in contaminated outdoor soil. Grazing animals ingest eggs.
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerCheck | 0.0015 | Per 2500-tick environmental pass |
-| minTemperature | −15°C | Eggs survive harsh cold |
+| minTemperature | −5°C | Eggs survive mild frost; die in sustained arctic cold |
 | peakTemperature | 18°C | Cool-to-moderate climate peak |
 | waterProximityRadius | 6 | Low water dependency |
 | waterProximityWeight | 0.02 | Minimal water effect |

@@ -47,7 +47,7 @@ No arrival fulfillment: gut worms does not arrive on incoming pawns. It enters t
 ### What drives the environmental risk
 
 - Water proximity: bodies of water within `waterProximityRadius 14` cells increase exposure dramatically (`waterProximityWeight 0.08` — the highest of any disease).
-- Temperature: eggs survive near-freezing water (`minTemperature −10°C`) but peak in moderate warmth (`peakTemperature 22°C`).
+- Temperature: eggs require above-freezing water to remain viable (`minTemperature 0°C`) — frozen or icy water suppresses transmission. Peak in moderate warmth (`peakTemperature 22°C`).
 - Outdoor vs. indoor: indoor animals (roofed barn) receive `indoorReductionPerCellFromEdge 0.15` per cell of depth from the nearest unroofed cell. An animal in the centre of a large barn has near-zero exposure. Grazing animals in open pastures have full exposure.
 
 ---
@@ -87,7 +87,7 @@ This vector does not infect humans directly — it exposes outdoor animals to co
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerCheck | 0.002 | Per 2500-tick environmental pass |
-| minTemperature | −10°C | Worm eggs survive near freezing |
+| minTemperature | 0°C | Eggs require above-freezing water; frozen water suppresses transmission |
 | peakTemperature | 22°C | Moderate warmth, not tropical |
 | waterProximityRadius | 14 | Wide radius — rivers and large ponds at range |
 | waterProximityWeight | 0.08 | Strongest water dependency of any disease |

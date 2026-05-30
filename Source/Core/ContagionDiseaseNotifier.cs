@@ -47,21 +47,55 @@ internal static class ContagionDiseaseNotifier
             return;
         }
 
-        if (resolvedProfile.Profile.outbreakNotification == OutbreakNotificationMode.FirstCase
-            && HasOtherVisibleNotifiableCaseOnMap(map, pawn, resolvedProfile))
-        {
-            return;
-        }
-
         string diseaseLabel = diseaseHediff?.LabelCap ?? diseaseDef.LabelCap;
-        Find.LetterStack.ReceiveLetter(
-            "Contagion_LetterLabelOutbreak".Translate(diseaseDef.LabelCap),
-            "Contagion_LetterOutbreakFirstCase".Translate(pawn.LabelShortCap, diseaseLabel),
-            LetterDefOf.NegativeEvent,
-            pawn);
+        bool isAnimal = pawn.RaceProps?.Animal == true;
+
+        if (isAnimal)
+        {
+            // Only fire an animal outbreak letter when the disease is also a threat to humans.
+            // Pure animal diseases (e.g. Animal_Flu) get no outbreak letter — they have their
+            // own notification path via the sick signal and animal examination system.
+            if (!resolvedProfile.Profile.affectsHumans)
+            {
+                return;
+            }
+
+            if (resolvedProfile.Profile.outbreakNotification == OutbreakNotificationMode.FirstCase
+                && HasOtherVisibleCaseOnMap(map, pawn, resolvedProfile, animalsOnly: true))
+            {
+                return;
+            }
+
+            Find.LetterStack.ReceiveLetter(
+                "Contagion_LetterLabelAnimalOutbreak".Translate(diseaseDef.LabelCap),
+                "Contagion_LetterAnimalOutbreakFirstCase".Translate(pawn.LabelShortCap, diseaseLabel),
+                LetterDefOf.NegativeEvent,
+                pawn);
+        }
+        else
+        {
+            // Human track: check only other humanlike pawns (colonists, slaves, prisoners).
+            // Animals with the same disease do not suppress this letter — both notifications
+            // can and should fire independently so the player gets the full picture.
+            if (resolvedProfile.Profile.outbreakNotification == OutbreakNotificationMode.FirstCase
+                && HasOtherVisibleCaseOnMap(map, pawn, resolvedProfile, animalsOnly: false))
+            {
+                return;
+            }
+
+            Find.LetterStack.ReceiveLetter(
+                "Contagion_LetterLabelOutbreak".Translate(diseaseDef.LabelCap),
+                "Contagion_LetterOutbreakFirstCase".Translate(pawn.LabelShortCap, diseaseLabel),
+                LetterDefOf.NegativeEvent,
+                pawn);
+        }
     }
 
-    private static bool HasOtherVisibleNotifiableCaseOnMap(Map map, Pawn currentPawn, ResolvedTransmissionProfile profile)
+    // Checks whether any other pawn on the map already has a visible active case of the same
+    // disease profile. animalsOnly=true restricts the search to animals; false restricts to
+    // humanlike pawns (colonists, slaves, prisoners). The two tracks are intentionally separate
+    // so that an animal case never suppresses a human outbreak letter, and vice versa.
+    private static bool HasOtherVisibleCaseOnMap(Map map, Pawn currentPawn, ResolvedTransmissionProfile profile, bool animalsOnly)
     {
         IReadOnlyList<Pawn> spawnedPawns = map?.mapPawns?.AllPawnsSpawned;
         if (spawnedPawns == null)
@@ -72,7 +106,18 @@ internal static class ContagionDiseaseNotifier
         for (int i = 0; i < spawnedPawns.Count; i++)
         {
             Pawn otherPawn = spawnedPawns[i];
-            if (otherPawn == null || otherPawn == currentPawn || !PawnUtility.ShouldSendNotificationAbout(otherPawn))
+            if (otherPawn == null || otherPawn == currentPawn)
+            {
+                continue;
+            }
+
+            bool otherIsAnimal = otherPawn.RaceProps?.Animal == true;
+            if (animalsOnly != otherIsAnimal)
+            {
+                continue;
+            }
+
+            if (!PawnUtility.ShouldSendNotificationAbout(otherPawn))
             {
                 continue;
             }

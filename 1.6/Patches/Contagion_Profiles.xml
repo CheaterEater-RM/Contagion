@@ -41,9 +41,12 @@
         </seasonalInfectivity>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <!-- Sickly pawns shed less: vanilla amplifies their disease rate (randomDiseaseMtbDays),
-             so reducing outward spread keeps them from becoming a constant colony outbreak source. -->
+             so reducing outward spread keeps them from becoming a constant colony outbreak source.
+             Note: the Sickly trait is defined as TraitDef "Immunity" degree -1 in vanilla —
+             this entry targets Sickly, not the Tough/Robust immunity trait. -->
         <sourceInfectivityFactors>
           <li Class="Contagion.SourceFactor_Trait">
+            <!-- "Immunity" degree -1 = vanilla Sickly trait (not the Robust/Tough trait). -->
             <trait>Immunity</trait>
             <degree>-1</degree>
             <factor>0.5</factor>
@@ -191,6 +194,7 @@
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <sourceInfectivityFactors>
           <li Class="Contagion.SourceFactor_Trait">
+            <!-- "Immunity" degree -1 = vanilla Sickly trait (not the Robust/Tough trait). -->
             <trait>Immunity</trait>
             <degree>-1</degree>
             <factor>0.5</factor>
@@ -299,11 +303,12 @@
               </points>
             </activeInfectivityCurveOverride>
           </li>
-          <!-- Animal acquisition: contaminated water. Worm eggs survive near-freezing water,
-               peak in moderate warmth. Outdoor animals are fully exposed; indoor ones are not. -->
+          <!-- Animal acquisition: contaminated water. Worm eggs require above-freezing water to
+               remain viable — minTemperature 0 reflects that frozen/icy water suppresses transmission.
+               Peak in moderate warmth. Outdoor animals are fully exposed; indoor ones are not. -->
           <li Class="Contagion.Vector_Environmental">
             <baseChancePerCheck>0.002</baseChancePerCheck>
-            <minTemperature>-10</minTemperature>
+            <minTemperature>0</minTemperature>
             <peakTemperature>22</peakTemperature>
             <waterProximityRadius>14</waterProximityRadius>
             <waterProximityWeight>0.08</waterProximityWeight>
@@ -374,11 +379,13 @@
             <contaminationExpiryDays>45</contaminationExpiryDays>
           </li>
           <!-- Animal acquisition: outdoor soil contamination from parasite eggs in faeces.
-               Lower water dependency than gut worms; broader temperature tolerance.
+               Lower water dependency than gut worms. Eggs tolerate mild cold but die in
+               sustained arctic conditions — minTemperature -5 reflects borderline survivability
+               below freezing without permitting true arctic transmission.
                Heavy indoor reduction: only grazing/outdoor animals pick it up. -->
           <li Class="Contagion.Vector_Environmental">
             <baseChancePerCheck>0.0015</baseChancePerCheck>
-            <minTemperature>-15</minTemperature>
+            <minTemperature>-5</minTemperature>
             <peakTemperature>18</peakTemperature>
             <waterProximityRadius>6</waterProximityRadius>
             <waterProximityWeight>0.02</waterProximityWeight>

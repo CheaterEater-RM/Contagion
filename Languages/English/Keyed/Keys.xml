@@ -92,6 +92,8 @@
   <Contagion_MessageDiseaseActivated>{0} has developed {1}.</Contagion_MessageDiseaseActivated>
   <Contagion_LetterLabelOutbreak>Outbreak detected: {0}</Contagion_LetterLabelOutbreak>
   <Contagion_LetterOutbreakFirstCase>{0} is showing symptoms of {1}. This is the first visible case in the colony, but transmission may already be underway.</Contagion_LetterOutbreakFirstCase>
+  <Contagion_LetterLabelAnimalOutbreak>Infected animal: {0}</Contagion_LetterLabelAnimalOutbreak>
+  <Contagion_LetterAnimalOutbreakFirstCase>{0} is showing signs of {1}. This disease can also spread to your colonists, slaves, and prisoners — consider isolating infected animals or disposing of them safely before butchering.</Contagion_LetterAnimalOutbreakFirstCase>
   <Contagion_LetterLabelExposure>Disease exposure: {0}</Contagion_LetterLabelExposure>
   <Contagion_LetterExposureSingle>{0} has been exposed to {1}. Symptoms may appear after an incubation period.</Contagion_LetterExposureSingle>
   <Contagion_LetterExposureMultiple>{0} pawns have been exposed to {1}. Symptoms may appear after an incubation period</Contagion_LetterExposureMultiple>
