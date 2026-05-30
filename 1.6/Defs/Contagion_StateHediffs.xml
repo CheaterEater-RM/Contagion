@@ -37,6 +37,7 @@
        diagnose: reveals the underlying disease on success, or clears as false positive/negative. -->
   <HediffDef>
     <defName>Contagion_AnimalSick</defName>
+    <hediffClass>HediffWithComps</hediffClass>
     <label>sick</label>
     <description>This animal appears unwell. A veterinarian should examine it — the cause may be serious or nothing at all.</description>
     <initialSeverity>0.05</initialSeverity>

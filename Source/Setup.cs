@@ -11,6 +11,7 @@ public static class Contagion_Init
         Harmony harmony = new Harmony("com.cheatereater.contagion");
         harmony.PatchAll();
 
+        ContagionCorpseDefInjector.EnsureCorpseComps();
         ContagionAutoIncidentGenerator.GenerateAndValidate();
 
         if (Prefs.DevMode)

@@ -14,6 +14,10 @@ public static class ContagionDefOf
 
     public static HediffDef Contagion_AnimalSick;
 
+    public static SpecialThingFilterDef AllowInfectedCorpses;
+
+    public static SpecialThingFilterDef AllowUninfectedCorpses;
+
     static ContagionDefOf()
     {
         DefOfHelper.EnsureInitializedInCtor(typeof(ContagionDefOf));

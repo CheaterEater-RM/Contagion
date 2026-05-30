@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/RecipeDef[defName="ButcherCorpseFlesh" and not(defaultIngredientFilter/specialFiltersToDisallow)]/defaultIngredientFilter</xpath>
+    <value>
+      <specialFiltersToDisallow />
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/RecipeDef[defName="ButcherCorpseFlesh" and not(defaultIngredientFilter/specialFiltersToDisallow/li="AllowInfectedCorpses")]/defaultIngredientFilter/specialFiltersToDisallow</xpath>
+    <value>
+      <li>AllowInfectedCorpses</li>
+    </value>
+  </Operation>
+</Patch>

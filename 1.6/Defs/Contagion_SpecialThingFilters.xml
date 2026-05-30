@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <SpecialThingFilterDef>
+    <defName>AllowInfectedCorpses</defName>
+    <label>allow infected corpses</label>
+    <description>Allow corpses carrying a contagious disease.</description>
+    <parentCategory>Corpses</parentCategory>
+    <allowedByDefault>true</allowedByDefault>
+    <saveKey>allowInfectedCorpses</saveKey>
+    <workerClass>Contagion.SpecialThingFilterWorker_InfectedCorpse</workerClass>
+  </SpecialThingFilterDef>
+
+  <SpecialThingFilterDef>
+    <defName>AllowUninfectedCorpses</defName>
+    <label>allow uninfected corpses</label>
+    <description>Allow corpses that are not carrying a contagious disease.</description>
+    <parentCategory>Corpses</parentCategory>
+    <allowedByDefault>true</allowedByDefault>
+    <saveKey>allowUninfectedCorpses</saveKey>
+    <workerClass>Contagion.SpecialThingFilterWorker_UninfectedCorpse</workerClass>
+  </SpecialThingFilterDef>
+</Defs>

@@ -30,16 +30,9 @@ internal static class Patch_Corpse_ButcherProducts
         }
 
         Pawn innerPawn = __instance.InnerPawn;
-        bool isAnimal = innerPawn.RaceProps?.Animal == true;
         bool isHuman = innerPawn.RaceProps?.Humanlike == true;
 
-        HediffDef contagiousDisease = isAnimal
-            ? ContagionAnimalDiseaseUtility.GetAnimalCorpseContagiousDisease(innerPawn)
-            : isHuman
-                ? ContagionAnimalDiseaseUtility.GetHumanCorpseContagiousDisease(innerPawn)
-                : null;
-
-        if (contagiousDisease == null
+        if (!ContagionCorpseUtility.TryGetInfectedDisease(__instance, out HediffDef contagiousDisease)
             || !DiseaseProfileCache.TryGetResolvedProfile(contagiousDisease, out ResolvedTransmissionProfile resolvedProfile)
             || !resolvedProfile.Profile.affectsHumans)
         {

@@ -12,7 +12,7 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
 
     private static readonly AccessTools.FieldRef<Pawn_InteractionsTracker, Pawn> PawnField = AccessTools.FieldRefAccess<Pawn_InteractionsTracker, Pawn>("pawn");
 
-    public static void Postfix(Pawn_InteractionsTracker __instance, Pawn recipient, InteractionDef interactionDef, bool __result)
+    public static void Postfix(Pawn_InteractionsTracker __instance, Pawn recipient, InteractionDef intDef, bool __result)
     {
         if (!__result || recipient == null)
         {
@@ -27,7 +27,7 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
 
         // AnimalChat is the handler-to-animal interaction from JobDriver_InteractAnimal. Use it for
         // disease detection (Animals skill roll) rather than social vector transmission.
-        if (interactionDef == InteractionDefOf.AnimalChat)
+        if (intDef == InteractionDefOf.AnimalChat)
         {
             if (recipient.RaceProps?.Animal == true)
             {
