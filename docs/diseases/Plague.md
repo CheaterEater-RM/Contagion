@@ -123,7 +123,7 @@ Cooking infected meat has a low direct handling risk: splashes, contaminated too
 
 ### Vector_Foodborne
 
-Plague can survive into unsafe meat and meals, but ingestion is secondary to butchery and corpse handling. Raw infected meat is dangerous; properly cooked meals are lower risk, especially with a skilled cook.
+Plague can survive into unsafe meat and meals, but ingestion is secondary to butchery and corpse handling. Raw infected meat is dangerous; properly cooked meals are lower risk, especially with a skilled cook. At ingestion, contaminated-food risk is multiplied by the pawn's Contagion food-safety factor, so strong stomachs reduce and protective artificial/mutated stomachs eliminate this meal-based path without affecting corpse-handling flea or fluid exposure.
 
 | Parameter | Value | Notes |
 |---|---|---|

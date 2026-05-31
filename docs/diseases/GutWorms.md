@@ -61,7 +61,7 @@ Storyteller fulfillment stays environmental. Incoming groups do not resolve a st
 
 ### Vector_Foodborne (primary human infection path)
 
-The main way colonists get gut worms is eating contaminated food — either cooked by an infected colonist or made from infected animal meat.
+The main way colonists get gut worms is eating contaminated food — either cooked by an infected colonist or made from infected animal meat. At ingestion, this risk is multiplied by the pawn's Contagion food-safety factor: the strong-stomach gene reduces the roll to 10% of normal, while bionic, sterilizing, nuclear, and fleshmass stomachs prevent this contaminated-food roll.
 
 | Parameter | Value | Notes |
 |---|---|---|

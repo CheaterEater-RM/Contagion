@@ -65,7 +65,7 @@ Storyteller fulfillment stays environmental. Incoming groups do not resolve a st
 
 ### Vector_Foodborne (primary contaminated-food path)
 
-Humans most commonly get muscle parasites by eating contaminated meat, but sustained outdoor environmental exposure can also seed direct cases. Active human cases can contaminate prepared food through unsafe food handling, just like gut worms, though there is no vomiting vector and no proximity or airborne spread.
+Humans most commonly get muscle parasites by eating contaminated meat, but sustained outdoor environmental exposure can also seed direct cases. Active human cases can contaminate prepared food through unsafe food handling, just like gut worms, though there is no vomiting vector and no proximity or airborne spread. At ingestion, contaminated-food risk is multiplied by the pawn's Contagion food-safety factor: the strong-stomach gene reduces the roll to 10% of normal, while protective artificial/mutated stomachs eliminate this roll.
 
 | Parameter | Value | Notes |
 |---|---|---|

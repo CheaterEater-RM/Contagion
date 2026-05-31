@@ -46,6 +46,11 @@ public static class ContagionRiskMath
         return 1f - miss;
     }
 
+    public static float ApplyIngestionResistance(float baseChance, float ingestionResistanceFactor)
+    {
+        return Math.Max(0f, baseChance) * Math.Max(0f, ingestionResistanceFactor);
+    }
+
     private static float Clamp(float value, float min, float max)
     {
         return Math.Min(Math.Max(value, min), max);
