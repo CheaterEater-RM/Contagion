@@ -1,7 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Patch>
+  <!-- Inject Hediff_ContagionAnimalHiddenDisease as the hediffClass for each animal-variant
+       disease def. This keeps the active disease invisible until a vet diagnoses it,
+       enabling the sick-signal and passive-presentation mechanics. -->
+
   <Operation Class="PatchOperationAdd">
     <xpath>Defs/HediffDef[defName="Animal_Plague" and not(hediffClass)]</xpath>
+    <value>
+      <hediffClass>Contagion.Hediff_ContagionAnimalHiddenDisease</hediffClass>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Animal_GutWorms" and not(hediffClass)]</xpath>
+    <value>
+      <hediffClass>Contagion.Hediff_ContagionAnimalHiddenDisease</hediffClass>
+    </value>
+  </Operation>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/HediffDef[defName="Animal_MuscleParasites" and not(hediffClass)]</xpath>
     <value>
       <hediffClass>Contagion.Hediff_ContagionAnimalHiddenDisease</hediffClass>
     </value>

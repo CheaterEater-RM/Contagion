@@ -278,6 +278,8 @@
         <immunityDurationDays>15</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
+        <!-- Animal_GutWorms is the animal-variant hediff: same disease cluster, hidden until diagnosed. -->
+        <animalVariantDef>Animal_GutWorms</animalVariantDef>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
         <!-- Gut worms are not externally visible — reduced passive presentation (~10% cumulative)
@@ -291,7 +293,7 @@
           </points>
         </passiveSymptomPresentationCurve>
         <posthumousSymptomChance>0.05</posthumousSymptomChance>
-        <!-- Stomach targeting for humans; animals get the generic disease. -->
+        <!-- Stomach targeting for humans; animals skip part targeting entirely. -->
         <targetBodyParts>
           <li>Stomach</li>
         </targetBodyParts>
@@ -382,6 +384,8 @@
         <immunityDurationDays>20</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
+        <!-- Animal_MuscleParasites is the animal-variant hediff: same disease cluster, hidden until diagnosed. -->
+        <animalVariantDef>Animal_MuscleParasites</animalVariantDef>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
         <!-- Muscle parasites are deeply embedded — reduced passive presentation (~10% cumulative)

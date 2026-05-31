@@ -1,6 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- New disease HediffDefs added by Contagion (if any).
-     MuscleParasites is a vanilla Core hediff (Disease_MuscleParasites incident also exists);
-     Contagion patches a TransmissionProfile onto it rather than defining a new def. -->
+<!-- Animal-variant hediff defs added by Contagion.
+     Each is a near-copy of its human counterpart tuned for the 48h vet tend cycle,
+     with hediffClass patched to Hediff_ContagionAnimalHiddenDisease via
+     Contagion_AnimalDiseasePatches.xml so the disease stays hidden until diagnosed. -->
 <Defs>
+
+  <!-- ── Animal_GutWorms ──────────────────────────────────────────────────────────────
+       Mirrors GutWorms but without vomitMtbDays — animals do not have the vomiting job.
+       The 48h tend cycle matches vanilla GutWorms; disappearsAtTotalTendQuality 3 means
+       a vet must tend the animal three times for a full cure. -->
+  <HediffDef ParentName="InfectionBase">
+    <defName>Animal_GutWorms</defName>
+    <label>gut worms</label>
+    <description>Parasitic worms in the gut. This strain is adapted to infecting non-human species. They consume the victim's food, increasing hunger.</description>
+    <debugLabelExtra>animal</debugLabelExtra>
+    <makesSickThought>true</makesSickThought>
+    <tendable>true</tendable>
+    <stages>
+      <li>
+        <painOffset>0.2</painOffset>
+        <hungerRateFactorOffset>1</hungerRateFactorOffset>
+      </li>
+    </stages>
+    <comps>
+      <li Class="HediffCompProperties_TendDuration">
+        <baseTendDurationHours>48</baseTendDurationHours>
+        <disappearsAtTotalTendQuality>3</disappearsAtTotalTendQuality>
+      </li>
+      <!-- Natural recovery: wild clears in ~15 days, domestic in ~25 days (vs ~4 days with active tending). -->
+      <li Class="Contagion.HediffCompProperties_AnimalNaturalRecovery">
+        <wildPerDay>0.20</wildPerDay>
+        <domesticPerDay>0.12</domesticPerDay>
+      </li>
+    </comps>
+  </HediffDef>
+
+  <!-- ── Animal_MuscleParasites ────────────────────────────────────────────────────────
+       Mirrors MuscleParasites with the same capacity penalties. RestFallRateFactor is
+       retained — infected animals tire faster, which is accurate for muscle larvae. -->
+  <HediffDef ParentName="InfectionBase">
+    <defName>Animal_MuscleParasites</defName>
+    <label>muscle parasites</label>
+    <description>Parasitic creatures in the muscles. This strain is adapted to infecting non-human species. They cause weakness and poor coordination.</description>
+    <debugLabelExtra>animal</debugLabelExtra>
+    <makesSickThought>true</makesSickThought>
+    <tendable>true</tendable>
+    <stages>
+      <li>
+        <painOffset>0.2</painOffset>
+        <statOffsets>
+          <RestFallRateFactor>1</RestFallRateFactor>
+        </statOffsets>
+        <capMods>
+          <li>
+            <capacity>Manipulation</capacity>
+            <offset>-0.3</offset>
+          </li>
+          <li>
+            <capacity>Moving</capacity>
+            <offset>-0.3</offset>
+          </li>
+        </capMods>
+      </li>
+    </stages>
+    <comps>
+      <li Class="HediffCompProperties_TendDuration">
+        <baseTendDurationHours>48</baseTendDurationHours>
+        <disappearsAtTotalTendQuality>3</disappearsAtTotalTendQuality>
+      </li>
+      <!-- Natural recovery: wild clears in ~15 days, domestic in ~25 days (vs ~4 days with active tending). -->
+      <li Class="Contagion.HediffCompProperties_AnimalNaturalRecovery">
+        <wildPerDay>0.20</wildPerDay>
+        <domesticPerDay>0.12</domesticPerDay>
+      </li>
+    </comps>
+  </HediffDef>
+
 </Defs>

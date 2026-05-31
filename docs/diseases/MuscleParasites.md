@@ -9,23 +9,25 @@ Trichinella-type larvae contracted from raw or undercooked infected meat. Purely
 | Field | Value |
 |---|---|
 | HediffDef | `MuscleParasites` |
-| Animal variant | none (same hediff for both species) |
+| Animal variant HediffDef | `Animal_MuscleParasites` |
 | Species | Human + Animal |
 | Vanilla incident | `Disease_MuscleParasites` (vanilla Core) |
-| Vanilla lethal severity | 1.0 |
-| Vanilla tend cycle | 5 days |
-| Vanilla immunity | Non-immunizable |
+| Vanilla lethal severity | **None** — muscle parasites cannot kill directly |
+| Vanilla removal | Accumulate 300% total tend quality (`disappearsAtTotalTendQuality 3`); no immunity race |
+| Vanilla tend window | 48 h (`baseTendDurationHours 48`); ~3 skilled tends over ~4–6 days clears the disease |
 | Contagion immunity | 20 days post-recovery (`immunityDurationDays 20`) |
 
-### Why no separate hediff or `selfSchedules`
+### Why no `selfSchedules`
 
-The vanilla Core `Disease_MuscleParasites` incident already exists and is picked by the storyteller. Contagion intercepts it in Mode 1 (creating a pending environmental window) or cancels it in Mode 2. No `selfSchedules` is needed; no new incident def is created.
+The vanilla Core `Disease_MuscleParasites` incident already exists and is picked by the storyteller. Contagion intercepts it in Mode 1 (creating a pending environmental window) or cancels it in Mode 2. No `selfSchedules` is needed; no new incident def is created. The animal-variant def (`Animal_MuscleParasites`) is added by Contagion and uses `Hediff_ContagionAnimalHiddenDisease` so the disease stays hidden in animals until a vet diagnoses it.
 
 ---
 
 ## Vanilla Disease Characteristics
 
-Muscle parasites reduce movement capacity significantly. Larvae embed in muscle tissue — the primary gameplay hit is locomotion and manipulation penalties. Not an immunity race disease; treatment (via surgery/drug in vanilla) removes it. The 20-day post-recovery immunity gives meaningful protection between events.
+Muscle parasites reduce movement capacity significantly. Larvae embed in muscle tissue — the primary gameplay hit is locomotion and manipulation penalties. There is no severity progression and no immunity race; the disease has no lethal threshold and cannot kill. The only removal mechanism is accumulating 300% total tend quality over roughly three vet visits. Without treatment the disease persists indefinitely.
+
+For animals: same as gut worms — neither lethal nor self-clearing in vanilla. `Animal_MuscleParasites` adds `HediffComp_AnimalNaturalRecovery` so wild animals self-clear in ~15 days and domestic animals in ~25 days. Active vet tending remains far faster (~4–6 days).
 
 ---
 

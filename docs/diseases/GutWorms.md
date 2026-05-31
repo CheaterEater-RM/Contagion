@@ -9,20 +9,22 @@ Water-borne intestinal parasite entering through contaminated water and infected
 | Field | Value |
 |---|---|
 | HediffDef | `GutWorms` |
-| Animal variant | none (same hediff applies to both, but animals skip part targeting) |
+| Animal variant HediffDef | `Animal_GutWorms` |
 | Species | Human + Animal |
 | Vanilla incident | `Disease_GutWorms` |
-| Target body part | Stomach (human only; animals get generic application) |
-| Vanilla lethal severity | 1.0 |
-| Vanilla tend cycle | 3 days |
-| Vanilla immunity | Non-immunizable — requires mod-owned post-recovery protection |
+| Target body part | Stomach (human only; animals skip part targeting) |
+| Vanilla lethal severity | **None** — gut worms cannot kill directly |
+| Vanilla removal | Accumulate 300% total tend quality (`disappearsAtTotalTendQuality 3`); no immunity race |
+| Vanilla tend window | 48 h (`baseTendDurationHours 48`); ~3 skilled tends over ~4–6 days clears the disease |
 | Contagion immunity | 15 days post-recovery (`immunityDurationDays 15`) |
 
 ---
 
 ## Vanilla Disease Characteristics
 
-Gut worms is chronic: low severity, slow progression, but it doesn't clear without treatment. Primarily a productivity drain — reduced movement, manipulation, and consciousness. Not typically lethal unless severely neglected. The 3-day tend window means infrequent treatment is sufficient. Animals carry it persistently without dying, making them the long-term reservoir.
+Gut worms is chronic: there is no severity progression and no immunity race. The disease has no lethal threshold — it cannot kill. The only removal mechanism is accumulating 300% total tend quality, which requires a doctor or vet tending the pawn roughly three times over ~4–6 days. Without treatment the disease persists indefinitely.
+
+For animals specifically: they neither die from it nor clear it on their own. Untreated infected animals are permanent reservoirs. `Animal_GutWorms` adds `HediffComp_AnimalNaturalRecovery` so wild animals self-clear in ~15 days and domestic animals in ~25 days without vet attention — but active vet tending remains far faster.
 
 ---
 
