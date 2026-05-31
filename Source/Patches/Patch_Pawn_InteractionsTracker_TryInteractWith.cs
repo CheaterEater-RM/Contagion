@@ -25,13 +25,25 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
             return;
         }
 
-        // AnimalChat is the handler-to-animal interaction from JobDriver_InteractAnimal. Use it for
-        // disease detection (Animals skill roll) rather than social vector transmission.
+        // AnimalChat: handler (initiator) actively works with animal (recipient).
+        // Skill-gated detection roll.
         if (intDef == InteractionDefOf.AnimalChat)
         {
             if (recipient.RaceProps?.Animal == true)
             {
                 TryDetectAnimalDisease(initiator, recipient);
+            }
+            return;
+        }
+
+        // Nuzzle: animal (initiator) approaches colonist (recipient). The colonist isn't
+        // actively inspecting the animal, but close physical contact makes distress obvious.
+        // Higher flat floor than AnimalChat; skill still matters but is not the gate.
+        if (intDef == InteractionDefOf.Nuzzle)
+        {
+            if (initiator.RaceProps?.Animal == true)
+            {
+                TryDetectAnimalDiseaseFromNuzzle(recipient, initiator);
             }
             return;
         }
@@ -75,6 +87,52 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
         }
 
         ContagionDiagnostics.Trace($"Animal sick signal: {handler.LabelShortCap} noticed {animal.LabelShortCap} seems unwell ({(isInfected ? "true" : "false positive")}).");
+    }
+
+    // Nuzzle detection: animal approaches colonist. Flat base of 20% for anyone;
+    // skills-of-recipient scales it up to 80% at Animals 20. The animal is the sick pawn;
+    // the colonist's Animals skill determines how readily they pick up on the distress.
+    private static void TryDetectAnimalDiseaseFromNuzzle(Pawn colonist, Pawn animal)
+    {
+        if (colonist == null || animal == null || animal.Dead || !animal.Spawned)
+        {
+            return;
+        }
+
+        if (animal.health.hediffSet.HasHediff(ContagionDefOf.Contagion_AnimalSick))
+        {
+            return;
+        }
+
+        bool isInfected = ContagionAnimalDiseaseUtility.HasSickSignalDisease(animal);
+        float detectionChance;
+        if (isInfected)
+        {
+            float skillFactor = Mathf.Clamp01(colonist.skills?.GetSkill(SkillDefOf.Animals)?.Level / 20f ?? 0f);
+            detectionChance = 0.20f + skillFactor * 0.60f;
+        }
+        else
+        {
+            detectionChance = FalsePositiveChance;
+        }
+
+        if (!Rand.Chance(detectionChance))
+        {
+            return;
+        }
+
+        animal.health.AddHediff(HediffMaker.MakeHediff(ContagionDefOf.Contagion_AnimalSick, animal));
+
+        if (PawnUtility.ShouldSendNotificationAbout(animal) || PawnUtility.ShouldSendNotificationAbout(colonist))
+        {
+            Messages.Message(
+                "Contagion_AnimalSickNuzzle".Translate(animal.LabelShortCap, colonist.LabelShortCap),
+                animal,
+                MessageTypeDefOf.CautionInput,
+                historical: false);
+        }
+
+        ContagionDiagnostics.Trace($"Animal sick signal (nuzzle): {colonist.LabelShortCap} noticed {animal.LabelShortCap} seems unwell ({(isInfected ? "true positive" : "false positive")}).");
     }
 
     private static void TryTransmitSocial(Pawn sourcePawn, Pawn targetPawn)

@@ -111,6 +111,7 @@
 
   <!-- Animal sick signal and diagnosis -->
   <Contagion_AnimalSickDetected>{0} noticed that {1} seems unwell. A vet should examine the animal.</Contagion_AnimalSickDetected>
+  <Contagion_AnimalSickNuzzle>{0} seemed unwell while nuzzling {1}. A vet should examine the animal.</Contagion_AnimalSickNuzzle>
   <Contagion_AnimalSickPresented>{0} is showing visible signs of illness. A vet should examine the animal.</Contagion_AnimalSickPresented>
   <Contagion_LetterLabelAnimalDiagnosed>{0} diagnosed: {1}</Contagion_LetterLabelAnimalDiagnosed>
   <Contagion_LetterAnimalDiagnosed>{0} examined {1} and diagnosed {2}. The animal should not be butchered while infected — its carcass will be unsafe unless the disease is treated first.</Contagion_LetterAnimalDiagnosed>
