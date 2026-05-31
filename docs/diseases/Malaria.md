@@ -31,11 +31,11 @@ Storyteller fires `Disease_Malaria` → pending event created. Resolves via an *
 
 Mosquitoes bite pawns with outdoor access near standing water. Once the budget is spent or the window closes, the event clears. This matches vanilla's "some pawns get malaria then the event ends" feel.
 
-No arrival fulfillment. No acausal fallback for malaria — if the environmental window fires and no pawns have outdoor/water exposure, the event simply does nothing. A fully indoor colony in an arid biome effectively never gets malaria (intentional).
+No arrival fulfillment. If the environmental window expires with budget still unspent, Storyteller mode uses `Seeder_Acausal` as a final fallback: the storyteller said someone gets sick, so the disease lands silently on eligible pawns instead of disappearing. This fallback is deliberately isolated to Storyteller mode and does not create a continuous random disease source.
 
 ### Mode 2 (Contagion-driven)
 - **Environmental exposure** runs continuously; no window-bound budget.
-- No Storyteller seeder; no Acausal seeder. Malaria is a pure environmental disease in Mode 2.
+- No Storyteller seeder and no acausal MTB. Malaria is a pure environmental disease in Mode 2.
 - Storyteller incident cancelled; continuous environmental pressure runs at biome rate.
 
 ---
@@ -44,7 +44,7 @@ No arrival fulfillment. No acausal fallback for malaria — if the environmental
 
 ### Vector_Environmental (only vector)
 
-The map environment is the source. Pawns with outdoor access near water accumulate risk each 2500-tick environmental pass.
+The map environment is the source. Pawns with outdoor access near water accumulate risk each 2500-tick environmental pass. Malaria represents broad mosquito pressure: warm water matters most, but shallow rooms and open structures are not perfect protection.
 
 | Parameter | Value | Notes |
 |---|---|---|
@@ -107,4 +107,5 @@ No active case cap: the environment doesn't care how many colonists are already 
 - The 16°C minimum temperature gate is the primary climate filter. For tiles that never reach 16°C outdoors, malaria simply never fires. This creates a clean geographic distinction without biome-gating logic.
 - `indoorReductionPerCellFromEdge 0.08` is gentler than gut worms (0.15). Mosquitoes can penetrate slightly deeper into structures before being fully blocked. A colony where pawns work in shallow or open-roofed areas should still take some hits even indoors.
 - `coolRoomThreshold 22°C` means even a moderately cooled room (under 22°C) counts as cool. A lightly climate-controlled bedroom provides meaningful protection. This may be too generous; consider raising to 18°C to require actual AC investment.
-- No Acausal seeder on malaria means arctic and arid colonies literally never get it organically. This is intentional (environmental disease) but means the "malaria immunity" from penoxycyline is useless in those biomes. Fine as-is.
+- `Seeder_Acausal mtbDays 180 / cooldownDays 10` exists only as the Storyteller-window expiry fallback. It does not run as an independent Mode 2 seeder.
+- Arctic and arid colonies rarely get malaria organically in Contagion-driven mode because the environmental source is absent or suppressed. That is intentional; prevention through climate, distance from water, and indoor cooling should stand.

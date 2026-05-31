@@ -105,6 +105,7 @@ internal sealed class ContagionEnvironmentalExposureProcessor
 
         chance *= GetEnvironmentalShelterFactor(pawn.Position, room, ambientTemperature, environmentalProfile.Vector, roofEdgeCache);
         chance *= GetWaterProximityFactor(pawn.Position, environmentalProfile.Vector, waterProximityCache);
+        chance *= GetEnvironmentalPawnFactor(pawn, environmentalProfile.Vector);
         chance = ContagionTransmissionUtility.BuildSeederChance(
             chance,
             pawn,
@@ -164,6 +165,16 @@ internal sealed class ContagionEnvironmentalExposureProcessor
         }
 
         return Mathf.Max(0f, _map.Biome.CommonalityOfDisease(resolvedProfile.LinkedIncidentDef));
+    }
+
+    private static float GetEnvironmentalPawnFactor(Pawn pawn, Vector_Environmental vector)
+    {
+        if (pawn?.RaceProps?.Humanlike == true)
+        {
+            return Mathf.Max(0f, vector.humanExposureFactor);
+        }
+
+        return 1f;
     }
 
     private static bool TryGetEnvironmentalSettings(

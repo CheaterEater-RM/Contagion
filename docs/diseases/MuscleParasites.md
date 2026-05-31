@@ -1,6 +1,6 @@
 # Muscle Parasites — Contagion Profile
 
-Trichinella-type larvae contracted from raw or undercooked infected meat. Purely a meat-chain disease — no person-to-person spread, no vomiting. The full chain is: environment → outdoor animal → butchered meat → human. Longer incubation than gut worms, longer immunity. No crossover between humans in any direction.
+Trichinella-type larvae contracted from raw or undercooked infected meat, contaminated outdoor soil, fecal contamination, grazing environments, and unsafe food handling. No person-to-person airborne or proximity spread, no vomiting. The main colony chain is still environment → outdoor animal → butchered meat → human, but humans can also catch it directly from sustained outdoor environmental exposure or contaminated food. Longer incubation than gut worms, longer immunity.
 
 ---
 
@@ -37,14 +37,16 @@ For animals: same as gut worms — neither lethal nor self-clearing in vanilla. 
 Storyteller fires `Disease_MuscleParasites` → pending event created. Resolves via an **environmental window** (same pattern as Gut Worms).
 
 **Fulfillment chain:**
-1. **Environmental window** — `Vector_Environmental` runs for up to 14 days. Infection budget 1–3 animals. Outdoor grazing animals in contaminated soil accumulate exposure.
-2. **Acausal fallback** — MTB 300 days if the environmental window closes with unfulfilled budget.
+1. **Environmental window** — `Vector_Environmental` runs for up to 14 days. Infection budget 1–3 cases. Outdoor grazing animals and humans working through contaminated soil accumulate exposure.
+2. **Acausal fallback** — if the 14-day window closes with unfulfilled budget, remaining cases resolve via silent incubation on eligible humans or animals. The fallback preserves the human hygiene reduction instead of forcing humans as equal targets.
 
-No arrival fulfillment. No animal-linked seeder. Muscle parasites enter exclusively through the soil → animal → meat chain.
+Storyteller fulfillment stays environmental. Incoming groups do not resolve a storyteller muscle-parasites event, even though arrivals can carry muscle parasites in Contagion-driven mode.
 
 ### Mode 2 (Contagion-driven)
 - **Environmental exposure** runs continuously.
-- **Acausal backstop** — MTB 300 days, `cooldownDays 30`. Very long backstop — this disease should feel like a real environmental hazard, not a constant background drumbeat.
+- **Arrival exposure** can seed incoming carriers, especially farm animals and other animal-heavy groups.
+- **Successful environmental seeds apply a short environmental cooldown** (`cooldownDays 4`) so one contaminated-soil check does not make everyone sick at once.
+- No acausal backstop. Colonies that keep humans and animals out of contaminated outdoor exposure can avoid muscle parasite introductions.
 - Storyteller incident cancelled; Mode 2 owns pacing.
 
 **Storyteller seeder cooldown:** 30 days (the longest of any shipped disease).
@@ -55,14 +57,15 @@ No arrival fulfillment. No animal-linked seeder. Muscle parasites enter exclusiv
 - Temperature: moderate cold tolerance (`minTemperature −5°C`) — eggs survive mild frost but die in sustained arctic conditions. Peak in mild weather (`peakTemperature 18°C`).
 - Lower water dependency than gut worms (`waterProximityRadius 6`, `waterProximityWeight 0.02`).
 - Very strong indoor protection: `indoorReductionPerCellFromEdge 0.20` — animals in roofed barns are almost fully protected. This disease is specifically a grazing-animal disease.
+- Human hygiene: humanlike pawns use `humanExposureFactor 0.45`, reflecting better hygiene and less direct contact with contaminated soil and feces. This is a reduction, not immunity.
 
 ---
 
 ## Spread Vectors
 
-### Vector_Foodborne (only spread path)
+### Vector_Foodborne (primary contaminated-food path)
 
-The only way humans get muscle parasites is eating contaminated meat. No vomiting vector. No proximity or airborne spread.
+Humans most commonly get muscle parasites by eating contaminated meat, but sustained outdoor environmental exposure can also seed direct cases. Active human cases can contaminate prepared food through unsafe food handling, just like gut worms, though there is no vomiting vector and no proximity or airborne spread.
 
 | Parameter | Value | Notes |
 |---|---|---|
@@ -74,13 +77,14 @@ The only way humans get muscle parasites is eating contaminated meat. No vomitin
 
 **Why 45-day expiry?** Trichinella-type cysts are robust. Preserved meat (pemmican, dried meat) can carry live larvae much longer than gut worm eggs. This means stockpiled meat from an infected animal remains a hazard for weeks.
 
-### Vector_Environmental (animal acquisition only)
+### Vector_Environmental (direct outdoor exposure)
 
-Parasites exist in contaminated outdoor soil. Grazing animals ingest eggs.
+Parasites exist in contaminated outdoor soil. Grazing animals ingest eggs, and humans can be exposed by sustained outdoor work or travel through contaminated ground.
 
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerCheck | 0.0015 | Per 2500-tick environmental pass |
+| humanExposureFactor | 0.45 | Humans get a hygiene reduction; animals rely on position/shelter |
 | minTemperature | −5°C | Eggs survive mild frost; die in sustained arctic cold |
 | peakTemperature | 18°C | Cool-to-moderate climate peak |
 | waterProximityRadius | 6 | Low water dependency |
@@ -135,7 +139,7 @@ Spread suppression is off for the same reason as gut worms: contaminated food ca
 
 ### Corpse contagiousness (`corpseContagious true`)
 
-Infected animal carcasses spawn rotten. Same mechanism as gut worms: butchering requires the "butcher anyway" override; even then the unified notice roll (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: true`) and meat contamination fire normally.
+Infected animal carcasses spawn fresh and are marked by `Comp_InfectedCorpse`. Butcher bills exclude infected corpses by default through the `AllowInfectedCorpses` special filter. If the player enables that filter, the unified notice roll (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: true`) and meat contamination fire normally.
 
 **Key difference from gut worms:** the 45-day contamination expiry means meat from a muscle-parasite animal that entered the freezer may contaminate colonists weeks after the animal was killed. Long-preserved contaminated pemmican is a delayed hazard.
 
@@ -145,7 +149,7 @@ Same detection/diagnosis chain as gut worms and plague: `AnimalChat` interaction
 
 ### No vomiting
 
-Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`. Once infected meat is in the food chain, the spread happens at ingestion. There is no ambient fomite escalation path; the chain terminates when everyone who ate the contaminated meal is exposed.
+Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`. Once infected meat or unsafe food handling contaminates food, the spread happens at ingestion. There is no ambient fomite escalation path; the chain terminates when everyone who ate the contaminated meal is exposed.
 
 ---
 
@@ -153,7 +157,7 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 
 - **Indoor barn housing** — `indoorReductionPerCellFromEdge 0.20` is the highest of any disease. A roofed barn with 5+ cells to the nearest unroofed cell nearly eliminates soil exposure. This is the strongest single counter and requires no active management.
 - **Vet inspection** — handler detection via sick signal is the key lever. A skilled handler (Animals skill 15+) has a ~75% detection chance per interaction. Routine handler routines (training, tending, feeding) will catch most infections before slaughter.
-- **"Slaughter and dispose"** — always the safest option. Zero meat, zero risk.
+- **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
 - **Cooking quality** — survival meals (0.05×) and lavish meals (0.10×) reduce contamination from 1.0× to near-zero. Avoid raw meat and pemmican (0.70×) from uncertain sources.
 - **Expiry awareness** — contaminated preserved meat stays dangerous for 45 days. A stockpile built from an infected batch remains a hazard well after the animal is dead.
 - **Dedicated butcher** — Medical and Cooking skill are the primary levers on the notice roll; Animals adds a small bonus. A pawn with decent Medical + Cooking catches most infected batches before they enter storage.
@@ -164,5 +168,6 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 
 - `baseChancePerCheck 0.0015` is lower than gut worms (0.002). Muscle parasites should feel slightly rarer but more impactful per outbreak. May need adjusting upward if playtesting shows muscle parasites are too infrequent on temperate maps.
 - `contaminationExpiryDays 45` is a long window that creates interesting long-memory scenarios (a stockpile from an outbreak months ago). If players find this too harsh or confusing to track, consider 30 days (same as gut worms).
-- No arrival seeder. Muscle parasites cannot arrive on incoming pawns in Mode 1 or Mode 2. If narrative justification exists for travellers carrying the disease, an `Seeder_Arrival` with very low `arrivalChance` could be added.
-- `spreadSuppressionScale 0` was set because there is no person-to-person spread and therefore the colony-fraction suppression has no meaning. Confirm this is correct: if an infected cook somehow contaminated food, and foodborne were treated as herd spread, suppression would make sense. Current design: no cook vector, only meat chain.
+- `Seeder_Arrival arrivalChance 0.004` lets incoming groups carry muscle parasites in Contagion-driven mode. Farm-animal wander-ins are the clearest carrier story, but any eligible arrival group can technically bring it.
+- `Seeder_Environmental cooldownDays 4` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
+- `spreadSuppressionScale 0` was set because foodborne/environmental pressure is not person-to-person herd spread. A dirty kitchen, contaminated meat batch, or contaminated soil patch can expose multiple pawns regardless of colony infection fraction.

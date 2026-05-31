@@ -118,7 +118,7 @@
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
         <!-- Species-specific barrier: flu spreads freely within a species but jumps between
-             animal species at only ~8% efficiency — avian flu analogy. A sick chicken won't
+             animal species at only ~10% efficiency — avian flu analogy. A sick chicken won't
              reliably infect a pig in the same barn, though rare cross-species jumps still occur. -->
         <animalCrossSpeciesFactor>0.10</animalCrossSpeciesFactor>
         <incubationInfectivityCurve>
@@ -240,12 +240,6 @@
             <seedCountRange>1~1</seedCountRange>
             <cooldownDays>15</cooldownDays>
           </li>
-          <li Class="Contagion.Seeder_AnimalLinked">
-            <mtbDays>120</mtbDays>
-            <cooldownDays>15</cooldownDays>
-            <requiresAnimalsOnMap>true</requiresAnimalsOnMap>
-            <handlerBias>2.0</handlerBias>
-          </li>
           <li Class="Contagion.Seeder_Arrival">
             <arrivalChance>0.01</arrivalChance>
             <cooldownDays>3</cooldownDays>
@@ -328,11 +322,13 @@
               </points>
             </activeInfectivityCurveOverride>
           </li>
-          <!-- Animal acquisition: contaminated water. Worm eggs require above-freezing water to
+          <!-- Environmental acquisition: contaminated water. Worm eggs require above-freezing water to
                remain viable — minTemperature 0 reflects that frozen/icy water suppresses transmission.
-               Peak in moderate warmth. Outdoor animals are fully exposed; indoor ones are not. -->
+               Peak in moderate warmth. Outdoor animals are fully exposed; indoor ones are not.
+               Humans can catch it too, but hygiene lowers their ambient exposure. -->
           <li Class="Contagion.Vector_Environmental">
             <baseChancePerCheck>0.002</baseChancePerCheck>
+            <humanExposureFactor>0.50</humanExposureFactor>
             <minTemperature>0</minTemperature>
             <peakTemperature>22</peakTemperature>
             <waterProximityRadius>14</waterProximityRadius>
@@ -344,7 +340,7 @@
         <seeders>
           <!-- Seeder_Storyteller makes selfSchedules (or the existing vanilla incident) the Mode 1
                trigger; paired with Seeder_Environmental it opens an environmental window rather than
-               seeding a carrier directly (see UsesEnvironmentalSeedingOnly). -->
+               seeding a carrier directly. Seeder_Arrival is used by Contagion-driven mode. -->
           <li Class="Contagion.Seeder_Storyteller">
             <seedCountRange>1~1</seedCountRange>
             <cooldownDays>20</cooldownDays>
@@ -353,7 +349,11 @@
             <baseChanceMultiplier>0.8</baseChanceMultiplier>
             <windowDays>14</windowDays>
             <infectionBudget>2~4</infectionBudget>
-            <cooldownDays>10</cooldownDays>
+            <cooldownDays>3</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.006</arrivalChance>
+            <cooldownDays>5</cooldownDays>
           </li>
           <li Class="Contagion.Seeder_Acausal">
             <mtbDays>180</mtbDays>
@@ -368,8 +368,8 @@
   <!-- ── Muscle Parasites ───────────────────────────────────────────────────────────── -->
   <!-- Vanilla Core hediff (Disease_MuscleParasites incident also exists — no selfSchedules needed).
        Trichinella-type larvae contracted by eating raw or improperly cooked meat from infected
-       animals. No person-to-person spread and no vomiting — the chain is:
-       environment → animal → butchered meat → human exclusively. -->
+       animals. No person-to-person spread and no vomiting — the main chain is:
+       environment → animal → butchered meat → human, with direct outdoor environmental exposure also possible. -->
   <Operation Class="PatchOperationAdd">
     <xpath>Defs/HediffDef[defName="MuscleParasites" and not(modExtensions)]</xpath>
     <value>
@@ -416,13 +416,15 @@
             <cleanlinessImpact>0.5</cleanlinessImpact>
             <contaminationExpiryDays>45</contaminationExpiryDays>
           </li>
-          <!-- Animal acquisition: outdoor soil contamination from parasite eggs in faeces.
+          <!-- Environmental acquisition: outdoor soil contamination from parasite eggs in faeces.
                Lower water dependency than gut worms. Eggs tolerate mild cold but die in
                sustained arctic conditions — minTemperature -5 reflects borderline survivability
                below freezing without permitting true arctic transmission.
-               Heavy indoor reduction: only grazing/outdoor animals pick it up. -->
+               Heavy indoor reduction: grazing/outdoor animals are most exposed. Humans can catch
+               it too, but hygiene lowers their ambient exposure. -->
           <li Class="Contagion.Vector_Environmental">
             <baseChancePerCheck>0.0015</baseChancePerCheck>
+            <humanExposureFactor>0.45</humanExposureFactor>
             <minTemperature>-5</minTemperature>
             <peakTemperature>18</peakTemperature>
             <waterProximityRadius>6</waterProximityRadius>
@@ -433,7 +435,7 @@
         </vectors>
         <seeders>
           <!-- Seeder_Storyteller pairs with Seeder_Environmental: the vanilla Disease_MuscleParasites
-               incident fires → environmental window opens → outdoor animals get exposed. -->
+               incident fires → environmental window opens. Seeder_Arrival is used by Contagion-driven mode. -->
           <li Class="Contagion.Seeder_Storyteller">
             <seedCountRange>1~1</seedCountRange>
             <cooldownDays>30</cooldownDays>
@@ -442,7 +444,11 @@
             <baseChanceMultiplier>0.7</baseChanceMultiplier>
             <windowDays>14</windowDays>
             <infectionBudget>1~3</infectionBudget>
-            <cooldownDays>15</cooldownDays>
+            <cooldownDays>4</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.004</arrivalChance>
+            <cooldownDays>6</cooldownDays>
           </li>
           <li Class="Contagion.Seeder_Acausal">
             <mtbDays>300</mtbDays>
@@ -479,6 +485,8 @@
           <permanentWinter>0.1</permanentWinter>
         </seasonalInfectivity>
         <vectors>
+          <!-- Mosquito pressure: warm water, broad climate tolerance, and weaker indoor
+               reduction because mosquitoes can reach shallow rooms. -->
           <li Class="Contagion.Vector_Environmental">
             <baseChancePerCheck>0.0035</baseChancePerCheck>
             <minTemperature>16</minTemperature>
@@ -495,6 +503,10 @@
             <windowDays>14</windowDays>
             <infectionBudget>2~5</infectionBudget>
             <cooldownDays>5</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>10</cooldownDays>
           </li>
         </seeders>
       </li>
@@ -526,13 +538,15 @@
           <permanentWinter>0.1</permanentWinter>
         </seasonalInfectivity>
         <vectors>
+          <!-- Tsetse habitat: hotter and rarer than malaria, with stronger indoor protection
+               and heavier river/wetland dependency. -->
           <li Class="Contagion.Vector_Environmental">
-            <baseChancePerCheck>0.0025</baseChancePerCheck>
+            <baseChancePerCheck>0.0022</baseChancePerCheck>
             <minTemperature>20</minTemperature>
             <peakTemperature>32</peakTemperature>
             <waterProximityRadius>12</waterProximityRadius>
-            <waterProximityWeight>0.025</waterProximityWeight>
-            <indoorReductionPerCellFromEdge>0.1</indoorReductionPerCellFromEdge>
+            <waterProximityWeight>0.035</waterProximityWeight>
+            <indoorReductionPerCellFromEdge>0.15</indoorReductionPerCellFromEdge>
             <coolRoomThreshold>24</coolRoomThreshold>
           </li>
         </vectors>
@@ -541,7 +555,11 @@
             <baseChanceMultiplier>0.75</baseChanceMultiplier>
             <windowDays>14</windowDays>
             <infectionBudget>2~5</infectionBudget>
-            <cooldownDays>5</cooldownDays>
+            <cooldownDays>7</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>240</mtbDays>
+            <cooldownDays>15</cooldownDays>
           </li>
         </seeders>
       </li>

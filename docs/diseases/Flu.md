@@ -13,14 +13,14 @@ Seasonal respiratory illness. Spreads person-to-person through the air and via c
 | Species | Human only |
 | Vanilla incident | `Disease_Flu` |
 | Vanilla lethal severity | 1.0 |
-| Vanilla tend cycle | 8 h |
-| Immunity race | fast — `immunityPerDaySick 0.65`, `severityPerDayNotImmune 0.35` |
+| Vanilla tend cycle | 12 h |
+| Immunity race | close but survivable with care — `immunityPerDaySick 0.2388`, `severityPerDayNotImmune 0.2488` |
 
 ---
 
 ## Vanilla Disease Characteristics
 
-Flu is fast and non-lethal in most cases: a well-tended pawn typically wins the immunity race well before lethal severity. The main threat is colony throughput — multiple simultaneous cases cut into food production, construction, and fighting capacity. Untended or immunosuppressed pawns can die.
+Flu is usually survivable with treatment, but the untended immunity race is close enough to matter. The main threat is colony throughput — multiple simultaneous cases cut into food production, construction, and fighting capacity. Untended, immunosuppressed, or badly managed pawns can die.
 
 ---
 
@@ -35,7 +35,7 @@ Storyteller fires `Disease_Flu` → pending event created with a 15-day window.
 
 ### Mode 2 (Contagion-driven)
 - Arrivals roll continuous exposure (`arrivalChance 0.01` per qualifying group, `cooldownDays 3`).
-- Acausal backstop at MTB 180 days (`cooldownDays 10`) for isolated colonies with no arrivals.
+- No acausal backstop. Isolated colonies with no infected arrivals can avoid flu introductions.
 - Storyteller `Disease_Flu` incident is cancelled outright; Mode 2 owns pacing.
 
 **Storyteller seeder cooldown:** 10 days (prevents the storyteller from queueing flu events back-to-back before the pending window resolves).
@@ -73,7 +73,7 @@ Face-to-face conversations are a contact booster on top of airborne, regardless 
 
 ### Vector_Fomite (escalation)
 
-Contaminated vomit. Flu only reaches peak fomite infectivity at high severity (0.80–1.00), so vomit spread signals an already-bad case. Pawns stepping on tagged vomit filth roll for exposure.
+Contaminated vomit. Flu only reaches peak fomite infectivity at high severity (0.80–1.00), so vomit spread signals an already-bad case. Pawns stepping on tagged vomit filth roll for exposure. The vomit stores its fomite-specific potency when it is created, then decays over time.
 
 | Parameter | Value | Notes |
 |---|---|---|

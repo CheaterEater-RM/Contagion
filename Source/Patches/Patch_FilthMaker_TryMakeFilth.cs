@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HarmonyLib;
 using RimWorld;
 using Verse;
@@ -15,9 +16,10 @@ internal static class Patch_FilthMaker_TryMakeFilth
         }
 
         Filth filth = null;
-        for (int i = 0; i < c.GetThingList(map).Count; i++)
+        List<Thing> things = c.GetThingList(map);
+        for (int i = 0; i < things.Count; i++)
         {
-            if (c.GetThingList(map)[i] is Filth existingFilth && existingFilth.def == filthDef)
+            if (things[i] is Filth existingFilth && existingFilth.def == filthDef)
             {
                 filth = existingFilth;
                 break;

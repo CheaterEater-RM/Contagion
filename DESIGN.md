@@ -100,7 +100,7 @@ The mod owns short-term reinfection protection because vanilla `HediffComp_Immun
 Contagion has two seeding modes the player chooses in mod settings. Both share the same source paths and transmission engine — only the question of *when an outbreak starts* differs.
 
 - **Mode 1 — Storyteller-driven (default).** The vanilla storyteller still picks diseases on its biome-aware schedule. Contagion intercepts each pick, turns it into a *pending disease event* with a per-disease expiry window, and fulfils it through whichever source path fits the disease best (arrival, animal contact, environmental window, etc.). On expiry, an acausal seed lands silently. The storyteller stops being a vector and becomes the scheduler.
-- **Mode 2 — Contagion-driven.** Contagion runs all pacing itself. Arrivals carry continuous low-rate risk, environmental exposure is continuous, an MTB acausal fallback covers isolated colonies, and a map-level disease director raises or suppresses future introductions based on quiet time, recent seeding, and current colony sickness. Storyteller disease incidents for profiled diseases are cancelled outright; unprofiled diseases (mechanites, other-mod additions) pass through to vanilla untouched.
+- **Mode 2 — Contagion-driven.** Contagion runs all pacing itself. Arrivals carry continuous low-rate risk, environmental exposure is continuous, and a map-level disease director raises or suppresses future introductions based on quiet time, recent seeding, and current colony sickness. There is no acausal backstop in Mode 2; colonies that fully avoid a source path are rewarded. Storyteller disease incidents for profiled diseases are cancelled outright; unprofiled diseases (mechanites, other-mod additions) pass through to vanilla untouched.
 
 Mode 1 is the default because the storyteller cadence matches most players' mental model and minimises mod-conflict surface area. Mode 2 is the opt-in for sim-leaning players who want continuous, legible pressure.
 
@@ -119,20 +119,21 @@ Strategies are reinterpretations of the existing seeder classes — same data, s
 |---|---|---|
 | Flu | Arrival → Acausal | 15 days |
 | Animal_Flu | Animal-arrival → Acausal | 15 days |
-| Plague (unified) | Animal-contact → Arrival → Acausal | 5 days |
-| GutWorms | Acausal (immediate, no wait) | 0 days |
-| Malaria | Environmental window | converts to a time-bounded environmental event |
-| SleepingSickness | Environmental window | converts to a time-bounded environmental event |
+| Plague (unified) | Arrival → Acausal | 5 days |
+| GutWorms | Environmental window → Acausal | converts to a time-bounded environmental event |
+| MuscleParasites | Environmental window → Acausal | converts to a time-bounded environmental event |
+| Malaria | Environmental window → Acausal | converts to a time-bounded environmental event |
+| SleepingSickness | Environmental window → Acausal | converts to a time-bounded environmental event |
 
 The 5-day plague window is deliberately tight. The goal is for the storyteller's plague pick to resolve close to when it fired, so the storyteller's event-spacing logic (which considers raids, disasters, and other events) stays meaningful. A long pending window would let a disease event collide with a raid the storyteller deliberately spaced apart.
 
 **Arrival fulfillment.** While a pending event exists for a contagious disease, the *next eligible arriving group* resolves it. Exposure is deterministic in Mode 1 because the storyteller event already represents disease pressure; carrier count is capped and scales sublinearly with eligible group size and disease cluster factor. The vanilla "only some pawns are vulnerable" feel comes from susceptibility factors gating eligibility, not from a low base chance.
 
-**Animal-contact fulfillment.** For plague, if animals are present on the map (a colony with any livestock/wildlife), the event resolves within the window onto a pawn biased toward handlers. This is deliberately near-deterministic on animal-bearing maps — the `mtbDays` field on `Seeder_AnimalLinked` is used only in Mode 2.
+**Unified plague fulfillment.** Human and animal plague incidents are both treated as unified plague scheduler events. Incoming humans and incoming animals are equally valid carriers; the original incident flavor may bias future tuning, but it does not constrain fulfillment.
 
-**Environmental fulfillment.** Environmental diseases have no outside vector. The storyteller's pick opens a *time-bounded environmental window* on the map: continuous `Vector_Environmental` exposure runs for the window's duration, capped by an event-scoped `infectionBudget` (distinct from the colony-wide `maxActiveCases`). When the budget is spent or the window closes, the event clears. This matches vanilla's "some pawns get malaria, then the event ends" feel rather than a permanent biome hazard.
+**Environmental fulfillment.** The storyteller's pick opens a *time-bounded environmental window* on the map: continuous `Vector_Environmental` exposure runs for the window's duration, capped by an event-scoped `infectionBudget` (distinct from the colony-wide `maxActiveCases`). When the budget is spent or the window closes, the event clears. If the window expires with budget remaining and the profile has `Seeder_Acausal`, the remaining storyteller request resolves through the acausal fallback rather than disappearing. This matches vanilla's "some pawns get malaria, then the event ends" feel rather than a permanent biome hazard. Parasite diseases can also have arrival seeders for Mode 2; their Mode 1 storyteller events still resolve through the environmental window.
 
-**Acausal fulfillment.** Silent single-pawn incubation on a random eligible pawn. Used as the final expiry fallback, or as the immediate resolution for diseases with no outside path (gut worms).
+**Acausal fulfillment.** Silent incubation on eligible pawns. Used only as the final Mode 1 expiry fallback when the configured source path fails to spend the storyteller request in time.
 
 ### Mode 2: Contagion-Driven Pacing with the Disease Director
 
@@ -140,8 +141,7 @@ Mode 2 disregards the storyteller for profiled diseases and runs continuous, low
 
 - **Arrivals.** Every neutral group, wanderer, quest arrival, hostile raid, and farm-animal wander-in rolls group exposure once. If exposure succeeds, one disease is chosen for the group and a capped, sublinear number of eligible pawns become carriers.
 - **Environmental exposure** runs continuously, gated by biome commonality, season, temperature, water proximity, and indoor sheltering — same engine as Mode 1's environmental windows, just always on.
-- **Animal-linked seeding** runs as an MTB process when animals are present, biased toward handlers.
-- **Acausal MTB** is the isolated-colony backstop (long MTB, used mainly for gut worms).
+- **No acausal MTB** runs in Mode 2. If a colony avoids arrivals, environmental exposure, and other configured source paths, that prevention stands.
 
 **Disease director.** Mode 2 owns a `ContagionDiseaseDirector` per map. It tracks human and animal pressure debt, current normalized sickness burden, recent disease introductions, and ticks since the last seeded incident. Quiet colonies accumulate pressure debt; active colonist/prisoner sickness and recent successful seeding suppress new introductions. Animal-only profiles use the animal burden/debt channel, while human profiles use the human channel. A group exposure spends director pressure once, even if it seeds several carriers.
 
@@ -382,8 +382,8 @@ Short-range contact spread modulated by cleanliness — the generalized "flea" v
 - `baseChancePerCheck` (0.025), `maxRange` (6), `distanceFalloffRate` (0.35), `cleanlinessImpact` (1.0), `outdoorFactor` (0.75), `outdoorFilthRadius` (4)
 
 ### Vector_Environmental
-Ambient exposure (mosquito model) for malaria/sleeping sickness — seeded by the map, no person-to-person spread. Temperature factor (zero below `minTemperature`, peaks at `peakTemperature`), water-proximity factor, indoor shelter falloff by depth from the nearest unroofed cell, and an AC/cool-room reduction. Biome-gated via vanilla `BiomeDef.CommonalityOfDisease`.
-- `baseChancePerCheck`, `minTemperature` (15), `peakTemperature` (30), `waterProximityRadius` (10), `waterProximityWeight` (0.02), `indoorReductionPerCellFromEdge` (0.1), `coolRoomThreshold` (18)
+Ambient exposure for malaria/sleeping sickness and environmental parasites — seeded by the map, no person-to-person spread. Temperature factor (zero below `minTemperature`, peaks at `peakTemperature`), water-proximity factor, indoor shelter falloff by depth from the nearest unroofed cell, an optional human hygiene reduction, and an AC/cool-room reduction. Biome-gated via vanilla `BiomeDef.CommonalityOfDisease`.
+- `baseChancePerCheck`, `humanExposureFactor` (1.0), `minTemperature` (15), `peakTemperature` (30), `waterProximityRadius` (10), `waterProximityWeight` (0.02), `indoorReductionPerCellFromEdge` (0.1), `coolRoomThreshold` (18)
 
 ### Vector_Fomite
 Contaminated **vomit** filth (scoped to vomit so contamination is visible and cleanable). When a contagious pawn vomits, the resulting `Filth_Vomit` is tagged; pawns stepping on it roll for transmission, with potency decaying over time. Cleaning removes it. Activates mainly during severe, un-quarantined cases — a "you let this get out of hand" escalation.
@@ -429,14 +429,14 @@ Shared base fields: `cooldownDays` (minimum gap between events of this type — 
 | `Seeder_Storyteller` | Driver. The storyteller's pick is intercepted and turned into a pending event; `seedCountRange` becomes the event's initial infection budget for environmental events. | Cancelled and discarded. | `seedCountRange` |
 | `Seeder_Arrival` | Fulfillment: the next eligible arriving group resolves the pending event into a capped group payload. | Continuous group exposure roll; if exposed, one disease and a capped carrier payload. | `arrivalChance` |
 | `Seeder_Environmental` | Fulfillment: opens a time-bounded environmental exposure window with `infectionBudget`. | Continuous environmental exposure (no event window). | `baseChanceMultiplier`, `windowDays` (Mode 1), `infectionBudget` (Mode 1) |
-| `Seeder_AnimalLinked` | Fulfillment: requires animal presence; resolves onto a handler-biased pawn within the window. | Continuous MTB seeding biased to handlers. | `mtbDays` (Mode 2), `requiresAnimalsOnMap`, `handlerBias` |
-| `Seeder_Acausal` | Pending-event expiry fallback for diseases whose other strategies failed to resolve within the window. | Continuous MTB backstop for isolated colonies. | `mtbDays` (Mode 2) |
+| `Seeder_AnimalLinked` | Fulfillment: requires animal presence; resolves onto a handler-biased pawn within the window. | Reserved for future source paths; no shipped disease currently uses it in Mode 2. | `mtbDays`, `requiresAnimalsOnMap`, `handlerBias` |
+| `Seeder_Acausal` | Pending-event expiry fallback for diseases whose other strategies failed to resolve within the window. | Ignored. Mode 2 has no acausal backstop. | `mtbDays` (legacy/Mode 1 tuning only) |
 
 ---
 
 ## Animal Disease Chain
 
-For diseases where `corpseContagious true` and `showsSickSignal true`, Contagion runs a full animal carrier pipeline. This is the primary introduction mechanism for gut worms and muscle parasites. The chain has three stages:
+For diseases where `corpseContagious true` and `showsSickSignal true`, Contagion runs a full animal carrier pipeline. This is a major reservoir and food-chain mechanism for gut worms and muscle parasites. The chain has three stages:
 
 ### Stage 1 — Animal acquisition (environmental vector)
 
@@ -446,7 +446,7 @@ Wild and outdoor animals are exposed through `Vector_Environmental` just like hu
 - **Outdoor livestock** (open pens): moderate exposure.
 - **Indoor livestock** (roofed barns): minimal to zero exposure.
 
-Because `crossSpeciesTransmissionFactor 0.0` blocks the pawn-to-pawn vectors, the environmental vector is the *only* way animals acquire the disease. Person-to-animal spread through proximity/airborne does not occur.
+Because `crossSpeciesTransmissionFactor 0.0` blocks the pawn-to-pawn vectors, the environmental vector and arrival carrier seeding are the ways animals acquire the parasite. Person-to-animal spread through proximity/airborne does not occur.
 
 ### Stage 2 — Detection and diagnosis ("Sick" signal)
 
@@ -501,13 +501,13 @@ Vanilla disease profiles are patched onto their `HediffDef` in `1.6/Patches/Cont
 
 | Disease | Vectors | Seeders | Incubation | Immunity | Species | Notes |
 |---|---|---|---|---|---|---|
-| Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival | 1.5 d | none* | Human | Seasonal (winter-peaking); `maxActiveCases` 5 |
-| Animal_Flu | Airborne, Fomite | Storyteller, Arrival | 1.5 d | none* | Animal | Species-isolated; safe to butcher (no `corpseContagious`) |
-| Plague | Proximity (cleanliness) | Storyteller, AnimalLinked, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; `maxActiveCases` 6 |
-| GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; `maxActiveCases` 3; `spreadSuppressionScale 0` |
-| MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; foodborne-only human chain; `maxActiveCases` 4; `spreadSuppressionScale 0` |
-| Malaria | Environmental | Environmental | 2.0 d | none* | Human | `outbreakNotification None`, `spreadSuppressionScale 0`, seasonal |
-| SleepingSickness | Environmental | Environmental | 2.5 d | none* | Human | Tropical-weighted; `outbreakNotification None`, `spreadSuppressionScale 0` |
+| Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival, Acausal | 1.5 d | none* | Human | Seasonal (winter-peaking); acausal is Mode 1 fallback only; `maxActiveCases` 5 |
+| Animal_Flu | Airborne, Fomite | Storyteller, Arrival, Acausal | 1.5 d | none* | Animal | Species-isolated; acausal is Mode 1 fallback only; safe to butcher (no `corpseContagious`) |
+| Plague | Proximity (cleanliness) | Storyteller, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; incoming humans and animals can carry it; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; `maxActiveCases` 6 |
+| GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; `maxActiveCases` 3; `spreadSuppressionScale 0` |
+| MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; `maxActiveCases` 4; `spreadSuppressionScale 0` |
+| Malaria | Environmental | Environmental, Acausal | 2.0 d | none* | Human | Mosquito pressure; broad warm/wet source; partial indoor penetration; `outbreakNotification None`, `spreadSuppressionScale 0`, seasonal |
+| SleepingSickness | Environmental | Environmental, Acausal | 2.5 d | none* | Human | Tsetse habitat pressure; hotter, wetter, rarer, and more strongly blocked by deep indoor shelter; `outbreakNotification None`, `spreadSuppressionScale 0` |
 
 \* Diseases with a vanilla immunity race set `immunityDurationDays 0` and rely on vanilla immunity to prevent reinfection. Non-immunizable diseases (gut worms, muscle parasites) use mod-owned temporary immunity.
 
@@ -685,7 +685,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 *As of 2026-05-30. All vectors, seeding orchestration, arrival hooks, infected-corpse food-chain rules, and the animal disease chain are complete and stable; the build is clean (0 warnings, 0 errors).*
 
-**Implemented and stable:** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns, pending events, director state) and contaminated-meal/raw-meat/corpse comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`); Mode 1 and Mode 2 seeding orchestration; `UsesEnvironmentalSeedingOnly` updated to allow Storyteller + Environmental combinations (gut worms, muscle parasites); `selfSchedules` auto-incident generation; the full animal disease chain — `corpseContagious` death hook (`Comp_InfectedCorpse` on fresh animal and humanlike corpses), `showsSickSignal` detection via `AnimalChat` interaction (Animals skill roll), `Contagion_AnimalSick` hediff, hidden active animal disease display until diagnosis, diagnosis via `TendUtility.DoTend` (Medical skill roll, true/false positive/negative outcomes), auto-slaughter exclusion for sick animals, infected/uninfected corpse filters, butcher bills excluding infected corpses by default with old-save migration, human auto-food rejection with manual ingest warning, corpse ingestion exposure, infected corpse inspect text and green corpse tint, `Patch_Corpse_ButcherProducts` (Animals/Medicine + Cooking notice check, contaminated raw meat), `Patch_GenRecipe_MakeRecipeProducts` (ingredient contamination with cooking reduction factors), `CookingContaminationExtension` on RecipeDefs, `Comp_ContaminatedFood` extended to raw meat and kibble with timestamp + expiry; gut worms redesigned to water-environmental + affectsAnimals + fomite + foodborne; muscle parasites (vanilla Core `MuscleParasites`, patched with `TransmissionProfile`) given soil-environmental + foodborne chain, `corpseContagious`, `showsSickSignal`.
+**Implemented and stable:** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns, pending events, director state) and contaminated-meal/raw-meat/corpse comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`); Mode 1 and Mode 2 seeding orchestration; environmental windows for gut worms and muscle parasites even though those profiles also have Mode 2 arrival seeders; `selfSchedules` auto-incident generation; the full animal disease chain — `corpseContagious` death hook (`Comp_InfectedCorpse` on fresh animal and humanlike corpses), `showsSickSignal` detection via `AnimalChat` interaction (Animals skill roll), `Contagion_AnimalSick` hediff, hidden active animal disease display until diagnosis, diagnosis via `TendUtility.DoTend` (Medical skill roll, true/false positive/negative outcomes), auto-slaughter exclusion for sick animals, infected/uninfected corpse filters, butcher bills excluding infected corpses by default with old-save migration, human auto-food rejection with manual ingest warning, corpse ingestion exposure, infected corpse inspect text and green corpse tint, `Patch_Corpse_ButcherProducts` (Animals/Medicine + Cooking notice check, contaminated raw meat), `Patch_GenRecipe_MakeRecipeProducts` (ingredient contamination with cooking reduction factors), `CookingContaminationExtension` on RecipeDefs, `Comp_ContaminatedFood` extended to raw meat and kibble with timestamp + expiry; gut worms redesigned to water-environmental + affectsAnimals + fomite + foodborne; muscle parasites (vanilla Core `MuscleParasites`, patched with `TransmissionProfile`) given soil-environmental + foodborne chain, `corpseContagious`, `showsSickSignal`.
 
 **Pending — tuning pass.** Starting numbers for pending windows, director parameters, group arrival exposure policies, plague `crossSpeciesTransmissionFactor`, and the new environmental/butchering disease parameters are first-pass guesses. Play-testing and adjustment are needed before v1 ships.
 
@@ -726,7 +726,8 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Two seeding modes (storyteller-driven default, Contagion-driven opt-in) | Vanilla cadence preserved as default; opt-in continuous pressure for sim-leaning players; mode toggle keeps the mental model clear per player |
 | Mode 1: pending events with per-disease fulfillment chains | Replaces four parallel independent seeders with one scheduler + ranked strategies — clearer mental model, unified semantics, and the strategy/window can be tuned per disease |
 | Mode 1 plague window 5 days | Tight windows preserve storyteller event-spacing — a long pending window would let a disease event collide with raids the storyteller deliberately spaced apart |
-| Gut worms and muscle parasites use Seeder_Environmental as primary Mode 1 trigger | Storyteller pick opens a water/soil environmental window rather than seeding a carrier directly. `UsesEnvironmentalSeedingOnly` was extended to permit Storyteller + Environmental combinations, with Storyteller acting purely as the Mode 1 scheduler. Acausal seeder retained as a long-MTB isolated-colony backstop |
+| Gut worms and muscle parasites use Seeder_Environmental as primary Mode 1 trigger | Storyteller pick opens a water/soil environmental window rather than seeding a carrier directly. Mode 2 can also seed them through arrivals, especially farm-animal wander-ins. Acausal seeder is retained only as the Mode 1 expiry fallback |
+| Malaria and sleeping sickness keep acausal only as a Mode 1 environmental expiry fallback | Storyteller mode is allowed to say "someone gets sick somehow" if the environmental window fails to spend its budget. Mode 2 still has no acausal backstop, so environmental prevention stands. |
 | Mode 1 arrival fulfillment = next eligible group (deterministic exposure) | Avoids unbounded pending-event growth on low-traffic maps while allowing large groups to carry a capped, sublinear payload |
 | Mode 1 environmental: time-bounded window with infection budget | Event-scoped budget is distinct from colony-wide `maxActiveCases` — matches vanilla's "outbreak happens then ends" feel rather than turning environmental disease into a permanent biome hazard |
 | Mode 2: storyteller incidents cancelled for profiled diseases | Mode 2 owns pacing; letting the storyteller inject extra events would undermine the director cadence the player is learning to read |

@@ -29,15 +29,15 @@ Sleeping sickness is slower and more debilitating than malaria. The immunity rac
 ### Mode 1 (Storyteller-driven)
 Storyteller fires `Disease_SleepingSickness` → pending event with 14-day window, infection budget 2–5. Resolves via environmental window only (same pattern as malaria).
 
-No arrival fulfillment. No acausal fallback. Fully indoor or cold colonies simply never see sleeping sickness from the environment.
+No arrival fulfillment. If the environmental window expires with budget still unspent, Storyteller mode uses `Seeder_Acausal` as a final fallback. This keeps the storyteller contract intact: when the storyteller schedules sleeping sickness, someone gets sick somehow, even if the map never produced a good tsetse exposure during the window.
 
 ### Mode 2 (Contagion-driven)
-- Continuous environmental exposure. No Storyteller, no Acausal seeder.
+- Continuous environmental exposure. No Storyteller seeder and no acausal MTB.
 - Storyteller incident cancelled.
 
 **Seeder multiplier:** `baseChanceMultiplier 0.75` — sleeping sickness fires slightly less aggressively than malaria's 1.0 even in ideal conditions. It should feel rarer and more severe when it arrives.
 
-**Storyteller seeder cooldown:** 5 days (same as malaria — both are environmental windows where cooldown manages event-spacing).
+**Environmental seeder cooldown:** 7 days. Sleeping sickness backs off more than malaria after a successful environmental seed because it is meant to be rarer and more severe.
 
 ---
 
@@ -45,14 +45,16 @@ No arrival fulfillment. No acausal fallback. Fully indoor or cold colonies simpl
 
 ### Vector_Environmental (only vector)
 
+Sleeping sickness represents tsetse habitat pressure rather than generic mosquito pressure. It is hotter, more river/wetland dependent, and more strongly blocked by deep indoor shelter than malaria.
+
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.0025 | Per 2500-tick pass — lower than malaria (0.0035) |
+| baseChancePerCheck | 0.0022 | Per 2500-tick pass — lower than malaria (0.0035) |
 | minTemperature | **20°C** | Higher floor than malaria (16°C) — tsetse requires genuine warmth |
 | peakTemperature | **32°C** | Peak at tropical heat |
 | waterProximityRadius | 12 | Wide range — tsetse breeds near rivers and wetlands |
-| waterProximityWeight | 0.025 | Slightly higher water dependency than malaria |
-| indoorReductionPerCellFromEdge | 0.1 | Standard indoor shelter |
+| waterProximityWeight | 0.035 | Stronger water dependency than malaria |
+| indoorReductionPerCellFromEdge | 0.15 | Strong indoor shelter; deep interior rooms are much safer |
 | coolRoomThreshold | **24°C** | Higher threshold — requires actual tropical cooling to suppress |
 
 ---
@@ -92,11 +94,12 @@ The `permanentSummer 1.1` multiplier (above the 1.0 summer multiplier) reflects 
 
 | Parameter | Malaria | Sleeping Sickness |
 |---|---|---|
-| Base check chance | 0.0035 | 0.0025 |
+| Base check chance | 0.0035 | 0.0022 |
 | Min temperature | 16°C | 20°C |
 | Peak temperature | 30°C | 32°C |
 | Water proximity radius | 10 | 12 |
-| Indoor reduction | 0.08/cell | 0.1/cell |
+| Water proximity weight | 0.02 | 0.035 |
+| Indoor reduction | 0.08/cell | 0.15/cell |
 | Cool room threshold | 22°C | 24°C |
 | Permanent summer multiplier | 1.0 | 1.1 |
 | Seeder multiplier | 1.0 | 0.75 |
@@ -106,19 +109,20 @@ The `permanentSummer 1.1` multiplier (above the 1.0 summer multiplier) reflects 
 
 ## Counterplay
 
-Identical to malaria, with higher temperature thresholds.
+Similar to malaria, but with stronger rewards for staying out of wet tropical habitat.
 
 - **Penoxycyline** — primary prevention tool.
-- **Indoor work** — standard shelter provides more protection against sleeping sickness than malaria (0.1 vs. 0.08 per cell). Deeper indoor positioning helps.
+- **Indoor work** — standard shelter provides more protection against sleeping sickness than malaria (0.15 vs. 0.08 per cell). Deeper indoor positioning helps a lot.
 - **Climate control** — the 24°C cool room threshold means AC must bring rooms below 24°C to help. A lightly cooled room may not qualify.
+- **Wetland avoidance** — riverside farming, fishing-style work zones, and outdoor paths through wet tropical areas should feel riskier than dry, enclosed movement.
 - **Biome selection** — sleeping sickness is effectively absent from temperate and cold biomes. It is a deliberate hazard of colonising tropical tiles.
 
 ---
 
 ## Tuning Notes
 
-- `baseChancePerCheck 0.0025` is lower than malaria. Sleeping sickness should feel like something that occasionally appears in a tropical colony — serious when it hits but not a constant pressure. If it never fires in practice, consider 0.003.
+- `baseChancePerCheck 0.0022` is lower than malaria. Sleeping sickness should feel like something that occasionally appears in a tropical colony — serious when it hits but not a constant pressure. If it never fires in practice, consider 0.0025-0.003.
 - The 20°C minimum and 32°C peak create a very narrow climate window compared to malaria. Most temperate biomes never hit the minimum long enough for sustained risk. This is intentional — sleeping sickness is a premium on tropical biome colonisation — but may be over-tuned if it effectively never appears outside equatorial biomes.
 - `permanentSummer 1.1` gives equatorial tiles slightly higher sleeping sickness than standard summer. This is a deliberate distinction: equatorial colonies should feel uniquely pressured by this disease in ways that northern/southern temperate colonies are not, even in summer.
 - Seeder `baseChanceMultiplier 0.75` reduces sleeping sickness frequency compared to malaria even when conditions are otherwise identical. Combined with the higher temperature floor, sleeping sickness events should be roughly half as frequent as malaria in the same biome. If it feels too rare, consider raising to 0.85–0.9.
-- No Acausal seeder: sleeping sickness literally cannot arrive in cold biomes. If a designer wants to introduce sleeping sickness via caravan infection (future work), a low `Seeder_Arrival` would be the right addition.
+- `Seeder_Acausal mtbDays 240 / cooldownDays 15` exists only as the Storyteller-window expiry fallback. It does not run as an independent Mode 2 seeder.

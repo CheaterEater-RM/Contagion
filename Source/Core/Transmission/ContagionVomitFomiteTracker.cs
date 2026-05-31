@@ -17,17 +17,25 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
 
     private List<int> _contaminatedVomitTicks = new List<int>();
 
+    private List<float> _contaminatedVomitInitialPotencies = new List<float>();
+
+    private List<ThingDef> _contaminatedVomitSourceDefs = new List<ThingDef>();
+
     public void ExposeData()
     {
         Scribe_Collections.Look(ref _contaminatedVomitFilth, "contaminatedVomitFilth", LookMode.Reference);
         Scribe_Collections.Look(ref _contaminatedVomitDiseases, "contaminatedVomitDiseases", LookMode.Def);
         Scribe_Collections.Look(ref _contaminatedVomitTicks, "contaminatedVomitTicks", LookMode.Value);
+        Scribe_Collections.Look(ref _contaminatedVomitInitialPotencies, "contaminatedVomitInitialPotencies", LookMode.Value);
+        Scribe_Collections.Look(ref _contaminatedVomitSourceDefs, "contaminatedVomitSourceDefs", LookMode.Def);
 
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
             _contaminatedVomitFilth ??= new List<Filth>();
             _contaminatedVomitDiseases ??= new List<HediffDef>();
             _contaminatedVomitTicks ??= new List<int>();
+            _contaminatedVomitInitialPotencies ??= new List<float>();
+            _contaminatedVomitSourceDefs ??= new List<ThingDef>();
         }
     }
 
@@ -45,21 +53,31 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
                 continue;
             }
 
+            float initialPotency = ContagionTransmissionUtility.GetSourceInfectivity(sourcePawn, resolvedProfile, fomiteVector);
+            if (initialPotency <= 0f)
+            {
+                continue;
+            }
+
             int index = _contaminatedVomitFilth.IndexOf(filth);
             if (index >= 0)
             {
                 _contaminatedVomitDiseases[index] = resolvedProfile.DiseaseDef;
                 _contaminatedVomitTicks[index] = Find.TickManager.TicksGame;
+                SetListValue(_contaminatedVomitInitialPotencies, index, initialPotency, 1f);
+                SetListValue(_contaminatedVomitSourceDefs, index, sourcePawn.def, null);
             }
             else
             {
                 _contaminatedVomitFilth.Add(filth);
                 _contaminatedVomitDiseases.Add(resolvedProfile.DiseaseDef);
                 _contaminatedVomitTicks.Add(Find.TickManager.TicksGame);
+                _contaminatedVomitInitialPotencies.Add(initialPotency);
+                _contaminatedVomitSourceDefs.Add(sourcePawn.def);
             }
 
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.VomitFilthContaminated);
-            ContagionDiagnostics.Trace($"Vomit contaminated: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap}.");
+            ContagionDiagnostics.Trace($"Vomit contaminated: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap} at potency {initialPotency:0.###}.");
             return;
         }
     }
@@ -88,15 +106,10 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
 
             _contaminatedVomitFilth.RemoveAt(i);
 
-            if (i < _contaminatedVomitDiseases.Count)
-            {
-                _contaminatedVomitDiseases.RemoveAt(i);
-            }
-
-            if (i < _contaminatedVomitTicks.Count)
-            {
-                _contaminatedVomitTicks.RemoveAt(i);
-            }
+            RemoveListValue(_contaminatedVomitDiseases, i);
+            RemoveListValue(_contaminatedVomitTicks, i);
+            RemoveListValue(_contaminatedVomitInitialPotencies, i);
+            RemoveListValue(_contaminatedVomitSourceDefs, i);
         }
     }
 
@@ -131,7 +144,15 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
                     continue;
                 }
 
-                float potencyFactor = GetFomitePotencyFactor(_contaminatedVomitTicks[contaminationIndex], fomiteVector.potencyDecayPerHour);
+                ThingDef sourceDef = contaminationIndex < _contaminatedVomitSourceDefs.Count ? _contaminatedVomitSourceDefs[contaminationIndex] : null;
+                float sourceSpeciesFactor = GetFomiteSourceSpeciesFactor(sourceDef, pawn, resolvedProfile.Profile);
+                if (sourceSpeciesFactor <= 0f)
+                {
+                    continue;
+                }
+
+                float potencyFactor = GetFomiteInitialPotency(contaminationIndex)
+                    * GetFomitePotencyFactor(_contaminatedVomitTicks[contaminationIndex], fomiteVector.potencyDecayPerHour);
                 if (potencyFactor <= MinFomitePotency)
                 {
                     continue;
@@ -149,7 +170,7 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
 
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteAttempted);
                 float chance = ContagionTransmissionUtility.BuildSeederChance(
-                    fomiteVector.baseChancePerContact * potencyFactor * suppression,
+                    fomiteVector.baseChancePerContact * potencyFactor * sourceSpeciesFactor * suppression,
                     pawn,
                     resolvedProfile,
                     map,
@@ -179,5 +200,52 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
     {
         float elapsedHours = Mathf.Max(0f, (Find.TickManager.TicksGame - contaminationTick) / (float)TicksPerHour);
         return Mathf.Exp(-Mathf.Max(0f, potencyDecayPerHour) * elapsedHours);
+    }
+
+    private float GetFomiteInitialPotency(int index)
+    {
+        return index < _contaminatedVomitInitialPotencies.Count
+            ? Mathf.Max(0f, _contaminatedVomitInitialPotencies[index])
+            : 1f;
+    }
+
+    private static float GetFomiteSourceSpeciesFactor(ThingDef sourcePawnDef, Pawn target, TransmissionProfile profile)
+    {
+        RaceProperties sourceRace = sourcePawnDef?.race;
+        RaceProperties targetRace = target?.RaceProps;
+        if (sourceRace == null || targetRace == null || profile == null)
+        {
+            return 1f;
+        }
+
+        if ((sourceRace.Humanlike && targetRace.Animal) || (sourceRace.Animal && targetRace.Humanlike))
+        {
+            return Mathf.Max(0f, profile.crossSpeciesTransmissionFactor);
+        }
+
+        if (sourceRace.Animal && targetRace.Animal && sourcePawnDef != target.def)
+        {
+            return Mathf.Max(0f, profile.animalCrossSpeciesFactor);
+        }
+
+        return 1f;
+    }
+
+    private static void SetListValue<T>(List<T> list, int index, T value, T defaultValue)
+    {
+        while (list.Count <= index)
+        {
+            list.Add(defaultValue);
+        }
+
+        list[index] = value;
+    }
+
+    private static void RemoveListValue<T>(List<T> list, int index)
+    {
+        if (index < list.Count)
+        {
+            list.RemoveAt(index);
+        }
     }
 }

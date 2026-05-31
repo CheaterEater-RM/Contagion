@@ -99,7 +99,7 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
 
         if (existingDisease != null)
         {
-            RevealHediff(existingDisease, targetDiseaseDef);
+            RevealHediff(existingDisease, targetDiseaseDef, setMildSeverity: false);
         }
 
         if (applied)
@@ -108,7 +108,7 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
             {
                 if (hediff?.def == targetDiseaseDef)
                 {
-                    RevealHediff(hediff, targetDiseaseDef);
+                    RevealHediff(hediff, targetDiseaseDef, setMildSeverity: true);
                 }
             }
         }
@@ -123,7 +123,7 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
         }
     }
 
-    private static void RevealHediff(Hediff hediff, HediffDef targetDiseaseDef)
+    private static void RevealHediff(Hediff hediff, HediffDef targetDiseaseDef, bool setMildSeverity)
     {
         if (hediff == null)
         {
@@ -135,7 +135,7 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
             hiddenDisease.MarkDiagnosed();
         }
 
-        if (hediff.def == targetDiseaseDef)
+        if (setMildSeverity && hediff.def == targetDiseaseDef)
         {
             hediff.Severity = Mathf.Min(hediff.def.maxSeverity, MildDiagnosedSeverity);
         }

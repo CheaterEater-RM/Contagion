@@ -38,23 +38,21 @@ For animals: the 48 h tend window means a vet must act within 2 days of noticing
 Storyteller fires `Disease_Plague` or `Disease_AnimalPlague` → pending event created with a **5-day window** (deliberately tight — see decisions log in DESIGN.md).
 
 **Fulfillment chain:**
-1. **Animal-contact (AnimalLinked)** — if any animals are present on the map, the event resolves onto a handler-biased pawn within the window. Near-deterministic on animal-bearing maps.
-2. **Arrival** — next qualifying arriving group carries a capped carrier payload (`arrivalChance 0.01`). Fallback for colonies with no animals.
-3. **Acausal** — if 5 days pass unfulfilled, silent incubation on a random eligible pawn.
+1. **Arrival** — next qualifying arriving group carries a capped carrier payload. Incoming humans and incoming animals are both valid carriers now that plague is unified.
+2. **Acausal** — if 5 days pass unfulfilled, silent incubation on a random eligible human or animal.
 
 The 5-day window keeps the storyteller's event-spacing meaningful. A long window would let plague collide with raids the storyteller deliberately spaced apart.
 
 ### Mode 2 (Contagion-driven)
-- **AnimalLinked** — MTB 120 days, `requiresAnimalsOnMap true`, `handlerBias 2.0`. Triggers on a pawn biased toward Animals skill, selecting from player-faction colonists. Animals themselves are seeded via the vanilla `Disease_AnimalPlague` incident (which Contagion does not cancel in Mode 2) or via cross-species transmission from infected colonists.
-- **Arrival** — `arrivalChance 0.01` per qualifying group, `cooldownDays 3`.
-- **Acausal** — MTB 180 days, `cooldownDays 15`. Backstop for colonies with no animals.
-- Storyteller incidents for plague are cancelled in Mode 2; the disease director and these seeders own pacing.
+- **Arrival** — `arrivalChance 0.01` per qualifying group, `cooldownDays 3`. Human caravans, visitors, joiners, raids, and farm-animal wander-ins can all carry plague if their spawned pawns are eligible.
+- No acausal backstop. Colonies that avoid infected arrivals and prevent onward cross-species spread are rewarded.
+- Storyteller incidents for plague are cancelled in Mode 2; the disease director and arrival seeder own pacing.
 
 **Storyteller seeder cooldown:** 15 days.
 
-### Animal seeding path
+### Unified animal/human seeding path
 
-Vanilla `Disease_AnimalPlague` incident is NOT suppressed. It still fires via the storyteller and applies `Animal_Plague` directly to a fraction of one animal species. The Contagion engine then recognises these animals as Plague-cluster carriers and spreads the disease further via proximity. The combined result: vanilla provides the initial wild-animal seed, Contagion handles subsequent spread.
+Vanilla `Disease_Plague` and `Disease_AnimalPlague` are both interpreted as unified plague scheduler events. Storyteller mode intercepts either incident into the same pending plague event, then resolves it through incoming carriers or final fallback. Contagion mode cancels both vanilla incidents and relies on Contagion's arrival pipeline.
 
 ### Arrival seeding
 
@@ -191,7 +189,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 ## Tuning Notes
 
 - `crossSpeciesTransmissionFactor 0.5` is a first-pass value. Plague in real life crosses species very readily via flea vectors — 0.5 may be too conservative. Consider 0.6–0.7 after playtesting.
-- The animal handler bias (`handlerBias 2.0`) for AnimalLinked seeding means handlers are 3× more likely than average colonists to be the initial human case (base 1.0 + bias 2.0 × normalized Animals skill). This is intentional: the narrative is "handler caught it from an infected animal."
+- Plague no longer uses `Seeder_AnimalLinked`; incoming humans and animals are the primary introduction route. If playtesting shows too little resident animal pressure, add a new explicit animal-reservoir seeder rather than reusing the old handler-biased path.
 - `maxActiveCases 6` was bumped from 4 (human-only) to account for the combined human+animal count. With a colony of 10 pawns and 8 animals, 6 active cases might still clear quickly. May need to go higher (8) or be split into separate human/animal caps in a future profile enhancement.
 - No seasonal variation. A summer amplification (fleas active) and winter suppression (frozen fleas) would add realism and make winter plague a genuine choice — "safe to butcher in deep freeze?" — but adds design complexity.
 - Incubation infectivity is set to a flat-ish curve (0.3 → 0.6). If playtesting shows plague outbreaks feel too fast or uncontainable, dial the starting value down toward 0.15–0.2 first; the 2.5-day window amplifies even moderate incubation infectivity.

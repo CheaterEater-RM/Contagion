@@ -34,7 +34,7 @@ Storyteller fires `Disease_AnimalFlu` → pending event created with a 15-day wi
 
 ### Mode 2 (Contagion-driven)
 - Arrivals roll exposure at `arrivalChance 0.01` per qualifying group, `cooldownDays 3`.
-- Acausal backstop at MTB 180 days (`cooldownDays 10`).
+- No acausal backstop. Colonies with no infected animal arrivals can avoid animal flu introductions.
 - Storyteller `Disease_AnimalFlu` incident cancelled; Mode 2 owns pacing.
 
 **Storyteller seeder cooldown:** 10 days.
@@ -60,16 +60,16 @@ Animals spread flu to each other through shared airspace. The same LOS + roofing
 
 ### Vector_Fomite
 
-Vomit contamination from sick animals spreads the disease if other animals step on it. Same curve as human flu — only high-severity cases produce infectious vomit.
+Vomit contamination from sick animals spreads the disease if other animals step on it. Animal flu uses the profile's normal active infectivity curve for vomit potency rather than the human flu high-severity fomite override.
 
 | Parameter | Value |
 |---|---|
 | contaminatesVomit | true |
 | baseChancePerContact | 0.03 |
 | potencyDecayPerHour | 0.1 |
-| activeInfectivityCurveOverride | same as Flu: peak at severity 0.80–1.00 |
+| activeInfectivityCurveOverride | none; uses the profile active infectivity curve |
 
-No fomite infectivity curve override is defined; the animal flu fomite uses the profile's active curve directly (not the flu-specific override). This means animal flu vomit is somewhat infectious throughout illness rather than only at high severity. This may be intentional (animals are messier) or a minor oversight — see tuning notes.
+The vomit stores its fomite-specific potency when it is created, then decays over time. Mixed-animal-species fomite exposure uses the same `animalCrossSpeciesFactor` barrier as airborne spread.
 
 ---
 
@@ -140,6 +140,6 @@ None configured.
 ## Tuning Notes
 
 - No seasonal variation is currently configured. A mild winter peak or a flat year-round profile may both be defensible (animal flu outbreaks in real farming are year-round), but it is worth making a deliberate choice.
-- The fomite vector does not use an override curve, so animal flu vomit is somewhat infectious from severity 0.0. Whether this is the intended behavior (messier animals) or an oversight (should match the human flu pattern of high-severity-only vomit) should be decided.
+- The fomite vector intentionally does not use the human flu high-severity override. Animal flu progresses and tends differently, and animals sharing dirty barns should remain a plausible fomite risk.
 - `maxActiveCases 5` means the entire herd could theoretically be infected before seeding suppresses. Since herds vary in size widely, this number may need to be relative or biased by animal count rather than a flat cap.
-- `animalCrossSpeciesFactor 0.08` is a first-pass value. If mixed-species herds are still seeing consistent spillover in testing, lower it toward 0.02–0.04. If cross-species transmission feels too theoretical, leave it as-is.
+- `animalCrossSpeciesFactor 0.10` is a first-pass value. If mixed-species herds are still seeing consistent spillover in testing, lower it toward 0.02–0.04. If cross-species transmission feels too theoretical, leave it as-is.

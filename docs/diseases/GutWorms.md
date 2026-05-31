@@ -1,6 +1,6 @@
 # Gut Worms — Contagion Profile
 
-Water-borne intestinal parasite entering through contaminated water and infected animal meat. Spreads within the colony via contaminated food and vomit. Chronic low-severity disease; rarely lethal but drains productivity. No person-to-person airborne or proximity spread.
+Water-borne intestinal parasite entering through contaminated water, fecal contamination, infected animal meat, and unsafe food handling. Animals are usually more exposed because they spend more time outdoors and near water, but humans can catch it directly from the environment too. Chronic low-severity disease; rarely lethal but drains productivity. No person-to-person airborne or proximity spread.
 
 ---
 
@@ -34,14 +34,16 @@ For animals specifically: they neither die from it nor clear it on their own. Un
 Storyteller fires `Disease_GutWorms` → pending event created. Unlike most diseases, gut worms resolves via an **environmental window** rather than a carrier seed.
 
 **Fulfillment chain:**
-1. **Environmental window** — `Vector_Environmental` runs continuously for up to 14 days (`windowDays 14`) with an infection budget of 2–4 cases. Pawns with outdoor access near water accumulate exposure until the budget is spent or the window closes.
-2. **Acausal fallback** — if the 14-day window closes without spending the full budget, any remaining unfulfilled cases resolve via silent incubation.
+1. **Environmental window** — `Vector_Environmental` runs continuously for up to 14 days (`windowDays 14`) with an infection budget of 2–4 cases. Pawns and animals with outdoor access near water accumulate exposure until the budget is spent or the window closes.
+2. **Acausal fallback** — if the 14-day window closes without spending the full budget, any remaining unfulfilled cases resolve via silent incubation on eligible humans or animals. The fallback preserves the human hygiene reduction instead of forcing humans as equal targets.
 
-No arrival fulfillment: gut worms does not arrive on incoming pawns. It enters through the environment.
+Storyteller fulfillment stays environmental. Incoming groups do not resolve a storyteller gut-worms event, even though arrivals can carry gut worms in Contagion-driven mode.
 
 ### Mode 2 (Contagion-driven)
 - **Environmental exposure** runs continuously (same `Vector_Environmental` as Mode 1, just always on rather than window-bounded).
-- **Acausal backstop** — MTB 180 days, `cooldownDays 20`. For colonies fully sheltered from the environment.
+- **Arrival exposure** can seed incoming carriers, especially farm animals and other animal-heavy groups.
+- **Successful environmental seeds apply a short environmental cooldown** (`cooldownDays 3`) so one contaminated river check does not make everyone sick at once.
+- No acausal backstop. Colonies fully sheltered from environmental exposure can avoid gut worm introductions.
 - Storyteller incident cancelled; Mode 2 owns pacing.
 
 **Storyteller seeder cooldown:** 20 days.
@@ -50,7 +52,8 @@ No arrival fulfillment: gut worms does not arrive on incoming pawns. It enters t
 
 - Water proximity: bodies of water within `waterProximityRadius 14` cells increase exposure dramatically (`waterProximityWeight 0.08` — the highest of any disease).
 - Temperature: eggs require above-freezing water to remain viable (`minTemperature 0°C`) — frozen or icy water suppresses transmission. Peak in moderate warmth (`peakTemperature 22°C`).
-- Outdoor vs. indoor: indoor animals (roofed barn) receive `indoorReductionPerCellFromEdge 0.15` per cell of depth from the nearest unroofed cell. An animal in the centre of a large barn has near-zero exposure. Grazing animals in open pastures have full exposure.
+- Outdoor vs. indoor: indoor pawns and animals receive `indoorReductionPerCellFromEdge 0.15` per cell of depth from the nearest unroofed cell. A pawn or animal in the centre of a large roofed structure has near-zero exposure; open pastures, outdoor work, and waterside paths have full exposure.
+- Human hygiene: humanlike pawns use `humanExposureFactor 0.50`, reflecting better hygiene and less direct contact with contaminated water and feces. This is a reduction, not immunity.
 
 ---
 
@@ -82,13 +85,14 @@ Gut worms causes vomiting. High-severity cases contaminate vomit filth, which ot
 | potencyDecayPerHour | 0.08 | Slower decay than flu — gut worm vomit lingers |
 | activeInfectivityCurveOverride | (0.50, 0.0) → (0.65, 0.5) → (0.80, 1.0) → (1.00, 0.8) | Peak at severe cases; stays high near lethal |
 
-### Vector_Environmental (animal acquisition only)
+### Vector_Environmental (direct outdoor exposure)
 
-This vector does not infect humans directly — it exposes outdoor animals to contaminated water. See "How It Enters the Colony" above for the seeder role.
+This vector can infect humans and animals directly from contaminated outdoor water: drinking from unsafe sources, working at waterside cells, or tracking viable eggs back through outdoor movement. The meat chain is still important, but it is not the only route into humans.
 
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerCheck | 0.002 | Per 2500-tick environmental pass |
+| humanExposureFactor | 0.50 | Humans get a hygiene reduction; animals rely on position/shelter |
 | minTemperature | 0°C | Eggs require above-freezing water; frozen water suppresses transmission |
 | peakTemperature | 22°C | Moderate warmth, not tropical |
 | waterProximityRadius | 14 | Wide radius — rivers and large ponds at range |
@@ -141,7 +145,7 @@ Spread suppression is off because the foodborne vector is not herd-transmission.
 
 ### Corpse contagiousness (`corpseContagious true`)
 
-Animals killed while infected with gut worms spawn a rotten corpse. If butchered (via the "butcher anyway" bypass), raw meat receives full contamination. This is the primary human infection path: cook eats contaminated meat → gets gut worms → infects meals → other colonists eat them.
+Animals killed while infected with gut worms spawn a fresh corpse marked by `Comp_InfectedCorpse`. Butcher bills exclude infected corpses by default through the `AllowInfectedCorpses` special filter. If the player enables that filter, raw meat receives full contamination. This is a major human infection path: infected animal → contaminated meat → contaminated meals or raw ingestion → colonist infection.
 
 ### Sick signal (`showsSickSignal true`)
 
@@ -153,10 +157,10 @@ This mechanic is especially important for gut worms: undetected infected animals
 
 ## Counterplay
 
-- **Water management** — animals near rivers or large ponds have much higher environmental exposure. Roofed barns with no water proximity are effectively safe.
-- **Indoor livestock** — the strongest single counter. An animal in the centre of a large roofed barn has near-zero gut worm exposure.
+- **Water management** — humans and animals near rivers or large ponds have much higher environmental exposure. Roofed barns and indoor work areas with no water proximity are effectively safe.
+- **Indoor livestock** — a strong counter for the meat-chain path. An animal in the centre of a large roofed barn has near-zero gut worm exposure.
 - **Vet inspection** — the sick signal lets a skilled handler catch infected animals before slaughter. High Animals skill is the key lever.
-- **"Slaughter and dispose"** — guaranteed-safe removal of a suspected animal without entering the meat chain.
+- **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
 - **Butcher skill** — the notice roll in `Patch_Corpse_ButcherProducts` uses Medical as primary and Cooking at 0.60× weight; Animals adds at 0.25× for animal corpses. A skilled butcher-medic or a dedicated cook-handler significantly reduces meat-chain risk.
 - **Kitchen hygiene** — infected cooks in dirty kitchens produce more contaminated food. Restricting sick pawns from cooking is the strongest single lever against the food-chain spread.
 - **Cooking** — survival meals (0.05×) and lavish meals (0.10×) nearly eliminate contamination from cooking. Simple meals (0.35×) and pemmican (0.70×) are risky with contaminated meat.
@@ -167,6 +171,8 @@ This mechanic is especially important for gut worms: undetected infected animals
 ## Tuning Notes
 
 - `baseChancePerCheck 0.002` for environmental exposure is very low per tick but runs every 2500 ticks. The total per-day probability depends heavily on water proximity. May need field testing across different biomes — desert colonies near no water may never naturally acquire gut worms from the environment.
+- `Seeder_Arrival arrivalChance 0.006` lets incoming groups carry gut worms in Contagion-driven mode. Farm-animal wander-ins are the clearest carrier story, but any eligible arrival group can technically bring it.
+- `Seeder_Environmental cooldownDays 3` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
 - Fomite `potencyDecayPerHour 0.08` gives gut-worm vomit a ~12 h half-life. This means a single vomit event from a severe case contaminates an area for half a day. If cleaning is poor, this can become a significant secondary spread path. Intentional: it rewards keeping sick pawns isolated and areas clean.
 - The `outbreakNotification None` setting means players have no alert that gut worms are present. Discovery is organic (health tab, handler detection). This is a design choice — it keeps gut worms as background pressure rather than a crisis event.
 - `maxActiveCases 3` may be very tight for a colony with many animals. If 3 animals all get gut worms from the environment simultaneously, this blocks further seeding — but they're still in the food chain until detected.

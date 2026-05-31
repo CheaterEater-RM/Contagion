@@ -254,6 +254,10 @@ public sealed class Vector_Environmental : TransmissionVector
 {
     public float baseChancePerCheck = 0.02f;
 
+    // Human pawns can have a lower ambient/environmental exposure rate than animals to
+    // reflect hygiene and less direct contact with contaminated water, soil, and feces.
+    public float humanExposureFactor = 1f;
+
     public float minTemperature = 15f;
 
     public float peakTemperature = 30f;

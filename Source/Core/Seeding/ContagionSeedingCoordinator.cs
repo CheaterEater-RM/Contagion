@@ -132,7 +132,7 @@ public static class ContagionSeedingCoordinator
             return true;
         }
 
-        if (UsesEnvironmentalSeedingOnly(resolvedProfile.Profile))
+        if (UsesEnvironmentalWindowFulfillment(resolvedProfile.Profile))
         {
             result = TryOpenEnvironmentalWindow(component, resolvedProfile);
             return true;
@@ -233,9 +233,6 @@ public static class ContagionSeedingCoordinator
 
             if (windowEvent.IsExpired(Find.TickManager.TicksGame))
             {
-                component.RemovePendingEvent(windowEvent);
-                ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowClosedExpiry);
-                ContagionDiagnostics.Trace($"Environmental window expired: {resolvedProfile.DiseaseDef.defName}.");
                 return false;
             }
 
@@ -935,7 +932,7 @@ public static class ContagionSeedingCoordinator
         for (int i = 0; i < pendingEvents.Count; i++)
         {
             PendingDiseaseEvent pendingEvent = pendingEvents[i];
-            if (pendingEvent == null || pendingEvent.IsEnvironmentalWindow)
+            if (pendingEvent == null)
             {
                 continue;
             }
@@ -944,6 +941,16 @@ public static class ContagionSeedingCoordinator
             {
                 Log.Warning($"[Contagion] Pending disease request referenced missing profile {pendingEvent?.diseaseDef?.defName ?? "null"}; dropping it.");
                 component.RemovePendingEvent(pendingEvent);
+                continue;
+            }
+
+            if (pendingEvent.IsEnvironmentalWindow)
+            {
+                if (pendingEvent.IsExpired(currentTick))
+                {
+                    TryResolveEnvironmentalWindowAcausal(component, resolvedProfile, pendingEvent, spawnedPawns);
+                }
+
                 continue;
             }
 
@@ -988,6 +995,58 @@ public static class ContagionSeedingCoordinator
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingResolvedAnimal);
         ContagionDiagnostics.Trace($"Animal-linked pending request resolved {resolvedProfile.DiseaseDef.defName} onto {seededPawn.LabelShortCap}.");
         return true;
+    }
+
+    private static bool TryResolveEnvironmentalWindowAcausal(
+        Contagion_MapTransmissionComponent component,
+        ResolvedTransmissionProfile resolvedProfile,
+        PendingDiseaseEvent pendingEvent,
+        IReadOnlyList<Pawn> spawnedPawns)
+    {
+        Seeder_Acausal acausalSeeder = GetSeeder<Seeder_Acausal>(resolvedProfile.Profile);
+        if (acausalSeeder == null)
+        {
+            component.RemovePendingEvent(pendingEvent);
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowClosedExpiry);
+            ContagionDiagnostics.Trace($"Environmental window expired without acausal fallback: {resolvedProfile.DiseaseDef.defName}.");
+            return false;
+        }
+
+        int remainingBudget = Mathf.Max(0, pendingEvent.infectionBudget - pendingEvent.infectionsApplied);
+        int remainingCapacity = GetRemainingActiveCaseCapacity(component, resolvedProfile, acausalSeeder);
+        int targetCount = Mathf.Min(remainingBudget, remainingCapacity);
+        Vector_Environmental environmentalVector = GetVector<Vector_Environmental>(resolvedProfile.Profile);
+        int seededCount = 0;
+        for (int i = 0; i < targetCount; i++)
+        {
+            if (!ContagionSeedingExecutionUtility.TrySeedWeightedEligiblePawn(
+                spawnedPawns,
+                resolvedProfile,
+                component.Map,
+                pawn => GetEnvironmentalFallbackWeight(pawn, environmentalVector),
+                out Pawn seededPawn))
+            {
+                break;
+            }
+
+            seededCount++;
+            ContagionDiagnostics.Trace($"Environmental acausal fallback seeded {resolvedProfile.DiseaseDef.defName} on {seededPawn.LabelShortCap}.");
+        }
+
+        component.RemovePendingEvent(pendingEvent);
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowClosedExpiry);
+        if (seededCount > 0)
+        {
+            component.NotifySeederFired(resolvedProfile, acausalSeeder);
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingExpiredToAcausal, seededCount);
+            ContagionDiagnostics.Trace($"Environmental window expiry resolved {seededCount}/{remainingBudget} remaining {resolvedProfile.DiseaseDef.defName} case(s) via acausal fallback.");
+        }
+        else
+        {
+            ContagionDiagnostics.Trace($"Environmental window expired for {resolvedProfile.DiseaseDef.defName}; acausal fallback found no eligible pawn.");
+        }
+
+        return seededCount > 0;
     }
 
     private static bool TryResolvePendingAcausal(
@@ -1038,14 +1097,8 @@ public static class ContagionSeedingCoordinator
                 continue;
             }
 
-            if (pendingEvent.IsEnvironmentalWindow)
-            {
-                component.RemovePendingEvent(pendingEvent);
-                ContagionDiagnostics.Trace($"Cleared environmental window during mode switch: {resolvedProfile.DiseaseDef.defName}.");
-                continue;
-            }
-
-            TryResolvePendingAcausal(component, resolvedProfile, pendingEvent, spawnedPawns, "mode switch");
+            component.RemovePendingEvent(pendingEvent);
+            ContagionDiagnostics.Trace($"Cleared pending storyteller request during switch to Contagion mode: {resolvedProfile.DiseaseDef.defName}.");
         }
     }
 
@@ -1062,11 +1115,7 @@ public static class ContagionSeedingCoordinator
             for (int i = 0; i < resolvedProfile.Profile.seeders.Count; i++)
             {
                 TransmissionSeeder seeder = resolvedProfile.Profile.seeders[i];
-                if (seeder is Seeder_Acausal acausal)
-                {
-                    TryRunContinuousSeeder(component, resolvedProfile, acausal, acausal.mtbDays, spawnedPawns, outbreakMultiplier, null);
-                }
-                else if (seeder is Seeder_AnimalLinked animalLinked)
+                if (seeder is Seeder_AnimalLinked animalLinked)
                 {
                     if (!animalLinked.requiresAnimalsOnMap || HasAnimalsOnMap(spawnedPawns))
                     {
@@ -1139,6 +1188,16 @@ public static class ContagionSeedingCoordinator
         return Mathf.Max(1f, 1f + (Mathf.Max(1f, seeder.handlerBias) - 1f) * normalizedSkill);
     }
 
+    private static float GetEnvironmentalFallbackWeight(Pawn pawn, Vector_Environmental vector)
+    {
+        if (pawn?.RaceProps?.Humanlike == true && vector != null)
+        {
+            return Mathf.Max(0.05f, vector.humanExposureFactor);
+        }
+
+        return 1f;
+    }
+
     private static bool HasAnimalsOnMap(IReadOnlyList<Pawn> spawnedPawns)
     {
         for (int i = 0; i < spawnedPawns.Count; i++)
@@ -1154,7 +1213,7 @@ public static class ContagionSeedingCoordinator
 
     private static TransmissionSeeder GetPrimaryStorytellerGateSeeder(TransmissionProfile profile)
     {
-        return UsesEnvironmentalSeedingOnly(profile)
+        return UsesEnvironmentalWindowFulfillment(profile)
             ? GetSeeder<Seeder_Environmental>(profile)
             : GetSeeder<Seeder_Storyteller>(profile);
     }
@@ -1267,7 +1326,7 @@ public static class ContagionSeedingCoordinator
 
     internal static bool UsesEnvironmentalSeedingOnly(TransmissionProfile profile)
     {
-        // True when the disease resolves only through environmental exposure — no arrival
+        // True when the disease resolves only through environmental exposure - no arrival
         // carriers and no animal-linked handler seeding. Storyteller and acausal seeders are
         // compatible: Storyteller is the Mode 1 trigger that opens the window, and acausal
         // is the isolated-colony backstop. Neither implies a "carrier arrives" resolution.
@@ -1289,10 +1348,28 @@ public static class ContagionSeedingCoordinator
         return true;
     }
 
+    private static bool UsesEnvironmentalWindowFulfillment(TransmissionProfile profile)
+    {
+        if (GetSeeder<Seeder_Environmental>(profile) == null)
+        {
+            return false;
+        }
+
+        return GetSeeder<Seeder_Storyteller>(profile) != null
+            || UsesEnvironmentalSeedingOnly(profile);
+    }
+
     private static TSeeder GetSeeder<TSeeder>(TransmissionProfile profile)
         where TSeeder : TransmissionSeeder
     {
         ContagionDiseaseUtility.TryGetSeeder(profile, out TSeeder seeder);
         return seeder;
+    }
+
+    private static TVector GetVector<TVector>(TransmissionProfile profile)
+        where TVector : TransmissionVector
+    {
+        ContagionDiseaseUtility.TryGetVector(profile, out TVector vector);
+        return vector;
     }
 }
