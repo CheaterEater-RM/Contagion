@@ -106,6 +106,7 @@
   <!-- Butchering contamination -->
   <Contagion_MessageButcherNoticed>{0} noticed signs of infection while butchering {1} ({2}) and discarded all the products.</Contagion_MessageButcherNoticed>
   <Contagion_InfectedCorpseInspect>Infected corpse: {0}</Contagion_InfectedCorpseInspect>
+  <Contagion_InfectedCorpseInspectUnknown>Infected corpse: Unknown</Contagion_InfectedCorpseInspectUnknown>
   <Contagion_InfectedCorpseFloatMenuWarning>infected</Contagion_InfectedCorpseFloatMenuWarning>
   <Contagion_InfectedCorpseFloatMenuTooltip>Eating this corpse may expose the pawn to {0}.</Contagion_InfectedCorpseFloatMenuTooltip>
 

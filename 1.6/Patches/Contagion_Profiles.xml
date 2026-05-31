@@ -547,4 +547,44 @@
       </li>
     </value>
   </Operation>
+
+  <!-- ── Description overrides ──────────────────────────────────────────────────────────
+       Vanilla descriptions for all patched defs, reproduced here so they can be edited
+       in one place. Change the text inside <description> to update the in-game tooltip. -->
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/HediffDef[defName="Plague"]/description</xpath>
+    <value>
+      <description>An infectious disease caused by bacteria that are carried by fleas. Cross-infectious between humans and animals.</description>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/HediffDef[defName="Flu"]/description</xpath>
+    <value>
+      <description>An infectious disease caused by the influenza virus.</description>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/HediffDef[defName="GutWorms"]/description</xpath>
+    <value>
+      <description>Parasitic worms in the gut. They cause vomiting. They also consume the victim's food, which increases hunger.</description>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/HediffDef[defName="MuscleParasites"]/description</xpath>
+    <value>
+      <description>Parasitic creatures in the muscles. These cause weakness and a lack of coordination.</description>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/HediffDef[defName="Malaria"]/description</xpath>
+    <value>
+      <description>An infectious disease caused by a mosquito-borne parasite.</description>
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationReplace">
+    <xpath>Defs/HediffDef[defName="SleepingSickness"]/description</xpath>
+    <value>
+      <description>An infectious disease caused by an insect-borne parasite. Sleeping sickness is not as deadly as some other diseases, but progresses slowly. The body takes a long time to clear the infection.</description>
+    </value>
+  </Operation>
 </Patch>

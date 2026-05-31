@@ -16,11 +16,13 @@ public sealed class Comp_InfectedCorpse : ThingComp
 
     private int _infectionTick = -1;
 
+    private bool _diseaseIdentified;
+
     public bool IsInfected => _infectedDiseaseDef != null;
 
     public HediffDef InfectedDiseaseDef => _infectedDiseaseDef;
 
-    public void SetInfection(HediffDef diseaseDef)
+    public void SetInfection(HediffDef diseaseDef, bool identified = true)
     {
         if (diseaseDef == null)
         {
@@ -28,6 +30,7 @@ public sealed class Comp_InfectedCorpse : ThingComp
         }
 
         _infectedDiseaseDef = diseaseDef;
+        _diseaseIdentified = identified;
         _infectionTick = Find.TickManager?.TicksGame ?? -1;
         (parent as Corpse)?.InnerPawn?.Drawer?.renderer?.SetAllGraphicsDirty();
     }
@@ -52,12 +55,19 @@ public sealed class Comp_InfectedCorpse : ThingComp
 
     public override string CompInspectStringExtra()
     {
-        if (!TryGetDiseaseForDisplay(out HediffDef diseaseDef))
+        if (_infectedDiseaseDef != null)
         {
-            return null;
+            return _diseaseIdentified
+                ? "Contagion_InfectedCorpseInspect".Translate(_infectedDiseaseDef.LabelCap)
+                : "Contagion_InfectedCorpseInspectUnknown".Translate();
         }
 
-        return "Contagion_InfectedCorpseInspect".Translate(diseaseDef.LabelCap);
+        if (ContagionCorpseUtility.TryGetCorpseContagiousDiseaseFromInnerPawn((parent as Corpse)?.InnerPawn, out HediffDef diseaseDef))
+        {
+            return "Contagion_InfectedCorpseInspect".Translate(diseaseDef.LabelCap);
+        }
+
+        return null;
     }
 
     public override void PostExposeData()
@@ -65,6 +75,7 @@ public sealed class Comp_InfectedCorpse : ThingComp
         base.PostExposeData();
         Scribe_Defs.Look(ref _infectedDiseaseDef, "infectedDiseaseDef");
         Scribe_Values.Look(ref _infectionTick, "infectionTick", -1);
+        Scribe_Values.Look(ref _diseaseIdentified, "diseaseIdentified", defaultValue: true);
     }
 
     public bool TryGetDiseaseForDisplay(out HediffDef diseaseDef)

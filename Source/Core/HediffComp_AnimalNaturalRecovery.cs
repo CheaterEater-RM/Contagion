@@ -44,7 +44,7 @@ public sealed class HediffComp_AnimalNaturalRecovery : HediffComp
     private HediffCompProperties_AnimalNaturalRecovery Props =>
         (HediffCompProperties_AnimalNaturalRecovery)props;
 
-    public override void CompPostPostTickInterval(ref float severityAdjustment, int delta)
+    public override void CompPostTickInterval(ref float severityAdjustment, int delta)
     {
         Pawn pawn = Pawn;
         if (pawn == null || !pawn.Spawned || pawn.RaceProps?.Animal != true)

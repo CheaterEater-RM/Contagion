@@ -84,12 +84,13 @@ public static class ContagionCorpseUtility
                 continue;
             }
 
-            if (!Rand.Chance(resolvedProfile.Profile.posthumousSymptomChance))
+            bool alreadyShowingSick = innerPawn.health.hediffSet.HasHediff(ContagionDefOf.Contagion_AnimalSick);
+            if (!alreadyShowingSick && !Rand.Chance(resolvedProfile.Profile.posthumousSymptomChance))
             {
                 continue;
             }
 
-            infectedComp.SetInfection(resolvedProfile.DiseaseDef);
+            infectedComp.SetInfection(resolvedProfile.DiseaseDef, identified: false);
             return;
         }
     }

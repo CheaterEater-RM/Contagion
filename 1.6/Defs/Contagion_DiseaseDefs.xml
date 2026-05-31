@@ -12,7 +12,7 @@
   <HediffDef ParentName="InfectionBase">
     <defName>Animal_GutWorms</defName>
     <label>gut worms</label>
-    <description>Parasitic worms in the gut. This strain is adapted to infecting non-human species. They consume the victim's food, increasing hunger.</description>
+    <description>Parasitic worms in the gut. They consume the victim's food, increasing hunger.</description>
     <debugLabelExtra>animal</debugLabelExtra>
     <makesSickThought>true</makesSickThought>
     <tendable>true</tendable>
@@ -41,7 +41,7 @@
   <HediffDef ParentName="InfectionBase">
     <defName>Animal_MuscleParasites</defName>
     <label>muscle parasites</label>
-    <description>Parasitic creatures in the muscles. This strain is adapted to infecting non-human species. They cause weakness and poor coordination.</description>
+    <description>Parasitic creatures in the muscles. They cause weakness and poor coordination.</description>
     <debugLabelExtra>animal</debugLabelExtra>
     <makesSickThought>true</makesSickThought>
     <tendable>true</tendable>
