@@ -62,6 +62,8 @@ public enum ContagionDiagnosticCounter
     CorpseFleaSeeded,
     CorpseFluidAttempted,
     CorpseFluidSeeded,
+    CookingExposureAttempted,
+    CookingExposureSeeded,
     Count
 }
 
@@ -135,7 +137,9 @@ public static class ContagionDiagnostics
         ContagionDiagnosticCounter.CorpseFleaAttempted,
         ContagionDiagnosticCounter.CorpseFleaSeeded,
         ContagionDiagnosticCounter.CorpseFluidAttempted,
-        ContagionDiagnosticCounter.CorpseFluidSeeded
+        ContagionDiagnosticCounter.CorpseFluidSeeded,
+        ContagionDiagnosticCounter.CookingExposureAttempted,
+        ContagionDiagnosticCounter.CookingExposureSeeded
     };
 
     private static bool HasDirectorSummary;

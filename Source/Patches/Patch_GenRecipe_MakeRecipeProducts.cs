@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using HarmonyLib;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
@@ -21,6 +22,8 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
         Pawn worker,
         List<Thing> ingredients)
     {
+        ApplyCookingExposure(worker, ingredients);
+
         // Find the worst contamination among all ingredients.
         HediffDef worstDisease = null;
         float worstFactor = 0f;
@@ -51,7 +54,7 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
             }
         }
 
-        float cookingFactor = GetCookingFactor(recipeDef);
+        float cookingFactor = GetCookingFactor(recipeDef, worker);
 
         foreach (Thing product in __result)
         {
@@ -70,14 +73,116 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
         }
     }
 
-    private static float GetCookingFactor(RecipeDef recipeDef)
+    private static float GetCookingFactor(RecipeDef recipeDef, Pawn worker)
     {
+        float reductionFactor;
+        float lowSkillFactor;
+        float skillAsymptoteFactor;
+        float skillDecayRate;
         if (recipeDef == null)
         {
-            return DefaultReductionFactor;
+            reductionFactor = DefaultReductionFactor;
+            lowSkillFactor = 1.5f;
+            skillAsymptoteFactor = 0.25f;
+            skillDecayRate = 0.18f;
+        }
+        else
+        {
+            CookingContaminationExtension ext = recipeDef.GetModExtension<CookingContaminationExtension>();
+            reductionFactor = ext != null ? Mathf.Clamp01(ext.reductionFactor) : DefaultReductionFactor;
+            lowSkillFactor = ext?.lowSkillFactor ?? 1.5f;
+            skillAsymptoteFactor = ext?.skillAsymptoteFactor ?? 0.25f;
+            skillDecayRate = ext?.skillDecayRate ?? 0.18f;
         }
 
-        CookingContaminationExtension ext = recipeDef.GetModExtension<CookingContaminationExtension>();
-        return ext != null ? Mathf.Clamp01(ext.reductionFactor) : DefaultReductionFactor;
+        return reductionFactor * GetCookingSurvivalSkillFactor(worker, lowSkillFactor, skillAsymptoteFactor, skillDecayRate);
+    }
+
+    private static float GetCookingSurvivalSkillFactor(Pawn worker, float lowSkillFactor, float skillAsymptoteFactor, float skillDecayRate)
+    {
+        if (worker?.skills == null)
+        {
+            return 1f;
+        }
+
+        return ContagionRiskMath.CookingSurvivalFactor(
+            worker.skills.GetSkill(SkillDefOf.Cooking).Level,
+            lowSkillFactor,
+            skillAsymptoteFactor,
+            skillDecayRate);
+    }
+
+    private static void ApplyCookingExposure(Pawn cook, List<Thing> ingredients)
+    {
+        if (cook?.MapHeld == null || ingredients == null)
+        {
+            return;
+        }
+
+        HediffDef worstDisease = null;
+        ResolvedTransmissionProfile worstProfile = null;
+        Vector_CookingExposure worstVector = null;
+        float worstFactor = 0f;
+
+        for (int i = 0; i < ingredients.Count; i++)
+        {
+            Comp_ContaminatedFood comp = ingredients[i]?.TryGetComp<Comp_ContaminatedFood>();
+            if (comp == null || !comp.IsContaminated)
+            {
+                continue;
+            }
+
+            if (!DiseaseProfileCache.TryGetResolvedProfile(comp.ContaminatedDiseaseDef, out ResolvedTransmissionProfile resolvedProfile)
+                || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_CookingExposure cookingVector))
+            {
+                continue;
+            }
+
+            if (comp.ContaminationFactor > worstFactor)
+            {
+                worstDisease = comp.ContaminatedDiseaseDef;
+                worstProfile = resolvedProfile;
+                worstVector = cookingVector;
+                worstFactor = comp.ContaminationFactor;
+            }
+        }
+
+        if (worstDisease == null || worstProfile == null || worstVector == null)
+        {
+            return;
+        }
+
+        float skillFactor = ContagionCorpseExposureUtility.GetCookingExposureFactor(cook, worstVector);
+        float baseChance = worstVector.baseChancePerRecipe * worstFactor * skillFactor;
+        if (baseChance <= 0f)
+        {
+            return;
+        }
+
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.CookingExposureAttempted);
+        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
+        float chance = ContagionTransmissionUtility.BuildSeederChance(
+            baseChance,
+            cook,
+            worstProfile,
+            cook.MapHeld,
+            transmissionMultiplier,
+            out HediffDef _);
+
+        if (!Rand.Chance(Mathf.Clamp01(chance)))
+        {
+            return;
+        }
+
+        if (ContagionDiseaseUtility.TrySeedIncubation(
+            cook,
+            worstProfile.DiseaseDef,
+            worstProfile.PartsToAffect,
+            ContagionDiagnosticOrigin.Spread,
+            out HediffDef _))
+        {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.CookingExposureSeeded);
+            ContagionDiagnostics.Trace($"Cooking exposure: {worstProfile.DiseaseDef.defName} to {cook.LabelShortCap}.");
+        }
     }
 }

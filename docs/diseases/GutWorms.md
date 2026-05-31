@@ -65,14 +65,14 @@ The main way colonists get gut worms is eating contaminated food — either cook
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerMeal | 0.08 | Per meal consumed from a contaminated source |
+| baseChancePerMeal | 0.80 | Raw contaminated meat is extremely dangerous |
 | cleanlinessImpact | 1.0 | Dirty kitchen amplifies contamination at cooking time |
 | contaminationExpiryDays | 30 | Old preserved food becomes safe after 30 days |
 
 **Contamination sources:**
 - *Infected cook:* an active gut worms patient cooking a meal stamps contamination proportional to infectivity × kitchen cleanliness.
 - *Infected meat:* `Patch_Corpse_ButcherProducts` stamps raw meat from a `corpseContagious` animal (see below).
-- *Ingredient propagation:* cooking contaminated raw ingredients propagates contamination to the meal, reduced by recipe factor.
+- *Ingredient propagation:* cooking contaminated raw ingredients propagates contamination to the meal, reduced by recipe factor and Cooking skill. Ordinary simple/fine/lavish meals share a 0.20 recipe factor; higher-tier meals are safer because they require better cooks. Cooking skill applies an asymptotic exponential multiplier: `0.25 + (1.5 - 0.25) * exp(-0.18 * Cooking)`.
 
 ### Vector_Fomite (secondary — escalation)
 
@@ -84,6 +84,29 @@ Gut worms causes vomiting. High-severity cases contaminate vomit filth, which ot
 | baseChancePerContact | 0.025 | Slightly lower than flu |
 | potencyDecayPerHour | 0.08 | Slower decay than flu — gut worm vomit lingers |
 | activeInfectivityCurveOverride | (0.50, 0.0) → (0.65, 0.5) → (0.80, 1.0) → (1.00, 0.8) | Peak at severe cases; stays high near lethal |
+
+### Vector_CorpseFluid (very low butchery exposure)
+
+Handling an intact carcass remains safe for gut worms, but cutting open an infected animal can expose the butcher to a small amount of contaminated gut material.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| pickupChance | 0 | No hauling risk |
+| putdownChance | 0 | No hauling risk |
+| carriedChancePerCheck | 0 | No transport risk |
+| butcherChance | 0.006 | Low direct exposure while butchering |
+
+Butchery exposure is reduced by butcher competence: Cooking is primary, Medicine helps at 25%, and Animals helps at 25% for animal corpses. The factor floors at 45% of base chance.
+
+### Vector_CookingExposure (low cooking exposure)
+
+Cooking contaminated meat can expose the cook through raw ingredient handling. Only Cooking skill modifies this roll: very poor cooks are riskier, while skilled cooks are cleaner and safer.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| baseChancePerRecipe | 0.003 | Rolled once from the worst contaminated ingredient |
+| lowSkillFactor | 2.0 | Cooking 0 doubles exposure risk |
+| highSkillFactor | 0.5 | Cooking 20 halves exposure risk |
 
 ### Vector_Environmental (direct outdoor exposure)
 
@@ -147,6 +170,8 @@ Spread suppression is off because the foodborne vector is not herd-transmission.
 
 Animals killed while infected with gut worms spawn a fresh corpse marked by `Comp_InfectedCorpse`. Butcher bills exclude infected corpses by default through the `AllowInfectedCorpses` special filter. If the player enables that filter, raw meat receives full contamination. This is a major human infection path: infected animal → contaminated meat → contaminated meals or raw ingestion → colonist infection.
 
+Eating an infected corpse raw is treated as extreme direct exposure and should almost always transmit to an eligible eater. The intended safety measure is keeping infected corpses out of the food supply entirely.
+
 ### Sick signal (`showsSickSignal true`)
 
 Animals incubating gut worms can be detected by handlers via `AnimalChat` interaction (Animals skill / 20 roll). The `Contagion_AnimalSick` hediff is applied on detection. Diagnosis by a vet uses the unified diagnostic roll (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: false`): Medical primary, Animals at 0.60×, Sight-scaled. A passing roll collapses incubation to mild active disease; a failing roll produces a false negative.
@@ -163,7 +188,7 @@ This mechanic is especially important for gut worms: undetected infected animals
 - **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
 - **Butcher skill** — the notice roll in `Patch_Corpse_ButcherProducts` uses Medical as primary and Cooking at 0.60× weight; Animals adds at 0.25× for animal corpses. A skilled butcher-medic or a dedicated cook-handler significantly reduces meat-chain risk.
 - **Kitchen hygiene** — infected cooks in dirty kitchens produce more contaminated food. Restricting sick pawns from cooking is the strongest single lever against the food-chain spread.
-- **Cooking** — survival meals (0.05×) and lavish meals (0.10×) nearly eliminate contamination from cooking. Simple meals (0.35×) and pemmican (0.70×) are risky with contaminated meat.
+- **Cooking** — ordinary cooked meals use a shared 0.20 recipe factor before Cooking skill. Survival meals (0.05×) are safer because they are cooked and sealed; pemmican (0.70×) remains risky with contaminated meat.
 - **Immunity** — 15-day post-recovery immunity prevents immediate re-infection from the same source.
 
 ---

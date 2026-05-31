@@ -7,4 +7,10 @@ namespace Contagion;
 public sealed class CookingContaminationExtension : DefModExtension
 {
     public float reductionFactor = 0.2f;
+
+    public float lowSkillFactor = 1.5f;
+
+    public float skillAsymptoteFactor = 0.25f;
+
+    public float skillDecayRate = 0.18f;
 }

@@ -72,6 +72,7 @@ This vector starts low at death, ramps over the first hours as fleas abandon the
 |---|---|---|
 | baseChancePerCheck | 0.006 | Ground corpse aura, per 250-tick pass |
 | carriedBaseChancePerCheck | 0.025 | Close-contact risk to the pawn carrying the corpse |
+| butcherBaseChance | 0.600 | Major close-contact flea roll while cutting the corpse |
 | maxRange | 12 | Fresh corpse flea migration range |
 | carriedRange | 4 | Moving aura around a carried corpse |
 | distanceFalloffRate | 0.25 | Fleas still travel further than normal proximity contact |
@@ -96,6 +97,7 @@ Corpse-fluid risk is event/handling based. Pickup and putdown are the main dange
 | pickupChance | 0.015 | Applied when a pawn starts carrying the corpse |
 | putdownChance | 0.015 | Applied when a pawn drops/places the corpse |
 | carriedChancePerCheck | 0.003 | Small per-pass risk while carrying |
+| butcherChance | 1.000 | Very high fluid exposure while cutting the corpse open |
 
 | Corpse age (days) | Fluid potency |
 |---|---|
@@ -108,6 +110,28 @@ Corpse-fluid risk is event/handling based. Pickup and putdown are the main dange
 | 12.00 | 0.00 |
 
 Dessicated corpses have no fluid exposure.
+
+### Vector_CookingExposure
+
+Cooking infected meat has a low direct handling risk: splashes, contaminated tools, and bad hygiene around raw meat. This is separate from eating the final meal.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| baseChancePerRecipe | 0.004 | Rolled once from the worst contaminated ingredient |
+| lowSkillFactor | 2.0 | Cooking 0 doubles exposure risk |
+| highSkillFactor | 0.5 | Cooking 20 halves exposure risk |
+
+### Vector_Foodborne
+
+Plague can survive into unsafe meat and meals, but ingestion is secondary to butchery and corpse handling. Raw infected meat is dangerous; properly cooked meals are lower risk, especially with a skilled cook.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| baseChancePerMeal | 0.25 | Raw contaminated meat is a substantial but not parasite-level ingestion risk |
+| cleanlinessImpact | 0.5 | Kitchen cleanliness affects contamination from infected cooks |
+| contaminationExpiryDays | 15 | Plague contamination in preserved food expires faster than parasites |
+
+Finished meal contamination is reduced by recipe factor and Cooking skill using an asymptotic exponential multiplier.
 
 ### Vector_Proximity
 
@@ -198,10 +222,12 @@ When a plague-infected animal dies, its corpse spawns **fresh** (not rotted) and
 **Corpse handling**:
 - Fleas: spawned infected corpses expose nearby pawns. Carried infected corpses expose the carrier at elevated close-contact risk and create a smaller moving aura.
 - Fluids: pickup and putdown roll direct handler exposure. Carrying rolls a smaller continuous exposure.
+- Butchering: the butcher gets both a high fluid roll and an extra close flea roll before any discovery/discard outcome.
+- Butchery skill mitigation: Cooking is primary, Medicine helps at 25%, and Animals helps at 25% for animal corpses. At high skill this can reduce butchery exposure to 45% of base, but never remove it.
 - Early window: both vectors start low at death. Players can haul or freeze fresh bodies quickly before the major flea burst and before fluids become highly infectious.
 - Freezing: kills flea viability rapidly. It does not directly sterilize fluids, but it slows rot-driven fluid potency.
 
-**Butchering contamination** (`Patch_Corpse_ButcherProducts`) currently remains a product-chain mechanic for profiles that have foodborne vectors. Plague now gets its main corpse danger from `Vector_CorpseFlea` and `Vector_CorpseFluid`, not from normal meal contamination.
+**Butchering contamination** (`Patch_Corpse_ButcherProducts`) also stamps plague into raw meat. Eating the corpse raw remains the most dangerous food path because it combines direct corpse ingestion with no cooking reduction.
 
 ### Sick signal (`showsSickSignal true`)
 

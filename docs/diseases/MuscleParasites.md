@@ -69,13 +69,38 @@ Humans most commonly get muscle parasites by eating contaminated meat, but susta
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerMeal | 0.10 | Slightly higher than gut worms — larvae in meat are dense |
+| baseChancePerMeal | 0.85 | Slightly higher than gut worms — larvae in meat are dense |
 | cleanlinessImpact | 0.5 | Kitchen cleanliness has half the impact compared to gut worms |
 | contaminationExpiryDays | 45 | Longer expiry — larvae survive in preserved meat for 45 days |
 
 **Why lower cleanlinessImpact than gut worms?** Muscle parasite larvae are embedded in muscle tissue, not on surfaces. Kitchen cleanliness matters less than whether the meat itself is contaminated.
 
 **Why 45-day expiry?** Trichinella-type cysts are robust. Preserved meat (pemmican, dried meat) can carry live larvae much longer than gut worm eggs. This means stockpiled meat from an infected animal remains a hazard for weeks.
+
+Cooking contaminated ingredients propagates surviving contamination to the meal using the recipe factor and Cooking skill. Ordinary simple/fine/lavish meals share a 0.20 recipe factor; higher-tier meals are safer because they require better cooks. Cooking skill applies an asymptotic exponential multiplier: `0.25 + (1.5 - 0.25) * exp(-0.18 * Cooking)`.
+
+### Vector_CorpseFluid (low butchery exposure)
+
+Muscle parasites are mainly an ingestion hazard, but butchering infected tissue is not perfectly safe. Normal hauling has no direct exposure.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| pickupChance | 0 | No hauling risk |
+| putdownChance | 0 | No hauling risk |
+| carriedChancePerCheck | 0 | No transport risk |
+| butcherChance | 0.008 | Low direct exposure while butchering |
+
+Butchery exposure is reduced by butcher competence: Cooking is primary, Medicine helps at 25%, and Animals helps at 25% for animal corpses. The factor floors at 45% of base chance.
+
+### Vector_CookingExposure (low cooking exposure)
+
+Cooking contaminated meat can expose the cook through raw ingredient handling. Only Cooking skill modifies this roll: very poor cooks are riskier, while skilled cooks are cleaner and safer.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| baseChancePerRecipe | 0.004 | Rolled once from the worst contaminated ingredient |
+| lowSkillFactor | 2.0 | Cooking 0 doubles exposure risk |
+| highSkillFactor | 0.5 | Cooking 20 halves exposure risk |
 
 ### Vector_Environmental (direct outdoor exposure)
 
@@ -158,7 +183,8 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 - **Indoor barn housing** — `indoorReductionPerCellFromEdge 0.20` is the highest of any disease. A roofed barn with 5+ cells to the nearest unroofed cell nearly eliminates soil exposure. This is the strongest single counter and requires no active management.
 - **Vet inspection** — handler detection via sick signal is the key lever. A skilled handler (Animals skill 15+) has a ~75% detection chance per interaction. Routine handler routines (training, tending, feeding) will catch most infections before slaughter.
 - **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
-- **Cooking quality** — survival meals (0.05×) and lavish meals (0.10×) reduce contamination from 1.0× to near-zero. Avoid raw meat and pemmican (0.70×) from uncertain sources.
+- **Cooking quality** — ordinary cooked meals share a 0.20 recipe factor before Cooking skill. Survival meals (0.05×) are safer because they are cooked and sealed. Avoid raw meat and pemmican (0.70×) from uncertain sources.
+- **Raw corpse ingestion** — eating an infected corpse raw is treated as extreme direct exposure and should almost always transmit to an eligible eater.
 - **Expiry awareness** — contaminated preserved meat stays dangerous for 45 days. A stockpile built from an infected batch remains a hazard well after the animal is dead.
 - **Dedicated butcher** — Medical and Cooking skill are the primary levers on the notice roll; Animals adds a small bonus. A pawn with decent Medical + Cooking catches most infected batches before they enter storage.
 

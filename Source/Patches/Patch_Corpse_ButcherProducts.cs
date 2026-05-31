@@ -55,6 +55,8 @@ internal static class Patch_Corpse_ButcherProducts
         // discover; proceed straight to meat contamination.
         bool infectionWasKnown = __instance.TryGetComp<Comp_InfectedCorpse>()?.IsInfected == true;
 
+        ApplyButcheryExposure(butcher, __instance, resolvedProfile);
+
         if (!infectionWasKnown && Rand.Chance(ContagionDiagnosticSkillUtility.ComputeDiagnosticChance(butcher, isAnimalSubject: !isHuman, isButchery: true)))
         {
             // Butcher noticed an unknown infection — discard all products, forbid and alert.
@@ -74,6 +76,39 @@ internal static class Patch_Corpse_ButcherProducts
             }
 
             yield return item;
+        }
+    }
+
+    private static void ApplyButcheryExposure(Pawn butcher, Corpse corpse, ResolvedTransmissionProfile resolvedProfile)
+    {
+        if (butcher == null || corpse == null || resolvedProfile?.Profile == null)
+        {
+            return;
+        }
+
+        float butcheryExposureFactor = ContagionCorpseExposureUtility.GetButcheryExposureFactor(butcher, corpse);
+
+        if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_CorpseFlea fleaVector))
+        {
+            ContagionCorpseExposureUtility.UpdateCorpseFleas(corpse, resolvedProfile, fleaVector, 0);
+            ContagionCorpseExposureUtility.TryApplyFleaExposure(
+                butcher,
+                corpse,
+                resolvedProfile,
+                fleaVector,
+                fleaVector.butcherBaseChance,
+                butcheryExposureFactor);
+        }
+
+        if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_CorpseFluid fluidVector))
+        {
+            ContagionCorpseExposureUtility.TryApplyFluidExposure(
+                butcher,
+                corpse,
+                resolvedProfile,
+                fluidVector,
+                ContagionCorpseFluidExposureKind.Butcher,
+                butcheryExposureFactor);
         }
     }
 

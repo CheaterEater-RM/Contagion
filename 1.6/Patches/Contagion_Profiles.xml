@@ -227,6 +227,7 @@
           <li Class="Contagion.Vector_CorpseFlea">
             <baseChancePerCheck>0.006</baseChancePerCheck>
             <carriedBaseChancePerCheck>0.025</carriedBaseChancePerCheck>
+            <butcherBaseChance>0.600</butcherBaseChance>
             <maxRange>12</maxRange>
             <carriedRange>4</carriedRange>
             <distanceFalloffRate>0.25</distanceFalloffRate>
@@ -249,6 +250,7 @@
             <pickupChance>0.015</pickupChance>
             <putdownChance>0.015</putdownChance>
             <carriedChancePerCheck>0.003</carriedChancePerCheck>
+            <butcherChance>1.000</butcherChance>
             <corpseAgePotencyCurve>
               <points>
                 <li>(0.00, 0.10)</li>
@@ -260,6 +262,16 @@
                 <li>(12.00, 0.00)</li>
               </points>
             </corpseAgePotencyCurve>
+          </li>
+          <li Class="Contagion.Vector_Foodborne">
+            <baseChancePerMeal>0.25</baseChancePerMeal>
+            <cleanlinessImpact>0.5</cleanlinessImpact>
+            <contaminationExpiryDays>15</contaminationExpiryDays>
+          </li>
+          <li Class="Contagion.Vector_CookingExposure">
+            <baseChancePerRecipe>0.004</baseChancePerRecipe>
+            <lowSkillFactor>2.0</lowSkillFactor>
+            <highSkillFactor>0.5</highSkillFactor>
           </li>
           <li Class="Contagion.Vector_Proximity">
             <baseChancePerCheck>0.025</baseChancePerCheck>
@@ -343,9 +355,31 @@
         <vectors>
           <!-- Primary human exposure: contaminated food (from infected cook or infected meat). -->
           <li Class="Contagion.Vector_Foodborne">
-            <baseChancePerMeal>0.08</baseChancePerMeal>
+            <baseChancePerMeal>0.80</baseChancePerMeal>
             <cleanlinessImpact>1.0</cleanlinessImpact>
             <contaminationExpiryDays>30</contaminationExpiryDays>
+          </li>
+          <!-- Very low parasite exposure while cutting open an infected carcass. Normal hauling is
+               still safe; gut worms mainly matter through contaminated food and vomit. -->
+          <li Class="Contagion.Vector_CorpseFluid">
+            <pickupChance>0</pickupChance>
+            <putdownChance>0</putdownChance>
+            <carriedChancePerCheck>0</carriedChancePerCheck>
+            <butcherChance>0.006</butcherChance>
+            <corpseAgePotencyCurve>
+              <points>
+                <li>(0.00, 0.05)</li>
+                <li>(0.50, 0.15)</li>
+                <li>(2.00, 0.35)</li>
+                <li>(5.00, 0.50)</li>
+                <li>(12.00, 0.00)</li>
+              </points>
+            </corpseAgePotencyCurve>
+          </li>
+          <li Class="Contagion.Vector_CookingExposure">
+            <baseChancePerRecipe>0.003</baseChancePerRecipe>
+            <lowSkillFactor>2.0</lowSkillFactor>
+            <highSkillFactor>0.5</highSkillFactor>
           </li>
           <!-- Secondary spread within colony: vomit fomite (gut worms causes vomiting). -->
           <li Class="Contagion.Vector_Fomite">
@@ -451,9 +485,31 @@
         <vectors>
           <!-- Primary human exposure: contaminated meat (raw or undercooked). -->
           <li Class="Contagion.Vector_Foodborne">
-            <baseChancePerMeal>0.10</baseChancePerMeal>
+            <baseChancePerMeal>0.85</baseChancePerMeal>
             <cleanlinessImpact>0.5</cleanlinessImpact>
             <contaminationExpiryDays>45</contaminationExpiryDays>
+          </li>
+          <!-- Low direct butchery exposure: larvae are mainly a meat-ingestion problem, but
+               cutting infected tissue is not perfectly safe. -->
+          <li Class="Contagion.Vector_CorpseFluid">
+            <pickupChance>0</pickupChance>
+            <putdownChance>0</putdownChance>
+            <carriedChancePerCheck>0</carriedChancePerCheck>
+            <butcherChance>0.008</butcherChance>
+            <corpseAgePotencyCurve>
+              <points>
+                <li>(0.00, 0.10)</li>
+                <li>(0.50, 0.15)</li>
+                <li>(2.00, 0.25)</li>
+                <li>(7.00, 0.40)</li>
+                <li>(12.00, 0.00)</li>
+              </points>
+            </corpseAgePotencyCurve>
+          </li>
+          <li Class="Contagion.Vector_CookingExposure">
+            <baseChancePerRecipe>0.004</baseChancePerRecipe>
+            <lowSkillFactor>2.0</lowSkillFactor>
+            <highSkillFactor>0.5</highSkillFactor>
           </li>
           <!-- Environmental acquisition: outdoor soil contamination from parasite eggs in faeces.
                Lower water dependency than gut worms. Eggs tolerate mild cold but die in

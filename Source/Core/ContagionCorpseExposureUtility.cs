@@ -8,7 +8,8 @@ public enum ContagionCorpseFluidExposureKind
 {
     Pickup,
     Putdown,
-    Carry
+    Carry,
+    Butcher
 }
 
 public static class ContagionCorpseExposureUtility
@@ -143,7 +144,8 @@ public static class ContagionCorpseExposureUtility
         Corpse corpse,
         ResolvedTransmissionProfile resolvedProfile,
         Vector_CorpseFluid vector,
-        ContagionCorpseFluidExposureKind kind)
+        ContagionCorpseFluidExposureKind kind,
+        float contextFactor = 1f)
     {
         if (target == null || corpse == null || resolvedProfile == null || vector == null)
         {
@@ -154,6 +156,7 @@ public static class ContagionCorpseExposureUtility
         {
             ContagionCorpseFluidExposureKind.Pickup => vector.pickupChance,
             ContagionCorpseFluidExposureKind.Putdown => vector.putdownChance,
+            ContagionCorpseFluidExposureKind.Butcher => vector.butcherChance,
             _ => vector.carriedChancePerCheck
         };
         float potency = GetCorpseFluidPotency(corpse, vector);
@@ -165,10 +168,37 @@ public static class ContagionCorpseExposureUtility
         return TryApplyCorpseExposure(
             target,
             resolvedProfile,
-            baseChance * potency,
+            baseChance * potency * Mathf.Max(0f, contextFactor),
             ContagionDiagnosticCounter.CorpseFluidAttempted,
             ContagionDiagnosticCounter.CorpseFluidSeeded,
             "Corpse fluid");
+    }
+
+    public static float GetButcheryExposureFactor(Pawn butcher, Corpse corpse)
+    {
+        if (butcher?.skills == null)
+        {
+            return 1f;
+        }
+
+        return ContagionRiskMath.ButcheryExposureFactor(
+            butcher.skills.GetSkill(SkillDefOf.Cooking).Level,
+            butcher.skills.GetSkill(SkillDefOf.Medicine).Level,
+            butcher.skills.GetSkill(SkillDefOf.Animals).Level,
+            corpse?.InnerPawn?.RaceProps?.Animal == true);
+    }
+
+    public static float GetCookingExposureFactor(Pawn cook, Vector_CookingExposure vector)
+    {
+        if (cook?.skills == null || vector == null)
+        {
+            return 1f;
+        }
+
+        return ContagionRiskMath.CookingExposureFactor(
+            cook.skills.GetSkill(SkillDefOf.Cooking).Level,
+            vector.lowSkillFactor,
+            vector.highSkillFactor);
     }
 
     public static float EvaluateCorpseFleaAgePotency(Vector_CorpseFlea vector, float corpseAgeDays)
