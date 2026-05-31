@@ -15,8 +15,6 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private readonly ContagionMapDeveloperDiagnosticsController _developerDiagnosticsController;
 
-    private readonly ContagionMapSlaughterOverrideTracker _slaughterOverrideTracker;
-
     private readonly ContagionPawnTransmissionProcessor _pawnTransmissionProcessor;
 
     private readonly ContagionEnvironmentalExposureProcessor _environmentalExposureProcessor;
@@ -29,7 +27,6 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         : base(map)
     {
         _developerDiagnosticsController = new ContagionMapDeveloperDiagnosticsController(map);
-        _slaughterOverrideTracker = new ContagionMapSlaughterOverrideTracker();
         _pawnTransmissionProcessor = new ContagionPawnTransmissionProcessor(map, _developerDiagnosticsController);
         _environmentalExposureProcessor = new ContagionEnvironmentalExposureProcessor(this);
     }
@@ -86,20 +83,6 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         _seedingState.NotifySeederFired(resolvedProfile, seeder);
     }
 
-    public void ArmForceRot(int pawnId)
-    {
-        _slaughterOverrideTracker.ArmForceRot(pawnId, Find.TickManager.TicksGame);
-    }
-
-    public bool ConsumeForceRot(int pawnId) => _slaughterOverrideTracker.ConsumeForceRot(pawnId);
-
-    public void ArmButcherBypass(int pawnId)
-    {
-        _slaughterOverrideTracker.ArmButcherBypass(pawnId, Find.TickManager.TicksGame);
-    }
-
-    public bool ConsumeButcherBypass(int pawnId) => _slaughterOverrideTracker.ConsumeButcherBypass(pawnId);
-
     public override void MapComponentUpdate()
     {
         base.MapComponentUpdate();
@@ -137,7 +120,6 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
 
         _vomitFomiteTracker.Cleanup(map);
-        _slaughterOverrideTracker.CleanupStaleEntries(ticksGame);
 
         if (runEnvironmental)
         {

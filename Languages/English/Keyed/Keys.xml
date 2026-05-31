@@ -116,9 +116,4 @@
   <Contagion_LetterLabelAnimalDiagnosed>{0} diagnosed: {1}</Contagion_LetterLabelAnimalDiagnosed>
   <Contagion_LetterAnimalDiagnosed>{0} examined {1} and diagnosed {2}. The animal should not be butchered while infected — its carcass will be unsafe unless the disease is treated first.</Contagion_LetterAnimalDiagnosed>
   <Contagion_MessageAnimalExamClear>{0} examined {1} and found nothing of concern.</Contagion_MessageAnimalExamClear>
-  <!-- Gizmo labels -->
-  <Contagion_GizmoSlaughterDispose>Slaughter and dispose</Contagion_GizmoSlaughterDispose>
-  <Contagion_GizmoSlaughterDisposeDesc>Slaughter this animal and mark the carcass for disposal. Use when you suspect disease and do not want to risk butchering.</Contagion_GizmoSlaughterDisposeDesc>
-  <Contagion_GizmoSlaughterButcher>Slaughter and butcher (accept risk)</Contagion_GizmoSlaughterButcher>
-  <Contagion_GizmoSlaughterButcherDesc>Slaughter this animal and allow butchering despite the sick signal. Contaminated meat may infect whoever cooks or eats it.</Contagion_GizmoSlaughterButcherDesc>
 </LanguageData>

@@ -6,11 +6,16 @@ using Verse;
 
 namespace Contagion.Patches;
 
-// When an infected corpse is butchered, either the butcher notices and discards the carcass
-// (skill check pass) or contamination is baked into the raw meat (skill check fail).
+// Intercepts Corpse.ButcherProducts when the corpse carries a contagious disease.
 //
-// Notice chance uses a sigmoid of combined Animals + Cooking skill:
-// ~75% at combined 10, ~95% at combined 15, hard cap 99.5%.
+// Two paths depending on whether the infection was already known:
+//   Known (Comp_InfectedCorpse.IsInfected): corpse was labeled at spawn; player consciously
+//     allowed butchering via the job filter. Proceed to meat contamination silently.
+//   Unknown (found by scanning inner pawn): butcher discovered it mid-job. Roll notice chance:
+//     pass → discard all products + alert; fail → contaminate meat.
+//
+// Notice chance uses a sigmoid of combined domain skill (Animals for animals, Medicine for
+// humans) + Cooking: ~75% at combined 10, ~95% at combined 15, hard cap 99.5%.
 //
 // IEnumerable<Thing> postfix: Harmony pipes __result through this method so we can
 // conditionally yield or modify items before they reach GenRecipe.
@@ -44,11 +49,16 @@ internal static class Patch_Corpse_ButcherProducts
             yield break;
         }
 
-        float noticeChance = ComputeNoticeChance(butcher, isHuman);
+        // Notice-and-discard only fires when the infection was *unknown* at butchering time —
+        // the butcher stumbled onto it mid-job. If the corpse was already flagged as infected
+        // at spawn (Comp_InfectedCorpse.IsInfected == true), the player saw the "Infected
+        // corpse" label and consciously allowed butchering via the job filter. Nothing to
+        // discover; proceed straight to meat contamination.
+        bool infectionWasKnown = __instance.TryGetComp<Comp_InfectedCorpse>()?.IsInfected == true;
 
-        if (Rand.Chance(noticeChance))
+        if (!infectionWasKnown && Rand.Chance(ComputeNoticeChance(butcher, isHuman)))
         {
-            // Butcher noticed — discard all products, forbid and alert.
+            // Butcher noticed an unknown infection — discard all products, forbid and alert.
             NotifyButcherNoticed(butcher, __instance, contagiousDisease);
             yield break;
         }

@@ -142,16 +142,13 @@ None configured. Flea populations are temperature-dependent in reality, but plag
 
 ### Corpse contagiousness (`corpseContagious true`)
 
-When a plague-infected animal dies, its corpse spawns immediately in the `Rotting` state. Rotten corpses are not butcherable and are auto-hauled as garbage. This prevents players from accidentally processing an infected carcass without deliberate action.
+When a plague-infected animal dies, its corpse spawns **fresh** (not rotted) and is marked by `Comp_InfectedCorpse`, showing "Infected corpse: Plague" in the inspect string and a visual overlay. This lets the player see the risk before deciding what to do.
 
-**Gizmos on colony animals:**
-- *Slaughter and dispose* — forces rotten corpse regardless of disease state.
-- *Slaughter and butcher anyway* — overrides the rotten default; corpse spawns fresh. The butchering chain still fires contamination checks.
+**Butchering** is controlled entirely by the `AllowInfectedCorpses` job filter on the `ButcherCorpseFlesh` recipe (disabled by default). If the player enables that filter, their pawns will butcher infected corpses.
 
 **Butchering contamination** (`Patch_Corpse_ButcherProducts`):
-1. Roll Animals skill / 15 as notice chance.
-2. **Notice:** all products discarded, corpse forbidden, alert sent.
-3. **Miss:** raw meat receives full contamination (`Plague` stamped into `Comp_ContaminatedFood`).
+- *Infection already known* (`Comp_InfectedCorpse.IsInfected == true`): the player consciously allowed butchering via the filter — no notice roll. Raw meat receives full contamination (`Plague` stamped into `Comp_ContaminatedFood`).
+- *Infection discovered mid-butchering* (only from inner pawn scan, not from comp): notice roll using Animals + Cooking sigmoid. Pass → products discarded, alert sent. Fail → meat contaminated.
 
 Contaminated meat follows the normal foodborne chain: cooking reduces contamination by recipe factor (survival meal 0.05×, simple meal 0.35×, raw 1.0×). A human eating contaminated meat rolls for `Plague` infection via `Vector_Foodborne`.
 
@@ -186,7 +183,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - **Cleaning** — filthy areas amplify proximity transmission (`cleanlinessImpact 1.0`). Clean floors reduce outbreak spread meaningfully.
 - **Penoxycyline** — reduces contract chance via vanilla `DiseaseContractChanceFactor`.
 - **Vets** — diagnosed animals go into active disease at low severity (0.1) and can be treated early. A skilled vet with the 48 h window can save most animals.
-- **Butcher gizmos** — "Slaughter and dispose" is zero-risk removal when a handler notices sick behaviour before the sick signal fires.
+- **Job filter** — disabling `AllowInfectedCorpses` on the butcher bill (default) prevents infected corpses from entering the meat chain entirely.
 - **No mask benefit for airway** — unlike flu, masks do not provide airway immunity against plague. Physical barrier (gas mask reducing skin contact) helps slightly (`maskTargetEffectiveness 0.4`) but breathless gene does nothing.
 
 ---
