@@ -139,6 +139,11 @@ public static class ContagionSeedingExecutionUtility
     public static bool TrySeedArrivalCarrier(Pawn pawn, ResolvedTransmissionProfile resolvedProfile, float mildVisibleChance, out bool visibleDisease)
     {
         visibleDisease = false;
+        if (pawn?.RaceProps?.Animal == true && resolvedProfile?.Profile?.showsSickSignal == true)
+        {
+            return TrySeedExactPawn(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out HediffDef _);
+        }
+
         if (Rand.Chance(Mathf.Clamp01(mildVisibleChance))
             && TrySeedMildVisibleDisease(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out HediffDef _))
         {

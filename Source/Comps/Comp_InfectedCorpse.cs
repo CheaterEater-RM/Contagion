@@ -1,5 +1,3 @@
-using RimWorld;
-using UnityEngine;
 using Verse;
 
 namespace Contagion;
@@ -12,15 +10,8 @@ public sealed class CompProperties_InfectedCorpse : CompProperties
     }
 }
 
-[StaticConstructorOnStartup]
 public sealed class Comp_InfectedCorpse : ThingComp
 {
-    private static readonly Material OverlayMaterial = MaterialPool.MatFrom(
-        BaseContent.WhiteTex,
-        ShaderDatabase.Transparent,
-        new Color(0.42f, 1f, 0.36f, 0.18f),
-        3600);
-
     private HediffDef _infectedDiseaseDef;
 
     private int _infectionTick = -1;
@@ -38,6 +29,7 @@ public sealed class Comp_InfectedCorpse : ThingComp
 
         _infectedDiseaseDef = diseaseDef;
         _infectionTick = Find.TickManager?.TicksGame ?? -1;
+        (parent as Corpse)?.InnerPawn?.Drawer?.renderer?.SetAllGraphicsDirty();
     }
 
     public override void PostSpawnSetup(bool respawningAfterLoad)
@@ -72,22 +64,7 @@ public sealed class Comp_InfectedCorpse : ThingComp
         Scribe_Values.Look(ref _infectionTick, "infectionTick", -1);
     }
 
-    public void DrawInfectionOverlay(Vector3 drawLoc)
-    {
-        if (!TryGetDiseaseForDisplay(out HediffDef _) || parent is not Corpse corpse || corpse.InnerPawn == null)
-        {
-            return;
-        }
-
-        Vector3 scale = new Vector3(
-            Mathf.Clamp(corpse.InnerPawn.BodySize * 1.15f, 0.75f, 2.35f),
-            1f,
-            Mathf.Clamp(corpse.InnerPawn.BodySize * 1.15f, 0.75f, 2.35f));
-        Vector3 location = drawLoc.WithYOffset(0.036f);
-        Graphics.DrawMesh(MeshPool.plane10, Matrix4x4.TRS(location, Quaternion.identity, scale), OverlayMaterial, 0);
-    }
-
-    private bool TryGetDiseaseForDisplay(out HediffDef diseaseDef)
+    public bool TryGetDiseaseForDisplay(out HediffDef diseaseDef)
     {
         diseaseDef = _infectedDiseaseDef;
         if (diseaseDef != null)

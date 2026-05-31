@@ -73,6 +73,7 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
     private static void RevealDiagnosis(Pawn patient, ResolvedTransmissionProfile resolvedProfile, Pawn doctor)
     {
         HediffDef targetDiseaseDef = resolvedProfile.ResolveHediffForPawn(patient);
+        Hediff existingDisease = patient.health.hediffSet.GetFirstHediffOfDef(targetDiseaseDef);
         Hediff_ContagionIncubation incubation = ContagionDiseaseUtility.FindIncubation(patient, targetDiseaseDef);
         if (incubation == null && targetDiseaseDef != resolvedProfile.DiseaseDef)
         {
@@ -86,11 +87,17 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
 
         var addedHediffs = new System.Collections.Generic.List<Hediff>();
         var partsToAffect = ContagionDiseaseUtility.ResolvePartsForPawn(patient, resolvedProfile, resolvedProfile.PartsToAffect);
-        bool applied = HediffGiverUtility.TryApply(
-            patient,
-            targetDiseaseDef,
-            partsToAffect,
-            outAddedHediffs: addedHediffs);
+        bool applied = existingDisease != null
+            || HediffGiverUtility.TryApply(
+                patient,
+                targetDiseaseDef,
+                partsToAffect,
+                outAddedHediffs: addedHediffs);
+
+        if (existingDisease != null)
+        {
+            RevealHediff(existingDisease, targetDiseaseDef);
+        }
 
         if (applied)
         {
@@ -98,7 +105,7 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
             {
                 if (hediff?.def == targetDiseaseDef)
                 {
-                    hediff.Severity = Mathf.Min(hediff.def.maxSeverity, MildDiagnosedSeverity);
+                    RevealHediff(hediff, targetDiseaseDef);
                 }
             }
         }
@@ -110,6 +117,24 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
                 "Contagion_LetterAnimalDiagnosed".Translate(doctor?.LabelShortCap ?? "?", patient.LabelShortCap, targetDiseaseDef.LabelCap),
                 LetterDefOf.NegativeEvent,
                 patient);
+        }
+    }
+
+    private static void RevealHediff(Hediff hediff, HediffDef targetDiseaseDef)
+    {
+        if (hediff == null)
+        {
+            return;
+        }
+
+        if (hediff is Hediff_ContagionAnimalHiddenDisease hiddenDisease)
+        {
+            hiddenDisease.MarkDiagnosed();
+        }
+
+        if (hediff.def == targetDiseaseDef)
+        {
+            hediff.Severity = Mathf.Min(hediff.def.maxSeverity, MildDiagnosedSeverity);
         }
     }
 

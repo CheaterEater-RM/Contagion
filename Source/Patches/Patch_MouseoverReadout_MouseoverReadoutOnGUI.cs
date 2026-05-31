@@ -255,6 +255,10 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
             {
                 builder.AppendLine("Contagion_DeveloperHoverBlockedByImmunity".Translate(breakdown.ImmunityCause.LabelCap).Resolve());
             }
+            else if (!breakdown.TargetEligibilityBlockReason.NullOrEmpty() && breakdown.FinalChance <= 0f)
+            {
+                builder.AppendLine("Contagion_DeveloperHoverBlockedReason".Translate(breakdown.TargetEligibilityBlockReason).Resolve());
+            }
 
             if (i + 1 < breakdowns.Count)
             {

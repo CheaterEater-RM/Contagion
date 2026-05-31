@@ -83,6 +83,70 @@ public static class ContagionTransmissionUtility
             * GetSusceptibilityFactorProduct(target, resolvedProfile.Profile);
     }
 
+    public static string GetTargetEligibilityBlockReason(
+        Pawn target,
+        ResolvedTransmissionProfile resolvedProfile,
+        Pawn source)
+    {
+        if (target == null)
+        {
+            return "no target";
+        }
+
+        if (target.Dead)
+        {
+            return "target is dead";
+        }
+
+        if (resolvedProfile?.Profile == null)
+        {
+            return "no disease profile";
+        }
+
+        if (!resolvedProfile.Profile.CanTransmitBetween(source, target, out float speciesFactor))
+        {
+            return speciesFactor <= 0f
+                ? "species barrier"
+                : "profile cannot affect target";
+        }
+
+        if (target.health?.hediffSet == null || target.health.immunity == null)
+        {
+            return "no health/immunity tracker";
+        }
+
+        HediffDef targetDef = resolvedProfile.ResolveHediffForPawn(target);
+        if (target.health.hediffSet.HasHediff(targetDef))
+        {
+            return "already has disease";
+        }
+
+        if (ContagionDiseaseUtility.FindIncubation(target, targetDef) != null)
+        {
+            return "already incubating";
+        }
+
+        if (ContagionDiseaseUtility.HasTemporaryImmunity(target, targetDef))
+        {
+            return "temporary immunity";
+        }
+
+        float vanillaFactor = GetVanillaContractFactor(target, resolvedProfile, out HediffDef immunityCause);
+        if (vanillaFactor <= 0f)
+        {
+            return immunityCause != null
+                ? "immune: " + immunityCause.LabelCap
+                : "vanilla contract factor is 0";
+        }
+
+        if (GetSusceptibilityFactorProduct(target, resolvedProfile.Profile) <= 0f)
+        {
+            return "susceptibility factor is 0";
+        }
+
+        return null;
+    }
+
     public static float GetSeasonalMultiplier(Map map, TransmissionProfile profile)
     {
         SeasonalInfectivity seasonal = profile?.seasonalInfectivity;

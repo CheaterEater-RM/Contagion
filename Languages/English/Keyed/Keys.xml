@@ -72,6 +72,7 @@
   <Contagion_DeveloperHoverProximityFactors>Distance falloff {0} | Outdoors {1} | Cleanliness {2} | Mask {3} | Colony suppression {4}</Contagion_DeveloperHoverProximityFactors>
   <Contagion_DeveloperHoverSocialFactors>Enclosure {0} | LOS {1} | Mask {2} | Colony suppression {3}</Contagion_DeveloperHoverSocialFactors>
   <Contagion_DeveloperHoverBlockedByImmunity>Blocked by immunity: {0}</Contagion_DeveloperHoverBlockedByImmunity>
+  <Contagion_DeveloperHoverBlockedReason>Blocked: {0}</Contagion_DeveloperHoverBlockedReason>
   <Contagion_DiagnosticsNoIncidence>No disease introductions recorded yet.</Contagion_DiagnosticsNoIncidence>
   <Contagion_DiagnosticsNoSpread>No disease spread recorded yet.</Contagion_DiagnosticsNoSpread>
   <Contagion_DiagnosticsIncidenceApplications>Incidence application: {0} seeded, {1} blocked, {2} immunity-blocked.</Contagion_DiagnosticsIncidenceApplications>

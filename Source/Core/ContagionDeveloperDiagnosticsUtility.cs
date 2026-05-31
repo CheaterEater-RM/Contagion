@@ -208,6 +208,9 @@ public static class ContagionDeveloperDiagnosticsUtility
 
         float infectivity = ContagionTransmissionUtility.GetSourceInfectivity(sourcePawn, resolvedProfile, vector);
         float targetFactor = ContagionTransmissionUtility.GetTargetEligibilityFactor(targetPawn, resolvedProfile, sourcePawn, out HediffDef immunityCause);
+        string blockReason = targetFactor <= 0f
+            ? ContagionTransmissionUtility.GetTargetEligibilityBlockReason(targetPawn, resolvedProfile, sourcePawn)
+            : null;
         breakdown = new ContagionSpreadBreakdown
         {
             DiseaseDef = resolvedProfile.DiseaseDef,
@@ -219,7 +222,8 @@ public static class ContagionDeveloperDiagnosticsUtility
             TargetEligibilityFactor = targetFactor,
             SettingsMultiplier = settingsMultiplier,
             VectorContextFactor = vectorContextFactor,
-            ImmunityCause = immunityCause
+            ImmunityCause = immunityCause,
+            TargetEligibilityBlockReason = blockReason
         };
 
         return breakdown.FinalChance > 0f;

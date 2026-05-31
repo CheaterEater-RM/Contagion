@@ -48,6 +48,8 @@ public sealed class ContagionSpreadBreakdown
 
     public HediffDef ImmunityCause { get; set; }
 
+    public string TargetEligibilityBlockReason { get; set; }
+
     public float FinalChance => Mathf.Max(0f, BaseChance)
         * Mathf.Max(0f, Infectivity)
         * Mathf.Max(0f, SeasonalMultiplier)

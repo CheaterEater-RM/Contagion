@@ -13,6 +13,11 @@ internal static class ContagionDiseaseNotifier
             return;
         }
 
+        if (diseaseHediff is Hediff_ContagionAnimalHiddenDisease { Diagnosed: false })
+        {
+            return;
+        }
+
         string messageKey = $"ContagionDiseaseActivated-{pawn.thingIDNumber}-{diseaseDef.defName}";
         if (!MessagesRepeatAvoider.MessageShowAllowed(messageKey, 0.5f))
         {
