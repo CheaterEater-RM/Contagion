@@ -117,6 +117,11 @@ public static class DiseaseProfileCache
                 Log.Warning($"[Contagion] TransmissionProfile on {diseaseDef.defName} requires part metadata, but none could be resolved.");
             }
 
+            if (Prefs.DevMode)
+            {
+                WarnIfReservedFieldsAreSet(diseaseDef, profile);
+            }
+
             _profilesByDisease[diseaseDef] = new ResolvedTransmissionProfile(
                 diseaseDef,
                 profile,
@@ -174,5 +179,28 @@ public static class DiseaseProfileCache
         }
 
         return null;
+    }
+
+    private static void WarnIfReservedFieldsAreSet(HediffDef diseaseDef, TransmissionProfile profile)
+    {
+        if (profile.carrierChance != 0f)
+        {
+            Log.Warning($"[Contagion] TransmissionProfile on {diseaseDef.defName} sets reserved field carrierChance; it is not implemented yet.");
+        }
+
+        if (profile.carrierHediffDef != null)
+        {
+            Log.Warning($"[Contagion] TransmissionProfile on {diseaseDef.defName} sets reserved field carrierHediffDef; it is not implemented yet.");
+        }
+
+        if (profile.spreadsDuringCaravan)
+        {
+            Log.Warning($"[Contagion] TransmissionProfile on {diseaseDef.defName} sets reserved field spreadsDuringCaravan; it is not implemented yet.");
+        }
+
+        if (profile.corpseInfectivityDecayPerDay != 0.5f)
+        {
+            Log.Warning($"[Contagion] TransmissionProfile on {diseaseDef.defName} sets reserved field corpseInfectivityDecayPerDay; it is not implemented yet.");
+        }
     }
 }

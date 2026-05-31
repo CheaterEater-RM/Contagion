@@ -113,6 +113,11 @@ internal sealed class ContagionEnvironmentalExposureProcessor
             _map,
             transmissionMultiplier,
             out HediffDef _);
+        if (ContagionSeedingCoordinator.CurrentMode == ContagionSeedingMode.Contagion)
+        {
+            chance = _owner.DiseaseDirector.ClampChance(chance, enforceMinimum: false);
+        }
+
         if (!Rand.Chance(Mathf.Clamp01(chance)))
         {
             return false;

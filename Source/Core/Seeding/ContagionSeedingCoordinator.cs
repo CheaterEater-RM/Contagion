@@ -397,6 +397,7 @@ public static class ContagionSeedingCoordinator
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalExposureSucceeded);
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalSeeded, seededCount);
             ContagionDiagnostics.Trace($"Pending arrival request resolved {resolvedProfile.DiseaseDef.defName} onto {seededCount} pawn(s) from a {groupKind} group.");
+            // One arrival group resolves at most one pending storyteller request.
             return seededCount;
         }
 

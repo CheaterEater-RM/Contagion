@@ -81,7 +81,7 @@ Identical to human Flu.
 
 | Severity | Multiplier |
 |---|---|
-| 0.00 | 0.4 |
+| 0.00 | 0.5 |
 | 0.25 | 1.0 |
 | 0.55 | 1.0 |
 | 0.80 | 0.3 |
@@ -96,7 +96,7 @@ Pre-symptomatic spread mirrors human Flu.
 | 0.0 | 0.0 |
 | 0.3 | 0.15 |
 | 0.7 | 0.45 |
-| 1.0 | 0.8 |
+| 1.0 | 0.5 |
 
 ### Seasonal variation
 

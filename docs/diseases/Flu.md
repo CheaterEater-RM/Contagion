@@ -90,7 +90,7 @@ Contaminated vomit. Flu only reaches peak fomite infectivity at high severity (0
 
 | Severity | Multiplier | Notes |
 |---|---|---|
-| 0.00 | 0.4 | Contagious immediately on activation |
+| 0.00 | 0.5 | Smooth continuation from full incubation |
 | 0.25 | 1.0 | Peak early in illness |
 | 0.55 | 1.0 | Sustained peak |
 | 0.80 | 0.3 | Tapering — recovery phase |
@@ -105,7 +105,7 @@ Pre-symptomatic spread is real but modest. A pawn with hidden incubation is mild
 | 0.0 | 0.0 |
 | 0.3 | 0.15 |
 | 0.7 | 0.45 |
-| 1.0 | 0.8 |
+| 1.0 | 0.5 |
 
 ### Source infectivity factors
 
@@ -151,7 +151,7 @@ Sickly pawns catch flu more often (vanilla `randomDiseaseMtbDays`) but shed at h
 ## Tuning Notes
 
 - Seasonal multipliers are first-pass. Flu should feel like a winter/fall disease with near-silence in summer. The 0.3 summer multiplier may still be too high for tropical biomes — `permanentSummer 0.4` needs field testing.
-- Incubation infectivity (pre-symptomatic spread) is intentional but the curve may be too steep into late incubation (0.8 at full incubation). Consider flattening to 0.5–0.6 if pre-symptomatic spread feels too punishing.
+- Incubation infectivity (pre-symptomatic spread) is intentional but capped at 0.5 at full incubation so it hands off smoothly into active flu.
 - `maxActiveCases 5` for a 10-pawn colony means roughly half the colony could theoretically be sick simultaneously before seeding suppresses new incubations. This may be too high; consider 4.
 
 

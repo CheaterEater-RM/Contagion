@@ -120,14 +120,16 @@ public sealed class ContagionDiseaseDirector : IExposable
         return _lastDirectorMultiplier;
     }
 
-    public float ClampChance(float chance)
+    public float ClampChance(float chance, bool enforceMinimum = true)
     {
         if (chance <= 0f)
         {
             return 0f;
         }
 
-        return Mathf.Clamp(chance, MinChance, MaxChance);
+        return enforceMinimum
+            ? Mathf.Clamp(chance, MinChance, MaxChance)
+            : Mathf.Min(chance, MaxChance);
     }
 
     public void NotifySeeded(TransmissionProfile profile, int carrierCount)
