@@ -87,6 +87,18 @@ public sealed class TransmissionProfile : DefModExtension
     // to make animal carriers legible without requiring the player to inspect every animal's health tab.
     public bool showsSickSignal;
 
+    // Per-check probability curve (evaluated against current severity) for a hidden active
+    // disease to spontaneously present visible sick-signal symptoms. Checked every half game-day.
+    // Only meaningful when showsSickSignal is true; null = no passive presentation.
+    // Tuned so the cumulative chance over a full disease course is roughly 20-30%.
+    public SimpleCurve passiveSymptomPresentationCurve;
+
+    // One-time roll when an animal dies while carrying a hidden active disease: chance the
+    // corpse shows as infected post-mortem (disease apparent upon inspection after death).
+    // Applied per-disease so some diseases (e.g. obvious lesions) can be set higher than
+    // subtle systemic ones. 0 = never, 1 = always. Default 10%.
+    public float posthumousSymptomChance = 0.1f;
+
     public float carrierChance;
 
     public HediffDef carrierHediffDef;

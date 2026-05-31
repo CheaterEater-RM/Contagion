@@ -106,7 +106,15 @@ Plague peaks at high severity and tapers near death (too sick to move and shed).
 
 ### Incubation infectivity
 
-None configured. Plague does not spread during incubation — the pawn shows no symptoms and fleas have not yet begun shedding. The 1-day incubation is short enough that this is not a major limitation.
+Plague spreads during incubation at above-average rates because infected fleas on the carrier jump to nearby pawns independent of host symptom stage. Unlike flu (which ramps steeply only near symptom onset), plague's incubation curve is flat-and-meaningful from day one.
+
+| Incubation progress | Multiplier |
+|---|---|
+| 0.0 (just infected) | 0.3 |
+| 0.5 (mid-incubation) | 0.45 |
+| 1.0 (onset) | 0.6 |
+
+The 2.5-day incubation window means an infected pawn can spread plague silently for up to 2.5 days before showing symptoms — longer than flu (1.5 d) or malaria (2.0 d). Combined with a meaningful early infectivity, this gives plague a distinctive "hidden spreader" character that rewards early isolation.
 
 ### Source infectivity factors
 
@@ -151,11 +159,20 @@ Contaminated meat follows the normal foodborne chain: cooking reduces contaminat
 
 Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDiseaseDef Animal_Plague`) can be detected before symptoms appear.
 
-**Detection:** When a colonist performs an `AnimalChat` interaction (training, tending, feeding), they roll `Animals skill / 20`. On success, `Contagion_AnimalSick` is applied — a visible signal in the animal's health bar.
+**Detection path 1 — handler interaction:** When a colonist performs an `AnimalChat` interaction (training, tending, feeding), they roll `Animals skill / 20`. On success, `Contagion_AnimalSick` is applied — a visible signal in the animal's health bar. Works for colony animals only (wild animals receive no `AnimalChat` interactions from player colonists).
+
+**Detection path 2 — passive symptom presentation:** Any animal carrying a hidden active disease (`Hediff_ContagionAnimalHiddenDisease`, diagnosed or not) rolls a per-disease curve every half game-day. On success, `Contagion_AnimalSick` is applied and a message fires. This covers wild animals and colony animals whose handlers never noticed. Cumulative probability over a typical untreated course is approximately **25%**.
+
+| Severity | Per-check chance |
+|---|---|
+| 0.0 | 0% |
+| 0.3 | 1% |
+| 0.6 | 3% |
+| 1.0 | 5% |
 
 **Diagnosis:** When a doctor tends `Contagion_AnimalSick`, roll `Medicine skill / 15`:
 - True positive, skill passes: incubation collapses to mild active disease (severity 0.1). Player sees the disease.
-- True positive, skill fails: sick signal cleared, disease stays hidden. Animal can be re-detected on the next handler interaction.
+- True positive, skill fails: sick signal cleared, disease stays hidden. Animal can be re-detected on next handler interaction or next passive roll.
 - False positive (3% rate on healthy animals): sick signal cleared, "nothing concerning" message.
 
 **Auto-slaughter exclusion:** Animals with `Contagion_AnimalSick` are excluded from auto-slaughter queues until the signal is resolved.
@@ -180,4 +197,6 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - The animal handler bias (`handlerBias 2.0`) for AnimalLinked seeding means handlers are 3× more likely than average colonists to be the initial human case (base 1.0 + bias 2.0 × normalized Animals skill). This is intentional: the narrative is "handler caught it from an infected animal."
 - `maxActiveCases 6` was bumped from 4 (human-only) to account for the combined human+animal count. With a colony of 10 pawns and 8 animals, 6 active cases might still clear quickly. May need to go higher (8) or be split into separate human/animal caps in a future profile enhancement.
 - No seasonal variation. A summer amplification (fleas active) and winter suppression (frozen fleas) would add realism and make winter plague a genuine choice — "safe to butcher in deep freeze?" — but adds design complexity.
-- Incubation infectivity is not set (flat 0). Since the incubation is only 1 day, pre-symptomatic spread would be minimal anyway. Leave flat unless playtesting shows plague outbreaks feel too telegraphed.
+- Incubation infectivity is set to a flat-ish curve (0.3 → 0.6). If playtesting shows plague outbreaks feel too fast or uncontainable, dial the starting value down toward 0.15–0.2 first; the 2.5-day window amplifies even moderate incubation infectivity.
+- Passive symptom presentation peaks at 5% per half-day at severity 1.0, giving ~25% cumulative over a typical untreated course. If wild animal plague feels too invisible, raise the peak toward 0.08; if messages are too noisy, lower it or raise the severity threshold.
+- Posthumous symptom chance (10%) is the probability an animal that died with hidden plague shows as an infected corpse. Raise toward 0.3 for diseases with obvious post-mortem lesions; lower toward 0 for truly occult infections.

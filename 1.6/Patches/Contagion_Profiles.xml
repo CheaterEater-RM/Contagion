@@ -181,7 +181,7 @@
     <xpath>Defs/HediffDef[defName="Plague" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <incubationDays>1.0</incubationDays>
+        <incubationDays>2.5</incubationDays>
         <pendingWindowDays>5</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
@@ -191,6 +191,9 @@
         <crossSpeciesTransmissionFactor>0.5</crossSpeciesTransmissionFactor>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
+        <!-- Passive presentation uses the default curve (~25% cumulative). Posthumous at 10% —
+             plague lesions are apparent on a corpse even without prior symptoms. -->
+        <posthumousSymptomChance>0.1</posthumousSymptomChance>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <sourceInfectivityFactors>
           <li Class="Contagion.SourceFactor_Trait">
@@ -200,6 +203,15 @@
             <factor>0.5</factor>
           </li>
         </sourceInfectivityFactors>
+        <!-- Fleas on an incubating host jump to nearby pawns regardless of symptom stage.
+             Infectivity is flat-and-meaningful from day 1, unlike flu which ramps up only near symptom onset. -->
+        <incubationInfectivityCurve>
+          <points>
+            <li>(0.0, 0.3)</li>
+            <li>(0.5, 0.45)</li>
+            <li>(1.0, 0.6)</li>
+          </points>
+        </incubationInfectivityCurve>
         <activeInfectivityCurve>
           <points>
             <li>(0.00, 0.2)</li>
@@ -268,6 +280,17 @@
         <affectsAnimals>true</affectsAnimals>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
+        <!-- Gut worms are not externally visible — reduced passive presentation (~10% cumulative)
+             and a lower posthumous chance (5%: worms are internal and not obvious post-mortem). -->
+        <passiveSymptomPresentationCurve>
+          <points>
+            <li>(0.0, 0.00)</li>
+            <li>(0.3, 0.003)</li>
+            <li>(0.7, 0.007)</li>
+            <li>(1.0, 0.012)</li>
+          </points>
+        </passiveSymptomPresentationCurve>
+        <posthumousSymptomChance>0.05</posthumousSymptomChance>
         <!-- Stomach targeting for humans; animals get the generic disease. -->
         <targetBodyParts>
           <li>Stomach</li>
@@ -361,6 +384,17 @@
         <affectsAnimals>true</affectsAnimals>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
+        <!-- Muscle parasites are deeply embedded — reduced passive presentation (~10% cumulative)
+             and a low posthumous chance (5%: larvae not externally visible without dissection). -->
+        <passiveSymptomPresentationCurve>
+          <points>
+            <li>(0.0, 0.00)</li>
+            <li>(0.3, 0.003)</li>
+            <li>(0.7, 0.007)</li>
+            <li>(1.0, 0.012)</li>
+          </points>
+        </passiveSymptomPresentationCurve>
+        <posthumousSymptomChance>0.05</posthumousSymptomChance>
         <spreadSuppressionScale>0</spreadSuppressionScale>
         <outbreakNotification>FirstCase</outbreakNotification>
         <activeInfectivityCurve>

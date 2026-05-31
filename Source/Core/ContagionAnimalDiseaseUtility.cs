@@ -113,9 +113,18 @@ public static class ContagionAnimalDiseaseUtility
 
     private static HediffDef GetDiseaseDef(Hediff hediff)
     {
-        if (hediff is Hediff_ContagionIncubation incubation)
+        // Incubation: disease never manifested — the pawn showed no symptoms and the player had
+        // no prior indication. The corpse should not appear visibly infected.
+        if (hediff is Hediff_ContagionIncubation)
         {
-            return incubation.TargetDiseaseDef;
+            return null;
+        }
+
+        // Active but undiagnosed: disease is present and spreading, but still invisible to the player.
+        // Same principle: no visible warning before death means no infected-corpse marker.
+        if (hediff is Hediff_ContagionAnimalHiddenDisease { Diagnosed: false })
+        {
+            return null;
         }
 
         return hediff?.def;

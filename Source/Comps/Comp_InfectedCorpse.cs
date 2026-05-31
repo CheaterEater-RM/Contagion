@@ -44,7 +44,10 @@ public sealed class Comp_InfectedCorpse : ThingComp
         if (ContagionCorpseUtility.TryGetCorpseContagiousDiseaseFromInnerPawn(corpse.InnerPawn, out HediffDef diseaseDef))
         {
             SetInfection(diseaseDef);
+            return;
         }
+
+        ContagionCorpseUtility.TryApplyPosthumousPresentation(corpse.InnerPawn, this);
     }
 
     public override string CompInspectStringExtra()

@@ -104,12 +104,25 @@ public sealed class ContagionTransmissionTrace
             return false;
         }
 
-        return SourcePawn.Spawned
-            && TargetPawn.Spawned
-            && SourcePawn.Map == map
-            && TargetPawn.Map == map
-            && !SourcePawn.Destroyed
-            && !TargetPawn.Destroyed
-            && ContagionDiseaseUtility.HasDiseaseOrIncubation(TargetPawn, DiseaseDef);
+        if (!SourcePawn.Spawned
+            || !TargetPawn.Spawned
+            || SourcePawn.Map != map
+            || TargetPawn.Map != map
+            || SourcePawn.Destroyed
+            || TargetPawn.Destroyed)
+        {
+            return false;
+        }
+
+        // Resolve the hediff the target pawn actually carries: animals get the animal-variant hediff
+        // (e.g. Animal_Plague) rather than the primary def, so checking against the primary def
+        // would always return false and prune animal-target traces on the very next tick.
+        HediffDef effectiveDef = DiseaseDef;
+        if (DiseaseProfileCache.TryGetResolvedProfile(DiseaseDef, out ResolvedTransmissionProfile profile))
+        {
+            effectiveDef = profile.ResolveHediffForPawn(TargetPawn);
+        }
+
+        return ContagionDiseaseUtility.HasDiseaseOrIncubation(TargetPawn, effectiveDef);
     }
 }

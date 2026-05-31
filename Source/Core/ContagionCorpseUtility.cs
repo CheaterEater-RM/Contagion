@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -52,6 +53,45 @@ public static class ContagionCorpseUtility
         }
 
         return diseaseDef != null;
+    }
+
+    // On-death roll: if an animal dies while carrying a hidden active disease (never diagnosed
+    // and never passively presented), roll posthumousSymptomChance. On success the corpse is
+    // marked infected — disease visible upon post-mortem inspection even though the animal
+    // showed no visible symptoms before death.
+    public static void TryApplyPosthumousPresentation(Pawn innerPawn, Comp_InfectedCorpse infectedComp)
+    {
+        if (innerPawn?.health?.hediffSet == null || infectedComp == null)
+        {
+            return;
+        }
+
+        List<Hediff> hediffs = innerPawn.health.hediffSet.hediffs;
+        for (int i = 0; i < hediffs.Count; i++)
+        {
+            if (hediffs[i] is not Hediff_ContagionAnimalHiddenDisease { Diagnosed: false } hidden)
+            {
+                continue;
+            }
+
+            if (!DiseaseProfileCache.TryGetResolvedProfile(hidden.def, out ResolvedTransmissionProfile resolvedProfile))
+            {
+                continue;
+            }
+
+            if (!resolvedProfile.Profile.corpseContagious)
+            {
+                continue;
+            }
+
+            if (!Rand.Chance(resolvedProfile.Profile.posthumousSymptomChance))
+            {
+                continue;
+            }
+
+            infectedComp.SetInfection(resolvedProfile.DiseaseDef);
+            return;
+        }
     }
 
     public static void NotifyCorpseIngested(Corpse corpse, Pawn ingester)
