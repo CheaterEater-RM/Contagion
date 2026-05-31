@@ -222,6 +222,45 @@
           </points>
         </activeInfectivityCurve>
         <vectors>
+          <!-- Fresh plague corpses shed fleas after a short post-death ramp. Freezing kills
+               this vector quickly; otherwise the flea burst fades within a couple of days. -->
+          <li Class="Contagion.Vector_CorpseFlea">
+            <baseChancePerCheck>0.006</baseChancePerCheck>
+            <carriedBaseChancePerCheck>0.025</carriedBaseChancePerCheck>
+            <maxRange>12</maxRange>
+            <carriedRange>4</carriedRange>
+            <distanceFalloffRate>0.25</distanceFalloffRate>
+            <frozenTemperature>0</frozenTemperature>
+            <frozenViabilityLossPerDay>4.0</frozenViabilityLossPerDay>
+            <corpseAgePotencyCurve>
+              <points>
+                <li>(0.00, 0.10)</li>
+                <li>(0.08, 0.40)</li>
+                <li>(0.25, 2.50)</li>
+                <li>(0.75, 1.50)</li>
+                <li>(1.50, 0.25)</li>
+                <li>(2.00, 0.00)</li>
+              </points>
+            </corpseAgePotencyCurve>
+          </li>
+          <!-- Corpse fluids start low, then grow more dangerous as the body breaks down.
+               Dessicated corpses no longer expose handlers through this vector. -->
+          <li Class="Contagion.Vector_CorpseFluid">
+            <pickupChance>0.015</pickupChance>
+            <putdownChance>0.015</putdownChance>
+            <carriedChancePerCheck>0.003</carriedChancePerCheck>
+            <corpseAgePotencyCurve>
+              <points>
+                <li>(0.00, 0.10)</li>
+                <li>(0.15, 0.20)</li>
+                <li>(0.50, 0.45)</li>
+                <li>(1.50, 0.90)</li>
+                <li>(3.00, 1.30)</li>
+                <li>(7.00, 1.50)</li>
+                <li>(12.00, 0.00)</li>
+              </points>
+            </corpseAgePotencyCurve>
+          </li>
           <li Class="Contagion.Vector_Proximity">
             <baseChancePerCheck>0.025</baseChancePerCheck>
             <maxRange>6</maxRange>

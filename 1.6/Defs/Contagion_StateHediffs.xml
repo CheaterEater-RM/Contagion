@@ -33,6 +33,17 @@
     <scenarioCanAdd>false</scenarioCanAdd>
   </HediffDef>
 
+  <HediffDef>
+    <defName>Contagion_CorpseFleas</defName>
+    <hediffClass>Contagion.Hediff_ContagionCorpseFleas</hediffClass>
+    <label>fleas</label>
+    <description>Hidden corpse state used by Contagion to track flea viability after death.</description>
+    <initialSeverity>0.01</initialSeverity>
+    <maxSeverity>5.0</maxSeverity>
+    <isBad>false</isBad>
+    <scenarioCanAdd>false</scenarioCanAdd>
+  </HediffDef>
+
   <!-- Visible signal that a handler noticed something wrong with an animal. A vet tends it to
        diagnose: reveals the underlying disease on success, or clears as false positive/negative. -->
   <HediffDef>

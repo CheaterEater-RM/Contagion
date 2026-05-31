@@ -19,6 +19,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private readonly ContagionEnvironmentalExposureProcessor _environmentalExposureProcessor;
 
+    private readonly ContagionCorpseExposureProcessor _corpseExposureProcessor;
+
     private ContagionVomitFomiteTracker _vomitFomiteTracker = new();
 
     private ContagionMapSeedingState _seedingState = new();
@@ -29,6 +31,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         _developerDiagnosticsController = new ContagionMapDeveloperDiagnosticsController(map);
         _pawnTransmissionProcessor = new ContagionPawnTransmissionProcessor(map, _developerDiagnosticsController);
         _environmentalExposureProcessor = new ContagionEnvironmentalExposureProcessor(this);
+        _corpseExposureProcessor = new ContagionCorpseExposureProcessor(map);
     }
 
     public Map Map => map;
@@ -136,6 +139,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
         long transmissionTiming = ContagionDiagnostics.BeginTiming();
         _vomitFomiteTracker.RunFomiteExposurePass(spawnedPawns, map);
+        _corpseExposureProcessor.RunCorpseExposurePass(spawnedPawns, TransmissionCheckInterval);
 
         if (spawnedPawns.Count >= 2)
         {

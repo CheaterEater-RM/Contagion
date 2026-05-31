@@ -292,6 +292,36 @@ public sealed class Vector_Foodborne : TransmissionVector
     public float contaminationExpiryDays = 30f;
 }
 
+public sealed class Vector_CorpseFlea : TransmissionVector
+{
+    public float baseChancePerCheck = 0.006f;
+
+    public float carriedBaseChancePerCheck = 0.025f;
+
+    public int maxRange = 12;
+
+    public int carriedRange = 4;
+
+    public float distanceFalloffRate = 0.25f;
+
+    public float frozenTemperature = 0f;
+
+    public float frozenViabilityLossPerDay = 4f;
+
+    public SimpleCurve corpseAgePotencyCurve;
+}
+
+public sealed class Vector_CorpseFluid : TransmissionVector
+{
+    public float pickupChance = 0.015f;
+
+    public float putdownChance = 0.015f;
+
+    public float carriedChancePerCheck = 0.003f;
+
+    public SimpleCurve corpseAgePotencyCurve;
+}
+
 public sealed class Vector_Lovin : TransmissionVector
 {
     public float baseChancePerAct = 0.15f;

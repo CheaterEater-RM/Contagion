@@ -32,6 +32,11 @@ public sealed class Comp_InfectedCorpse : ThingComp
         _infectedDiseaseDef = diseaseDef;
         _diseaseIdentified = identified;
         _infectionTick = Find.TickManager?.TicksGame ?? -1;
+        if (parent is Corpse corpse && DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile))
+        {
+            ContagionCorpseExposureUtility.EnsureCorpseFleas(corpse, resolvedProfile);
+        }
+
         (parent as Corpse)?.InnerPawn?.Drawer?.renderer?.SetAllGraphicsDirty();
     }
 

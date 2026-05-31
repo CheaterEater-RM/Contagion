@@ -62,7 +62,54 @@ Raiders, caravan members, and wanderers may arrive already carrying `Plague`. Th
 
 ## Spread Vectors
 
-### Vector_Proximity (only vector)
+### Vector_CorpseFlea
+
+Fresh plague corpses get a hidden `Contagion_CorpseFleas` hediff on the inner pawn. The hediff stores flea viability and exposes current flea severity for corpse handling logic.
+
+This vector starts low at death, ramps over the first hours as fleas abandon the cooling host, then fades rapidly. Freezing the corpse kills the flea vector by draining flea viability; thawing does not revive dead fleas.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| baseChancePerCheck | 0.006 | Ground corpse aura, per 250-tick pass |
+| carriedBaseChancePerCheck | 0.025 | Close-contact risk to the pawn carrying the corpse |
+| maxRange | 12 | Fresh corpse flea migration range |
+| carriedRange | 4 | Moving aura around a carried corpse |
+| distanceFalloffRate | 0.25 | Fleas still travel further than normal proximity contact |
+| frozenTemperature | 0 C | At or below this, flea viability is destroyed |
+| frozenViabilityLossPerDay | 4.0 | About 6 in-game hours to kill a full flea load |
+
+| Corpse age (days) | Flea potency |
+|---|---|
+| 0.00 | 0.10 |
+| 0.08 | 0.40 |
+| 0.25 | 2.50 |
+| 0.75 | 1.50 |
+| 1.50 | 0.25 |
+| 2.00 | 0.00 |
+
+### Vector_CorpseFluid
+
+Corpse-fluid risk is event/handling based. Pickup and putdown are the main danger moments; carrying has a smaller continuous risk. Unlike fleas, fluid risk does not die just because the corpse is frozen, but freezing slows the normal rot progression that drives the curve.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| pickupChance | 0.015 | Applied when a pawn starts carrying the corpse |
+| putdownChance | 0.015 | Applied when a pawn drops/places the corpse |
+| carriedChancePerCheck | 0.003 | Small per-pass risk while carrying |
+
+| Corpse age (days) | Fluid potency |
+|---|---|
+| 0.00 | 0.10 |
+| 0.15 | 0.20 |
+| 0.50 | 0.45 |
+| 1.50 | 0.90 |
+| 3.00 | 1.30 |
+| 7.00 | 1.50 |
+| 12.00 | 0.00 |
+
+Dessicated corpses have no fluid exposure.
+
+### Vector_Proximity
 
 Plague spreads by contact and flea transfer. Not airborne. Airway barriers (breathless gene, gas masks' airway component) have no effect on transmission.
 
@@ -120,9 +167,13 @@ The 2.5-day incubation window means an infected pawn can spread plague silently 
 |---|---|---|
 | SourceFactor_Trait | Trait `Immunity` degree −1 (Sickly) | ×0.5 source infectivity |
 
+### Corpse-state variation
+
+Corpse fleas are temperature-sensitive even though ordinary live-host plague has no seasonal multiplier. A frozen plague corpse becomes much safer from fleas, but not instantly safe from fluids.
+
 ### Seasonal variation
 
-None configured. Flea populations are temperature-dependent in reality, but plague is not currently season-weighted. A summer peak or a cold-kills-fleas winter dip could be added.
+None configured for live-host spread. Corpse flea survival is handled directly from corpse temperature instead.
 
 ---
 
@@ -144,11 +195,13 @@ When a plague-infected animal dies, its corpse spawns **fresh** (not rotted) and
 
 **Butchering** is controlled entirely by the `AllowInfectedCorpses` job filter on the `ButcherCorpseFlesh` recipe (disabled by default). If the player enables that filter, their pawns will butcher infected corpses.
 
-**Butchering contamination** (`Patch_Corpse_ButcherProducts`):
-- *Infection already known* (`Comp_InfectedCorpse.IsInfected == true`): the player consciously allowed butchering via the filter — no notice roll. Raw meat receives full contamination (`Plague` stamped into `Comp_ContaminatedFood`).
-- *Infection discovered mid-butchering* (only from inner pawn scan, not from comp): notice roll via `ContagionDiagnosticSkillUtility` (`isAnimalSubject: true`, `isButchery: true`). Medical primary; Animals at 0.25×; Cooking at 0.60×. Pass → products discarded, alert sent. Fail → meat contaminated.
+**Corpse handling**:
+- Fleas: spawned infected corpses expose nearby pawns. Carried infected corpses expose the carrier at elevated close-contact risk and create a smaller moving aura.
+- Fluids: pickup and putdown roll direct handler exposure. Carrying rolls a smaller continuous exposure.
+- Early window: both vectors start low at death. Players can haul or freeze fresh bodies quickly before the major flea burst and before fluids become highly infectious.
+- Freezing: kills flea viability rapidly. It does not directly sterilize fluids, but it slows rot-driven fluid potency.
 
-Contaminated meat follows the normal foodborne chain: cooking reduces contamination by recipe factor (survival meal 0.05×, simple meal 0.35×, raw 1.0×). A human eating contaminated meat rolls for `Plague` infection via `Vector_Foodborne`.
+**Butchering contamination** (`Patch_Corpse_ButcherProducts`) currently remains a product-chain mechanic for profiles that have foodborne vectors. Plague now gets its main corpse danger from `Vector_CorpseFlea` and `Vector_CorpseFluid`, not from normal meal contamination.
 
 ### Sick signal (`showsSickSignal true`)
 
@@ -179,6 +232,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - **Handler isolation** — keeping plague-infected animals away from human colonists (separate barn or pasture zone) cuts proximity transmission. The 6-cell maxRange means a wall between pens is enough.
 - **Area restrictions** — sick colonists in a dedicated medical area prevent proximity spread to healthy colonists.
 - **Cleaning** — filthy areas amplify proximity transmission (`cleanlinessImpact 1.0`). Clean floors reduce outbreak spread meaningfully.
+- **Freezing corpses** — rapidly kills the corpse-flea vector. Frozen plague bodies are still unpleasant to handle, but they stop shedding migrating fleas.
 - **Penoxycyline** — reduces contract chance via vanilla `DiseaseContractChanceFactor`.
 - **Vets** — diagnosed animals go into active disease at low severity (0.1) and can be treated early. A skilled vet with the 48 h window can save most animals.
 - **Job filter** — disabling `AllowInfectedCorpses` on the butcher bill (default) prevents infected corpses from entering the meat chain entirely.
@@ -191,7 +245,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - `crossSpeciesTransmissionFactor 0.5` is a first-pass value. Plague in real life crosses species very readily via flea vectors — 0.5 may be too conservative. Consider 0.6–0.7 after playtesting.
 - Plague no longer uses `Seeder_AnimalLinked`; incoming humans and animals are the primary introduction route. If playtesting shows too little resident animal pressure, add a new explicit animal-reservoir seeder rather than reusing the old handler-biased path.
 - `maxActiveCases 6` was bumped from 4 (human-only) to account for the combined human+animal count. With a colony of 10 pawns and 8 animals, 6 active cases might still clear quickly. May need to go higher (8) or be split into separate human/animal caps in a future profile enhancement.
-- No seasonal variation. A summer amplification (fleas active) and winter suppression (frozen fleas) would add realism and make winter plague a genuine choice — "safe to butcher in deep freeze?" — but adds design complexity.
+- Live-host plague has no seasonal variation. Corpse fleas already have temperature-based suppression through `Vector_CorpseFlea`.
 - Incubation infectivity is set to a flat-ish curve (0.3 → 0.6). If playtesting shows plague outbreaks feel too fast or uncontainable, dial the starting value down toward 0.15–0.2 first; the 2.5-day window amplifies even moderate incubation infectivity.
 - Passive symptom presentation peaks at 5% per half-day at severity 1.0, giving ~25% cumulative over a typical untreated course. If wild animal plague feels too invisible, raise the peak toward 0.08; if messages are too noisy, lower it or raise the severity threshold.
 - Posthumous symptom chance (10%) is the probability an animal that died with hidden plague shows as an infected corpse. Raise toward 0.3 for diseases with obvious post-mortem lesions; lower toward 0 for truly occult infections.
