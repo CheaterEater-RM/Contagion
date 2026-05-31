@@ -145,7 +145,7 @@ Animals killed while infected with gut worms spawn a rotten corpse. If butchered
 
 ### Sick signal (`showsSickSignal true`)
 
-Animals incubating gut worms can be detected by handlers via `AnimalChat` interaction (Animals skill / 20 roll). The `Contagion_AnimalSick` hediff is applied on detection. Diagnosis by a vet (Medicine skill / 15) either collapses incubation to mild active disease or produces a false negative.
+Animals incubating gut worms can be detected by handlers via `AnimalChat` interaction (Animals skill / 20 roll). The `Contagion_AnimalSick` hediff is applied on detection. Diagnosis by a vet uses the unified diagnostic roll (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: false`): Medical primary, Animals at 0.60×, Sight-scaled. A passing roll collapses incubation to mild active disease; a failing roll produces a false negative.
 
 This mechanic is especially important for gut worms: undetected infected animals go through the butchering chain and contaminate the meat supply. Attentive handlers and skilled vets are the first line of defense.
 
@@ -157,7 +157,7 @@ This mechanic is especially important for gut worms: undetected infected animals
 - **Indoor livestock** — the strongest single counter. An animal in the centre of a large roofed barn has near-zero gut worm exposure.
 - **Vet inspection** — the sick signal lets a skilled handler catch infected animals before slaughter. High Animals skill is the key lever.
 - **"Slaughter and dispose"** — guaranteed-safe removal of a suspected animal without entering the meat chain.
-- **Butcher skill** — the Animals skill / 15 roll in `Patch_Corpse_ButcherProducts` lets a skilled butcher notice contamination and discard all products. A dedicated, skilled butcher significantly reduces meat-chain risk.
+- **Butcher skill** — the notice roll in `Patch_Corpse_ButcherProducts` uses Medical as primary and Cooking at 0.60× weight; Animals adds at 0.25× for animal corpses. A skilled butcher-medic or a dedicated cook-handler significantly reduces meat-chain risk.
 - **Kitchen hygiene** — infected cooks in dirty kitchens produce more contaminated food. Restricting sick pawns from cooking is the strongest single lever against the food-chain spread.
 - **Cooking** — survival meals (0.05×) and lavish meals (0.10×) nearly eliminate contamination from cooking. Simple meals (0.35×) and pemmican (0.70×) are risky with contaminated meat.
 - **Immunity** — 15-day post-recovery immunity prevents immediate re-infection from the same source.

@@ -148,7 +148,7 @@ When a plague-infected animal dies, its corpse spawns **fresh** (not rotted) and
 
 **Butchering contamination** (`Patch_Corpse_ButcherProducts`):
 - *Infection already known* (`Comp_InfectedCorpse.IsInfected == true`): the player consciously allowed butchering via the filter — no notice roll. Raw meat receives full contamination (`Plague` stamped into `Comp_ContaminatedFood`).
-- *Infection discovered mid-butchering* (only from inner pawn scan, not from comp): notice roll using Animals + Cooking sigmoid. Pass → products discarded, alert sent. Fail → meat contaminated.
+- *Infection discovered mid-butchering* (only from inner pawn scan, not from comp): notice roll via `ContagionDiagnosticSkillUtility` (`isAnimalSubject: true`, `isButchery: true`). Medical primary; Animals at 0.25×; Cooking at 0.60×. Pass → products discarded, alert sent. Fail → meat contaminated.
 
 Contaminated meat follows the normal foodborne chain: cooking reduces contamination by recipe factor (survival meal 0.05×, simple meal 0.35×, raw 1.0×). A human eating contaminated meat rolls for `Plague` infection via `Vector_Foodborne`.
 
@@ -167,9 +167,9 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 | 0.6 | 3% |
 | 1.0 | 5% |
 
-**Diagnosis:** When a doctor tends `Contagion_AnimalSick`, roll `Medicine skill / 15`:
-- True positive, skill passes: incubation collapses to mild active disease (severity 0.1). Player sees the disease.
-- True positive, skill fails: sick signal cleared, disease stays hidden. Animal can be re-detected on next handler interaction or next passive roll.
+**Diagnosis:** When a doctor tends `Contagion_AnimalSick`, the unified diagnostic roll applies (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: false`). Medical primary; Animals at 0.60× (diminishing returns vs Medical); Sight-scaled; Medical Specialist 1.5× bonus.
+- True positive, roll passes: incubation collapses to mild active disease (severity 0.1). Player sees the disease.
+- True positive, roll fails: sick signal cleared, disease stays hidden. Animal can be re-detected on next handler interaction or next passive roll.
 - False positive (3% rate on healthy animals): sick signal cleared, "nothing concerning" message.
 
 **Auto-slaughter exclusion:** Animals with `Contagion_AnimalSick` are excluded from auto-slaughter queues until the signal is resolved.

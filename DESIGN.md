@@ -454,12 +454,14 @@ Infected animals do not immediately reveal their condition. Detection is handler
 
 - **Detection:** When a colonist performs an `AnimalChat` interaction with an infected animal (training, tending, feeding), they roll `Animals skill / 20` as a detection chance. On success, the `Contagion_AnimalSick` hediff is applied — a visible, tendable signal that appears in the animal's health bar. A 3% false-positive rate applies to uninfected animals, so not every sick signal indicates real disease.
 - **Sick signal behavior:** `Contagion_AnimalSick` is static (no severity progression) and self-clears in 7–10 days if untreated. It blocks the animal from the auto-slaughter queue while present.
-- **Diagnosis:** When a doctor tends `Contagion_AnimalSick`, they roll `Medicine skill / 15` as a diagnosis success chance:
-  - **True positive, skill passes:** Incubation collapses to mild active disease (severity 0.1). A letter fires. The player now sees the disease in the health tab.
-  - **True positive, skill fails (false negative):** Sick signal cleared, disease stays hidden. The animal can get "sick" again on the next handler interaction.
+- **Diagnosis:** When a doctor tends `Contagion_AnimalSick`, a unified diagnostic roll (`ContagionDiagnosticSkillUtility`) determines the outcome:
+  - **True positive, roll passes:** Incubation collapses to mild active disease (severity 0.1). A letter fires. The player now sees the disease in the health tab.
+  - **True positive, roll fails (false negative):** Sick signal cleared, disease stays hidden. The animal can get "sick" again on the next handler interaction.
   - **False positive (no underlying disease):** Sick signal cleared. "Nothing concerning found" message.
 
-The Medical skill requirement for diagnosis is intentional: a dedicated animal handler colony with no medic may miss infections that a mixed colony would catch quickly.
+  The diagnostic roll uses Medical as the primary skill (sigmoid: ~75% at score 10, ~95% at score 15). Animals skill supplements at 0.60× weight with diminishing returns as Medical rises (capped at 14 raw support), reflecting a rancher's practical eye. Sight scales the whole result (30% floor, 140% cap). The Medical Specialist Ideology role gives a 1.5× Medical bonus. A skilled handler without a dedicated medic can still diagnose reliably; a mixed colony with a doctor is faster.
+
+**Butchering contamination notice** uses the same utility with `isButchery: true`: Animals weight drops to 0.25× (less relevant when cutting than examining), Cooking adds at 0.60× (knowing what bad meat looks like).
 
 ### Stage 3 — Corpses, butchering, and scavenging
 
@@ -476,7 +478,7 @@ Because both are allowed by default, stockpiles accept all corpses unless the pl
 **Butcher bill safety:** New `ButcherCorpseFlesh` bills disallow `AllowInfectedCorpses` by default, and a one-time save migration applies the same safety default to existing butcher bills. Players can opt a specific bill back in by enabling infected corpses in that bill's ingredient filter. This keeps storage permissive while making food production conservative.
 
 **Butchering contamination:** `Patch_Corpse_ButcherProducts` runs when an infected corpse is butchered:
-1. Roll a notice chance on the butcher. Animal corpses use Animals skill; humanlike corpses use Medicine. Cooking skill contributes in both cases.
+1. Roll a notice chance via `ContagionDiagnosticSkillUtility` (`isButchery: true`). Medical is the primary skill; Animals adds at 0.25× weight for animal corpses; Cooking adds at 0.60× weight for both. Sight-scaled; Medical Specialist bonus applies.
 2. **Notice:** All products are discarded, the butcher sends an alert, the remnants are forbidden.
 3. **Miss:** Each raw meat product that has `Comp_ContaminatedFood` receives `contaminationFactor 1.0` (full contamination). The contamination timestamp is set; expiry applies after `contaminationExpiryDays`.
 

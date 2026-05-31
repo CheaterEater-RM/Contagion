@@ -11,6 +11,9 @@ namespace Contagion.Patches;
 //   2. Patch_Hediff_Tended_AnimalDiagnosis — postfix on Hediff.Tended, guarded to
 //      Contagion_AnimalSick only. Fires exclusively when the sick-signal hediff is actually
 //      among the hediffs being tended, which is the correct gate for H3.
+//
+// Diagnosis chance via ContagionDiagnosticSkillUtility: Medical primary (with Specialist
+// bonus and Sight scaling), Animals as diminishing-return support, isButchery false.
 
 [HarmonyPatch(typeof(TendUtility), nameof(TendUtility.DoTend))]
 internal static class Patch_TendUtility_DoTend_TrackDoctor
@@ -33,7 +36,7 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
 {
     private const float MildDiagnosedSeverity = 0.10f;
 
-    public static void Postfix(Hediff __instance, float quality)
+    public static void Postfix(Hediff __instance)
     {
         if (__instance.def != ContagionDefOf.Contagion_AnimalSick)
         {
@@ -58,8 +61,8 @@ internal static class Patch_Hediff_Tended_AnimalDiagnosis
             return;
         }
 
-        // True positive — quality already encodes the doctor's Medical skill.
-        if (!Rand.Chance(Mathf.Clamp01(quality)))
+        // True positive — roll the unified diagnostic chance (Medical + Animals support + Sight).
+        if (!Rand.Chance(ContagionDiagnosticSkillUtility.ComputeDiagnosticChance(doctor, isAnimalSubject: true, isButchery: false)))
         {
             SendExamClearMessage(doctor, patient);
             ContagionDiagnostics.Trace($"Diagnosis false negative: {doctor?.LabelShortCap} missed {resolvedProfile.DiseaseDef.defName} in {patient.LabelShortCap}.");

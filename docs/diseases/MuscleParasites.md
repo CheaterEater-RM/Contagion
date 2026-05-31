@@ -135,7 +135,7 @@ Spread suppression is off for the same reason as gut worms: contaminated food ca
 
 ### Corpse contagiousness (`corpseContagious true`)
 
-Infected animal carcasses spawn rotten. Same mechanism as gut worms: butchering requires the "butcher anyway" override; even then the Animals skill / 15 notice check and meat contamination fire normally.
+Infected animal carcasses spawn rotten. Same mechanism as gut worms: butchering requires the "butcher anyway" override; even then the unified notice roll (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: true`) and meat contamination fire normally.
 
 **Key difference from gut worms:** the 45-day contamination expiry means meat from a muscle-parasite animal that entered the freezer may contaminate colonists weeks after the animal was killed. Long-preserved contaminated pemmican is a delayed hazard.
 
@@ -156,7 +156,7 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 - **"Slaughter and dispose"** — always the safest option. Zero meat, zero risk.
 - **Cooking quality** — survival meals (0.05×) and lavish meals (0.10×) reduce contamination from 1.0× to near-zero. Avoid raw meat and pemmican (0.70×) from uncertain sources.
 - **Expiry awareness** — contaminated preserved meat stays dangerous for 45 days. A stockpile built from an infected batch remains a hazard well after the animal is dead.
-- **Dedicated butcher** — high Animals skill cuts the notice chance enough that many infected batches are caught and discarded before entering storage.
+- **Dedicated butcher** — Medical and Cooking skill are the primary levers on the notice roll; Animals adds a small bonus. A pawn with decent Medical + Cooking catches most infected batches before they enter storage.
 
 ---
 

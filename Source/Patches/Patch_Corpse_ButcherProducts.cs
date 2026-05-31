@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using HarmonyLib;
 using RimWorld;
-using UnityEngine;
 using Verse;
 
 namespace Contagion.Patches;
@@ -14,8 +13,8 @@ namespace Contagion.Patches;
 //   Unknown (found by scanning inner pawn): butcher discovered it mid-job. Roll notice chance:
 //     pass → discard all products + alert; fail → contaminate meat.
 //
-// Notice chance uses a sigmoid of combined domain skill (Animals for animals, Medicine for
-// humans) + Cooking: ~75% at combined 10, ~95% at combined 15, hard cap 99.5%.
+// Notice chance via ContagionDiagnosticSkillUtility: Medical primary, Animals/Cooking as
+// diminishing-return support, Sight-scaled, Medical Specialist bonus if Ideology active.
 //
 // IEnumerable<Thing> postfix: Harmony pipes __result through this method so we can
 // conditionally yield or modify items before they reach GenRecipe.
@@ -56,7 +55,7 @@ internal static class Patch_Corpse_ButcherProducts
         // discover; proceed straight to meat contamination.
         bool infectionWasKnown = __instance.TryGetComp<Comp_InfectedCorpse>()?.IsInfected == true;
 
-        if (!infectionWasKnown && Rand.Chance(ComputeNoticeChance(butcher, isHuman)))
+        if (!infectionWasKnown && Rand.Chance(ContagionDiagnosticSkillUtility.ComputeDiagnosticChance(butcher, isAnimalSubject: !isHuman, isButchery: true)))
         {
             // Butcher noticed an unknown infection — discard all products, forbid and alert.
             NotifyButcherNoticed(butcher, __instance, contagiousDisease);
@@ -76,26 +75,6 @@ internal static class Patch_Corpse_ButcherProducts
 
             yield return item;
         }
-    }
-
-    // Sigmoid of (Domain skill + Cooking), capped at 99.5%.
-    // Domain skill is Medicine for human corpses, Animals for animal corpses.
-    // k=0.37, x0=7 → ~75% at combined 10, ~95% at combined 15.
-    private static float ComputeNoticeChance(Pawn butcher, bool isHumanCorpse)
-    {
-        if (butcher?.skills == null)
-        {
-            return 0f;
-        }
-
-        float domain = isHumanCorpse 
-            ? butcher.skills.GetSkill(SkillDefOf.Medicine).Level 
-            : butcher.skills.GetSkill(SkillDefOf.Animals).Level;
-        float cooking = butcher.skills.GetSkill(SkillDefOf.Cooking).Level;
-        float combined = domain + cooking;
-
-        float sigmoid = 1f / (1f + Mathf.Exp(-0.37f * (combined - 7f)));
-        return Mathf.Min(sigmoid, 0.995f);
     }
 
     private static void NotifyButcherNoticed(Pawn butcher, Corpse corpse, HediffDef disease)
