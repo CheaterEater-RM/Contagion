@@ -23,6 +23,8 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         if (!TryGetHoverContext(out Pawn sourcePawn, out Pawn targetPawn, out Contagion_MapTransmissionComponent component))
         {
             component?.DeveloperDiagnostics.ClearHoverPair();
+            // No pawn-source context — fall back to a corpse infectivity readout if hovering one.
+            TryDrawCorpseReadout();
             return;
         }
 
@@ -35,6 +37,79 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
 
         component.DeveloperDiagnostics.SetHoverPair(sourcePawn, targetPawn);
         DrawBreakdownReadout(sourcePawn, targetPawn, breakdowns);
+    }
+
+    // When the cursor is over an infectious corpse, show its infectivity: disease, flea potency
+    // and peak radial chance, and fluid (contact) potency. Mirrors the pawn hover breakdown.
+    private static void TryDrawCorpseReadout()
+    {
+        if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true)
+        {
+            return;
+        }
+
+        Map map = Find.CurrentMap;
+        IntVec3 mouseCell = UI.MouseCell();
+        if (map == null || !mouseCell.InBounds(map) || mouseCell.Fogged(map))
+        {
+            return;
+        }
+
+        Corpse corpse = null;
+        List<Thing> things = mouseCell.GetThingList(map);
+        for (int i = 0; i < things.Count; i++)
+        {
+            if (things[i] is Corpse candidate
+                && candidate.TryGetComp<Comp_InfectedCorpse>() is Comp_InfectedCorpse comp
+                && (comp.IsInfected || comp.IsSuspectedInfected))
+            {
+                corpse = candidate;
+                break;
+            }
+        }
+
+        if (corpse == null)
+        {
+            return;
+        }
+
+        Comp_InfectedCorpse infectedComp = corpse.TryGetComp<Comp_InfectedCorpse>();
+        string diseaseLabel = infectedComp.InfectedDiseaseDef != null && infectedComp.DiseaseIdentified
+            ? infectedComp.InfectedDiseaseDef.LabelCap.Resolve()
+            : "Contagion_CorpseInfectivityUnknownDisease".Translate().Resolve();
+
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("Contagion_CorpseInfectivityHeader".Translate(diseaseLabel).Resolve());
+
+        bool anyVector = false;
+        if (ContagionCorpseExposureUtility.TryGetCorpseFleaVector(corpse, out _, out Vector_CorpseFlea fleaVector)
+            && fleaVector.maxRange > 0f)
+        {
+            anyVector = true;
+            float ageDays = Mathf.Max(0f, corpse.Age / 60000f);
+            float potency = Mathf.Max(
+                ContagionCorpseExposureUtility.FindCorpseFleas(corpse)?.Severity ?? 0f,
+                ContagionCorpseExposureUtility.EvaluateCorpseFleaAgePotency(fleaVector, ageDays));
+            float peakChance = Mathf.Clamp01(fleaVector.baseChancePerCheck * potency);
+            builder.AppendLine("Contagion_CorpseInfectivityFlea".Translate(
+                potency.ToString("0.00"),
+                FormatChance(peakChance),
+                fleaVector.maxRange.ToString("0.#")).Resolve());
+        }
+
+        if (ContagionCorpseExposureUtility.TryGetCorpseFluidVector(corpse, out _, out Vector_CorpseFluid fluidVector))
+        {
+            anyVector = true;
+            float fluidPotency = ContagionCorpseExposureUtility.GetCorpseFluidPotency(corpse, fluidVector);
+            builder.AppendLine("Contagion_CorpseInfectivityFluid".Translate(fluidPotency.ToString("0.00")).Resolve());
+        }
+
+        if (!anyVector)
+        {
+            builder.AppendLine("Contagion_CorpseInfectivityNone".Translate().Resolve());
+        }
+
+        DrawReadoutText(builder.ToString().TrimEnd());
     }
 
     private static bool TryGetHoverContext(
@@ -266,7 +341,16 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
             }
         }
 
-        string text = builder.ToString().TrimEnd();
+        DrawReadoutText(builder.ToString().TrimEnd());
+    }
+
+    private static void DrawReadoutText(string text)
+    {
+        if (text.NullOrEmpty())
+        {
+            return;
+        }
+
         float height = Text.CalcHeight(text, ReadoutWidth);
         Vector2 mousePosition = Event.current.mousePosition;
         float x = Mathf.Clamp(mousePosition.x + CursorOffsetX, ScreenMargin, UI.screenWidth - ReadoutWidth - ScreenMargin);

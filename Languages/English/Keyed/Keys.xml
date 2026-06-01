@@ -80,6 +80,12 @@
   <Contagion_DiagnosticsSpreadVectors>Spread success/attempts: airborne {0}, proximity {1}, social {2}, foodborne {3}, fomite {4}.</Contagion_DiagnosticsSpreadVectors>
   <Contagion_DiagnosticsSpreadContamination>Contamination: meals tagged {0}, vomit tagged {1}.</Contagion_DiagnosticsSpreadContamination>
   <Contagion_DiagnosticsSummaryDirector>Director: debt human {0}, animal {1}; burden human {2}, animal {3}; recent {4}; mult {5}.</Contagion_DiagnosticsSummaryDirector>
+  <Contagion_ContaminatedFoodInspect>Contaminated (dev): {0} (factor {1})</Contagion_ContaminatedFoodInspect>
+  <Contagion_CorpseInfectivityHeader>Corpse infectivity: {0}</Contagion_CorpseInfectivityHeader>
+  <Contagion_CorpseInfectivityUnknownDisease>unidentified disease</Contagion_CorpseInfectivityUnknownDisease>
+  <Contagion_CorpseInfectivityFlea>Flea (radial): potency {0}, peak nearby chance {1}, range {2}</Contagion_CorpseInfectivityFlea>
+  <Contagion_CorpseInfectivityFluid>Fluid (contact): potency {0}</Contagion_CorpseInfectivityFluid>
+  <Contagion_CorpseInfectivityNone>No active radial infectivity yet.</Contagion_CorpseInfectivityNone>
   <Contagion_ClearDiagnostics>Clear diagnostics</Contagion_ClearDiagnostics>
   <Contagion_IncubationLabel>{0} incubation</Contagion_IncubationLabel>
   <Contagion_MessageDiseaseActivated>{0} has developed {1}.</Contagion_MessageDiseaseActivated>

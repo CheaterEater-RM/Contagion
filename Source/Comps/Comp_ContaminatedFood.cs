@@ -48,6 +48,7 @@ public sealed class Comp_ContaminatedFood : ThingComp
         _contaminatedDiseaseDef = diseaseDef;
         _contaminationFactor = Mathf.Clamp(factor, MinCleanlinessFactor, MaxCleanlinessFactor);
         _contaminationTick = Find.TickManager.TicksGame;
+        EnsureTraceNode();
     }
 
     public override void Notify_RecipeProduced(Pawn pawn)
@@ -79,6 +80,7 @@ public sealed class Comp_ContaminatedFood : ThingComp
             // Trace lineage: the contagious cook is this meal's source node. The meal's own node
             // is created when it spawns (PostSpawnSetup), linking from here.
             sourceTraceNodeId = ContagionTrace.EnsureNode(pawn, _contaminatedDiseaseDef);
+            EnsureTraceNode();
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
             ContagionDiagnostics.Trace($"Meal contaminated: {_contaminatedDiseaseDef.defName} by {pawn.LabelShortCap}.");
             return;
@@ -89,20 +91,40 @@ public sealed class Comp_ContaminatedFood : ThingComp
     {
         base.PostSpawnSetup(respawningAfterLoad);
 
-        // When a contaminated stack spawns with a recorded upstream source, create its own trace
-        // node and link the chain through it. sourceTraceNodeId is not saved, so this only fires
-        // for freshly-produced food in the current session — which is exactly what we trace.
-        if (respawningAfterLoad || _contaminatedDiseaseDef == null || sourceTraceNodeId < 0)
+        // Any contaminated stack gets its own trace node when it spawns, so meat and meals are
+        // always marked while they exist. sourceTraceNodeId is not saved, so this only fires for
+        // food produced in the current session — which is the target.
+        if (respawningAfterLoad)
+        {
+            return;
+        }
+
+        EnsureTraceNode();
+    }
+
+    // Creates (or reuses) this stack's trace node and links it from any recorded upstream source
+    // (butchery bench, ingredient meat, contagious cook). No-op if not spawned, uncontaminated, or
+    // tracing is off. Called from every point contamination is gained so meat/meal nodes appear
+    // reliably — including stack merges, where PostSpawnSetup never re-runs.
+    private void EnsureTraceNode()
+    {
+        if (parent == null || !parent.SpawnedOrAnyParentSpawned || _contaminatedDiseaseDef == null)
         {
             return;
         }
 
         int selfNode = ContagionTrace.EnsureNode(parent, _contaminatedDiseaseDef);
-        if (selfNode >= 0)
+        if (selfNode < 0)
+        {
+            return;
+        }
+
+        if (sourceTraceNodeId >= 0 && sourceTraceNodeId != selfNode)
         {
             ContagionTrace.Edge(parent.MapHeld, sourceTraceNodeId, selfNode, ContagionDebugVectorKind.Foodborne);
-            sourceTraceNodeId = selfNode;
         }
+
+        sourceTraceNodeId = selfNode;
     }
 
     public override void PreAbsorbStack(Thing otherStack, int count)
@@ -125,6 +147,9 @@ public sealed class Comp_ContaminatedFood : ThingComp
                 sourceTraceNodeId = otherComp.sourceTraceNodeId;
             }
 
+            // A previously-clean spawned stack just became contaminated by absorbing tainted food;
+            // PostSpawnSetup already ran, so create its trace node now.
+            EnsureTraceNode();
             return;
         }
 
@@ -230,6 +255,17 @@ public sealed class Comp_ContaminatedFood : ThingComp
         }
 
         ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Foodborne, parent, ingester, resolvedProfile.DiseaseDef, Mathf.Clamp01(chance), seeded);
+    }
+
+    public override string CompInspectStringExtra()
+    {
+        // Dev-only readout so clicking a meat/meal reveals hidden contamination at a glance.
+        if (_contaminatedDiseaseDef == null || Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true)
+        {
+            return null;
+        }
+
+        return "Contagion_ContaminatedFoodInspect".Translate(_contaminatedDiseaseDef.LabelCap, _contaminationFactor.ToString("0.00"));
     }
 
     public override void PostExposeData()

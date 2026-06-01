@@ -21,7 +21,10 @@ public class JobDriver_InspectCorpse : JobDriver
     {
         this.FailOnDestroyedOrNull(TargetIndex.A);
         this.FailOnDestroyedOrNull(TargetIndex.B);
-        this.FailOnDespawnedOrNull(TargetIndex.B);
+        // NOTE: no global FailOnDespawned for the corpse (TargetIndex.B) — the driver deliberately
+        // picks the corpse up and carries it to the table, and a carried thing is despawned. A
+        // global despawn check would fail the job the instant after pickup. The goto toil below
+        // has its own scoped FailOnDespawnedNullOrForbidden, which only applies before pickup.
         this.FailOn(() => Corpse.TryGetComp<Comp_InfectedCorpse>()?.HasBeenInspected == true);
 
         // Go to the corpse.
@@ -45,6 +48,7 @@ public class JobDriver_InspectCorpse : JobDriver
         Toil diagnose = ToilMaker.MakeToil("ContagionInspectCorpse_Diagnose");
         diagnose.initAction = () =>
         {
+            ContagionDiagnostics.Trace($"Corpse inspection: {pawn.LabelShortCap} performing diagnosis on {Corpse?.InnerPawn?.LabelShortCap ?? Corpse?.Label}.");
             ContagionCorpseUtility.TryInspectCorpse(Corpse, pawn);
         };
         diagnose.defaultCompleteMode = ToilCompleteMode.Instant;

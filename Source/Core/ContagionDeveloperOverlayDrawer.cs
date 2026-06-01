@@ -49,6 +49,8 @@ public static class ContagionDeveloperOverlayDrawer
 
     private static readonly Color IndicatorCorpseColor = new Color(0.62f, 0.16f, 0.62f, 0.80f);
 
+    private static readonly Color IndicatorFoodColor = new Color(0.98f, 0.78f, 0.20f, 0.80f);
+
     private static readonly Color[] ValueBands = BuildValueBands();
 
     private static readonly Dictionary<int, Material> MaterialCache = new Dictionary<int, Material>();
@@ -110,7 +112,7 @@ public static class ContagionDeveloperOverlayDrawer
                 Vector3 origin = LiftToOverlay(fromNode.DrawPosition);
                 Vector3 end = LiftToOverlay(toNode.DrawPosition);
                 GenDraw.DrawLineBetween(origin, end, material, 0.045f);
-                DrawDirectionMarker(origin, end, color);
+                DrawDirectionArrows(origin, end, color);
             }
         }
 
@@ -126,8 +128,8 @@ public static class ContagionDeveloperOverlayDrawer
 
         if (node.Orphaned)
         {
-            // Removed carrier — leave a small hollow circle so the chain stays visible.
-            GenDraw.DrawCircleOutline(position, 0.20f, GetMaterial(NodeGhostColor));
+            // Removed carrier — leave a thin hollow ring so the chain stays visible.
+            DrawRing(position, 0.22f, NodeGhostColor);
             return;
         }
 
@@ -137,8 +139,8 @@ public static class ContagionDeveloperOverlayDrawer
                 DrawMarker(position, NodePawnColor, 0.24f, 0.02f);
                 break;
             case ContagionTraceNodeKind.Corpse:
-                DrawMarker(position, NodeCorpseColor, 0.24f, 0.02f);
-                GenDraw.DrawCircleOutline(position, 0.26f, GetMaterial(NodeCorpseColor));
+                DrawMarker(position, NodeCorpseColor, 0.22f, 0.02f);
+                DrawRing(position, 0.30f, NodeCorpseColor);
                 break;
             case ContagionTraceNodeKind.Bench:
                 DrawMarker(position, NodeBenchColor, 0.18f, 0.02f);
@@ -147,7 +149,7 @@ public static class ContagionDeveloperOverlayDrawer
                 DrawMarker(position, NodeItemColor, 0.16f, 0.02f);
                 break;
             default:
-                GenDraw.DrawCircleOutline(position, 0.20f, GetMaterial(NodeGhostColor));
+                DrawRing(position, 0.22f, NodeGhostColor);
                 break;
         }
     }
@@ -156,6 +158,25 @@ public static class ContagionDeveloperOverlayDrawer
     {
         position.y = AltitudeLayer.MetaOverlays.AltitudeFor() + 0.1f;
         return position;
+    }
+
+    // Thin, smooth ring built from many short line segments at a fixed narrow width — far cleaner
+    // than GenDraw.DrawCircleOutline, which draws a chunky ~12-sided polygon with 0.2-wide lines.
+    private static void DrawRing(Vector3 center, float radius, Color color, float lineWidth = 0.05f)
+    {
+        Material material = GetMaterial(color);
+        const int segments = 32;
+        Vector3 previous = center;
+        previous.x += radius;
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = i / (float)segments * Mathf.PI * 2f;
+            Vector3 next = center;
+            next.x += Mathf.Cos(angle) * radius;
+            next.z += Mathf.Sin(angle) * radius;
+            GenDraw.DrawLineBetween(previous, next, material, lineWidth);
+            previous = next;
+        }
     }
 
     // Always-on infected indicators: a small marker over every infected pawn (human/animal,
@@ -181,7 +202,7 @@ public static class ContagionDeveloperOverlayDrawer
                 if (ContagionDiseaseUtility.IsInfectedOrIncubating(pawn))
                 {
                     Vector3 position = LiftToOverlay(pawn.DrawPos);
-                    GenDraw.DrawCircleOutline(position, 0.42f, GetMaterial(IndicatorPawnColor));
+                    DrawRing(position, 0.46f, IndicatorPawnColor);
                 }
             }
         }
@@ -202,7 +223,28 @@ public static class ContagionDeveloperOverlayDrawer
                 if (comp != null && (comp.IsInfected || comp.IsSuspectedInfected))
                 {
                     Vector3 position = LiftToOverlay(corpse.DrawPos);
-                    GenDraw.DrawCircleOutline(position, 0.42f, GetMaterial(IndicatorCorpseColor));
+                    DrawRing(position, 0.46f, IndicatorCorpseColor);
+                }
+            }
+        }
+
+        // Mark contaminated food stacks (meat, meals) so foodborne carriers are visible at a glance.
+        List<Thing> foods = map.listerThings?.ThingsInGroup(ThingRequestGroup.FoodSourceNotPlantOrTree);
+        if (foods != null)
+        {
+            for (int i = 0; i < foods.Count; i++)
+            {
+                Thing food = foods[i];
+                if (food == null || !food.Spawned || !ShouldDrawCell(map, food.Position))
+                {
+                    continue;
+                }
+
+                Comp_ContaminatedFood comp = food.TryGetComp<Comp_ContaminatedFood>();
+                if (comp != null && comp.IsContaminated)
+                {
+                    Vector3 position = LiftToOverlay(food.DrawPos);
+                    DrawRing(position, 0.34f, IndicatorFoodColor);
                 }
             }
         }
@@ -367,6 +409,10 @@ public static class ContagionDeveloperOverlayDrawer
 
     // Heatmap of a corpse's spatial infectivity, mirroring the live flea-exposure pass: per-cell
     // chance = baseChancePerCheck × flea potency × distance falloff over the flea vector range.
+    // Resolves the disease via the include-hidden path so an undiagnosed-but-infectious corpse
+    // still shows in dev mode, and falls back to the age-potency curve when the live flea hediff
+    // hasn't accrued severity yet (a freshly-dead corpse). If there is genuinely no radial risk
+    // yet, the corpse's outer range ring is still drawn so the area of effect is visible.
     public static void DrawCorpseInfectivityOverlay(Corpse corpse)
     {
         if (corpse?.Map == null || !corpse.Spawned)
@@ -374,20 +420,27 @@ public static class ContagionDeveloperOverlayDrawer
             return;
         }
 
-        if (!ContagionCorpseExposureUtility.TryGetCorpseFleaVector(corpse, out _, out Vector_CorpseFlea vector)
+        if (!ContagionCorpseUtility.TryGetCorpseInfectionForTransmission(corpse, out HediffDef diseaseDef)
+            || !DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile)
+            || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_CorpseFlea vector)
             || vector.maxRange <= 0f)
         {
             return;
         }
 
+        Map map = corpse.Map;
         Hediff_ContagionCorpseFleas fleas = ContagionCorpseExposureUtility.FindCorpseFleas(corpse);
-        float potency = Mathf.Max(0f, fleas?.Severity ?? 0f);
+        float ageDays = Mathf.Max(0f, corpse.Age / 60000f);
+        float potency = Mathf.Max(
+            fleas?.Severity ?? 0f,
+            ContagionCorpseExposureUtility.EvaluateCorpseFleaAgePotency(vector, ageDays));
         if (potency <= 0f)
         {
+            // No radial risk yet — at least outline the exposure range so it's clear something is here.
+            DrawRing(LiftToOverlay(corpse.DrawPos), vector.maxRange, NodeCorpseColor);
             return;
         }
 
-        Map map = corpse.Map;
         foreach (List<IntVec3> bucket in FillOverlayBuckets.Values)
         {
             bucket.Clear();
@@ -465,28 +518,41 @@ public static class ContagionDeveloperOverlayDrawer
         return position;
     }
 
-    // Draws an arrowhead chevron pointing from origin toward end, so trace direction reads at a
-    // glance. Two short back-swept line segments (a "V") rather than a square blob.
-    private static void DrawDirectionMarker(Vector3 origin, Vector3 end, Color color)
+    // Draws arrowheads along the edge pointing from source toward target. For a long line, one
+    // arrow sits ~1 cell in from each end so direction reads at both source and destination; for a
+    // short line, a single arrow near the middle. Arrows are small "V" chevrons.
+    private static void DrawDirectionArrows(Vector3 origin, Vector3 end, Color color)
     {
         Vector3 direction = end - origin;
         direction.y = 0f;
-        if (direction.sqrMagnitude < 0.0001f)
+        float length = direction.magnitude;
+        if (length < 0.0001f)
         {
             return;
         }
 
-        direction.Normalize();
-        Vector3 perpendicular = new Vector3(-direction.z, 0f, direction.x);
+        direction /= length;
+        Material material = GetMaterial(color);
+
+        const float EndOffset = 1f;
+        if (length < 2.4f * EndOffset)
+        {
+            DrawArrowHead(Vector3.Lerp(origin, end, 0.5f), direction, material);
+            return;
+        }
+
+        DrawArrowHead(origin + direction * EndOffset, direction, material);
+        DrawArrowHead(end - direction * EndOffset, direction, material);
+    }
+
+    private static void DrawArrowHead(Vector3 tip, Vector3 direction, Material material)
+    {
         const float ArmLength = 0.15f;
         const float ArmWidth = 0.11f;
-
-        Vector3 tip = Vector3.Lerp(origin, end, 0.82f);
+        Vector3 perpendicular = new Vector3(-direction.z, 0f, direction.x);
         Vector3 back = tip - direction * ArmLength;
         Vector3 leftArm = back + perpendicular * ArmWidth;
         Vector3 rightArm = back - perpendicular * ArmWidth;
-
-        Material material = GetMaterial(color);
         GenDraw.DrawLineBetween(tip, leftArm, material, 0.04f);
         GenDraw.DrawLineBetween(tip, rightArm, material, 0.04f);
     }

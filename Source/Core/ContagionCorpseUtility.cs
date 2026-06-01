@@ -262,23 +262,28 @@ public static class ContagionCorpseUtility
 
         bool isAnimalSubject = corpse.InnerPawn?.RaceProps?.Animal == true;
 
-        // Determine if the corpse has a real disease to find.
-        bool hasDisease = comp.IsInfected
-            || TryGetCorpseContagiousDiseaseFromInnerPawn(corpse.InnerPawn, out HediffDef _);
+        // Determine if the corpse has a real disease to find. Use the include-hidden detector:
+        // post-mortem inspection is precisely how a never-diagnosed hidden disease is meant to be
+        // discovered, so gating on the diagnosed-only path would falsely report infected corpses
+        // as clean.
+        bool hasDisease = TryGetCorpseInfectionForTransmission(corpse, out HediffDef foundDisease);
 
-        bool rollPassed = Rand.Chance(ContagionDiagnosticSkillUtility.ComputeInspectionChance(inspector, isAnimalSubject));
+        float inspectionChance = ContagionDiagnosticSkillUtility.ComputeInspectionChance(inspector, isAnimalSubject);
+        bool rollPassed = Rand.Chance(inspectionChance);
+        ContagionDiagnostics.Trace(
+            $"Corpse inspection roll: {inspector.LabelShortCap} on {corpse.InnerPawn?.LabelShortCap ?? corpse.Label} — "
+            + $"chance={inspectionChance:P2} → {(rollPassed ? "PASS" : "fail")}; "
+            + $"hasDisease={hasDisease} ({(foundDisease != null ? foundDisease.defName : "none")}), "
+            + $"suspected={comp.IsSuspectedInfected}.");
 
         if (rollPassed)
         {
             if (hasDisease)
             {
                 // Ensure the comp has the disease flagged so MarkIdentified can reveal it.
-                if (!comp.IsInfected)
+                if (!comp.IsInfected && foundDisease != null)
                 {
-                    if (TryGetCorpseContagiousDiseaseFromInnerPawn(corpse.InnerPawn, out HediffDef diseaseDef))
-                    {
-                        comp.SetInfection(diseaseDef);
-                    }
+                    comp.SetInfection(foundDisease);
                 }
 
                 comp.MarkIdentified();

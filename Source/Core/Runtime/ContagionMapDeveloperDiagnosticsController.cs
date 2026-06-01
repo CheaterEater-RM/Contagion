@@ -320,10 +320,9 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
 
         ContagionDeveloperOverlayDrawer.DrawInfectedIndicators(_map);
 
-        if (Find.Selector.SingleSelectedThing is Corpse corpse
-            && corpse.Map == _map
-            && corpse.TryGetComp<Comp_InfectedCorpse>() is Comp_InfectedCorpse infectedComp
-            && infectedComp.IsInfected)
+        // The overlay itself decides whether the corpse is infectious (including hidden diseases),
+        // so we only gate on having a corpse selected on this map.
+        if (Find.Selector.SingleSelectedThing is Corpse corpse && corpse.Map == _map)
         {
             ContagionDeveloperOverlayDrawer.DrawCorpseInfectivityOverlay(corpse);
         }
@@ -331,8 +330,14 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
 
     // ── Pruning ──────────────────────────────────────────────────────────────────────────────
 
-    // Each tick: refresh ghost positions, then drop any connected component that no longer
-    // contains an active carrier (live infected pawn, infectious corpse, or contaminated food).
+    // Nodes younger than this are never pruned, bridging the brief out-of-order gap between a
+    // carrier being destroyed and its forward node appearing (e.g. meat consumed → meal spawns).
+    private const int PruneGraceTicks = 2500;
+
+    // Each tick: refresh ghost positions, collapse consumed food nodes, then drop any connected
+    // component that no longer contains an active carrier. Corpses and pawns leave a ghost ring;
+    // consumed food (Item) nodes splice out so the chain collapses toward the eater rather than
+    // littering ghosts on chairs and stockpiles.
     private void PruneGraph()
     {
         if (_nodes.Count == 0)
@@ -350,6 +355,8 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
                 node.LastCell = node.Anchor.PositionHeld;
             }
         }
+
+        SpliceConsumedItemNodes();
 
         Dictionary<int, ContagionTraceNode> byId = new Dictionary<int, ContagionTraceNode>(_nodes.Count);
         for (int i = 0; i < _nodes.Count; i++)
@@ -400,8 +407,79 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
             }
         }
 
-        _nodes.RemoveAll(node => !keep.Contains(node.Id));
-        _edges.RemoveAll(edge => !keep.Contains(edge.FromId) || !keep.Contains(edge.ToId));
+        // Keep reachable nodes and any node still within its grace window (recently created).
+        int now = Find.TickManager.TicksGame;
+        _nodes.RemoveAll(node => !keep.Contains(node.Id) && now - node.CreatedTick > PruneGraceTicks);
+        HashSet<int> liveIds = new HashSet<int>();
+        for (int i = 0; i < _nodes.Count; i++)
+        {
+            liveIds.Add(_nodes[i].Id);
+        }
+
+        _edges.RemoveAll(edge => !liveIds.Contains(edge.FromId) || !liveIds.Contains(edge.ToId));
+    }
+
+    // Removes consumed/destroyed food (Item) nodes, reconnecting each predecessor straight to each
+    // successor so the chain stays continuous (corpse → bench → … → eater) without leaving a ghost
+    // ring where the meal was eaten. Corpses, pawns, and benches keep their ghost instead.
+    private void SpliceConsumedItemNodes()
+    {
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            for (int i = 0; i < _nodes.Count; i++)
+            {
+                ContagionTraceNode node = _nodes[i];
+                if (!node.Orphaned || node.Kind != ContagionTraceNodeKind.Item)
+                {
+                    continue;
+                }
+
+                // Reconnect predecessors → successors with the downstream vector before removal.
+                for (int p = 0; p < _edges.Count; p++)
+                {
+                    if (_edges[p].ToId != node.Id)
+                    {
+                        continue;
+                    }
+
+                    for (int s = 0; s < _edges.Count; s++)
+                    {
+                        if (_edges[s].FromId == node.Id)
+                        {
+                            AddEdgeInternal(_edges[p].FromId, _edges[s].ToId, _edges[s].Vector);
+                        }
+                    }
+                }
+
+                int removeId = node.Id;
+                _nodes.RemoveAt(i);
+                _edges.RemoveAll(edge => edge.FromId == removeId || edge.ToId == removeId);
+                changed = true;
+                break;
+            }
+        }
+    }
+
+    // Adds an edge during pruning (dedup, bypasses the capture gate the public RecordEdge enforces).
+    private void AddEdgeInternal(int fromId, int toId, ContagionDebugVectorKind vectorKind)
+    {
+        if (fromId < 0 || toId < 0 || fromId == toId)
+        {
+            return;
+        }
+
+        for (int i = 0; i < _edges.Count; i++)
+        {
+            ContagionTraceEdge edge = _edges[i];
+            if (edge.FromId == fromId && edge.ToId == toId && edge.Vector == vectorKind)
+            {
+                return;
+            }
+        }
+
+        _edges.Add(new ContagionTraceEdge(fromId, toId, vectorKind, Find.TickManager.TicksGame));
     }
 
     private static void AddAdjacency(Dictionary<int, List<int>> adjacency, int from, int to)
