@@ -12,6 +12,7 @@ public static class Contagion_Init
         harmony.PatchAll();
 
         ContagionCorpseDefInjector.EnsureCorpseComps();
+        ContagionMeatDefInjector.EnsureFoodComps();
         ContagionAutoIncidentGenerator.GenerateAndValidate();
 
         if (Prefs.DevMode)

@@ -1,28 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Patch>
-  <!-- ── Prepared meals ─────────────────────────────────────────────────────────────── -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[@Name="MealBaseIngredientless" and not(comps/li[@Class="Contagion.CompProperties_ContaminatedFood"])]/comps</xpath>
-    <value>
-      <li Class="Contagion.CompProperties_ContaminatedFood" />
-    </value>
-  </Operation>
+  <!-- Comp_ContaminatedFood injection for food (raw meat, prepared meals, kibble) is done in C#
+       by ContagionMeatDefInjector at [StaticConstructorOnStartup], NOT via XPath here.
 
-  <!-- ── Raw meat ───────────────────────────────────────────────────────────────────── -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[thingCategories/li="MeatRaw" and not(comps/li[@Class="Contagion.CompProperties_ContaminatedFood"])]/comps</xpath>
-    <value>
-      <li Class="Contagion.CompProperties_ContaminatedFood" />
-    </value>
-  </Operation>
+       Reasons XML patching is unreliable for this:
+         - Raw meat defs are generated at runtime (ThingDefGenerator_Meat.ImpliedMeatDefs) and
+           don't exist in the XML document at patch time at all.
+         - Meals/kibble exist in XML, but an XPath patch only reaches defs that inherit from a
+           specific vanilla base (MealBaseIngredientless) or match a hardcoded defName (Kibble);
+           modded food defined from a different base or as a standalone def slips through.
 
-  <!-- ── Kibble ─────────────────────────────────────────────────────────────────────── -->
-  <!-- Kibble can be fed to and eaten by pawns. It's made from raw meat so can carry
-       contamination; moderate cooking reduction is applied at recipe time. -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[defName="Kibble" and not(comps/li[@Class="Contagion.CompProperties_ContaminatedFood"])]/comps</xpath>
-    <value>
-      <li Class="Contagion.CompProperties_ContaminatedFood" />
-    </value>
-  </Operation>
+       The C# injector detects by ingestible.foodType (Meat | Meal | Kibble), covering vanilla and
+       modded food uniformly. This file is intentionally an empty patch, kept to document why. -->
 </Patch>

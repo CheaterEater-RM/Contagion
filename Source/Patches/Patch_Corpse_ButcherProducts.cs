@@ -36,9 +36,21 @@ internal static class Patch_Corpse_ButcherProducts
         Pawn innerPawn = __instance.InnerPawn;
         bool isHuman = innerPawn.RaceProps?.Humanlike == true;
 
-        if (!ContagionCorpseUtility.TryGetInfectedDisease(__instance, out HediffDef contagiousDisease)
-            || !DiseaseProfileCache.TryGetResolvedProfile(contagiousDisease, out ResolvedTransmissionProfile resolvedProfile)
-            || !resolvedProfile.Profile.affectsHumans)
+        // Detect with the transmission-facing path (includes hidden/undiagnosed disease): infected
+        // meat is infectious whether or not the infection was ever revealed. The diagnosis-gated
+        // TryGetInfectedDisease would skip undiagnosed corpses entirely and make the "butcher
+        // notices mid-job" branch below unreachable.
+        ResolvedTransmissionProfile resolvedProfile = null;
+        bool infected = ContagionCorpseUtility.TryGetCorpseInfectionForTransmission(__instance, out HediffDef contagiousDisease);
+        bool profileUsable = infected
+            && DiseaseProfileCache.TryGetResolvedProfile(contagiousDisease, out resolvedProfile)
+            && resolvedProfile.Profile.affectsHumans;
+
+        ContagionDiagnostics.Trace(
+            $"Butchery start: {butcher?.LabelShortCap ?? "?"} on corpse of {innerPawn.LabelShortCap} — "
+            + $"infected={infected} ({contagiousDisease?.defName ?? "none"}), profileUsable={profileUsable}.");
+
+        if (!profileUsable)
         {
             foreach (Thing item in __result)
             {
@@ -91,6 +103,13 @@ internal static class Patch_Corpse_ButcherProducts
                 comp.sourceTraceNodeId = benchNodeId;
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
                 ContagionDiagnostics.Trace($"Butchery contamination: {contagiousDisease.defName} baked into {item.def.defName} from {innerPawn.LabelShortCap}.");
+            }
+            else
+            {
+                // No Comp_ContaminatedFood on the product means it can't carry contamination — the
+                // most likely cause is the comp not being injected onto this meat def. Surface it
+                // so the path is auditable rather than silently dropping the infection.
+                ContagionDiagnostics.Trace($"Butchery contamination SKIPPED: {item.def.defName} has no Comp_ContaminatedFood — contamination from {contagiousDisease.defName} lost.");
             }
 
             yield return item;
