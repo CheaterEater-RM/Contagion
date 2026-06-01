@@ -49,6 +49,8 @@ public sealed class Contagion_Settings : ModSettings
 
     private const bool DefaultShowPerformanceStats = false;
 
+    private const bool DefaultSuppressAnimalClusterNotifications = true;
+
     public float transmissionRateMultiplier = DefaultTransmissionRateMultiplier;
 
     public float outbreakFrequencyMultiplier = DefaultOutbreakFrequencyMultiplier;
@@ -64,6 +66,8 @@ public sealed class Contagion_Settings : ModSettings
     public ContagionDiagnosticsMode diagnosticsMode = DefaultDiagnosticsMode;
 
     public bool showPerformanceStats = DefaultShowPerformanceStats;
+
+    public bool suppressAnimalClusterNotifications = DefaultSuppressAnimalClusterNotifications;
 
     public bool DiagnosticsEnabled => diagnosticsMode != ContagionDiagnosticsMode.Off;
 
@@ -101,6 +105,7 @@ public sealed class Contagion_Settings : ModSettings
         maskProtection = DefaultMaskProtection;
         diagnosticsMode = DefaultDiagnosticsMode;
         showPerformanceStats = DefaultShowPerformanceStats;
+        suppressAnimalClusterNotifications = DefaultSuppressAnimalClusterNotifications;
     }
 
     public override void ExposeData()
@@ -114,6 +119,7 @@ public sealed class Contagion_Settings : ModSettings
         Scribe_Values.Look(ref maskProtection, "maskProtection", DefaultMaskProtection);
         Scribe_Values.Look(ref diagnosticsMode, "diagnosticsMode", DefaultDiagnosticsMode);
         Scribe_Values.Look(ref showPerformanceStats, "showPerformanceStats", DefaultShowPerformanceStats);
+        Scribe_Values.Look(ref suppressAnimalClusterNotifications, "suppressAnimalClusterNotifications", DefaultSuppressAnimalClusterNotifications);
 
         ClampValues();
     }
@@ -198,6 +204,11 @@ public sealed class Contagion_Mod : Mod
             "Contagion_SettingMaskProtection".Translate().Resolve(),
             ref settings.maskProtection,
             "Contagion_SettingMaskProtectionTooltip".Translate().Resolve());
+
+        listing.CheckboxLabeled(
+            "Contagion_SettingSuppressAnimalClusterNotifications".Translate().Resolve(),
+            ref settings.suppressAnimalClusterNotifications,
+            "Contagion_SettingSuppressAnimalClusterNotificationsTooltip".Translate().Resolve());
 
         listing.Gap(12f);
         listing.Label("Contagion_SettingsTuningHeader".Translate());

@@ -67,6 +67,7 @@ public sealed class Command_ContagionDeveloperSeedDisease : Command_Action
             resolvedProfile.DiseaseDef,
             resolvedProfile.PartsToAffect,
             ContagionDiagnosticOrigin.Unknown,
+            ContagionSeedSource.Developer,
             out HediffDef _))
         {
             Messages.Message(

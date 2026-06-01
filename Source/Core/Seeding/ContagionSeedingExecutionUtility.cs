@@ -57,6 +57,7 @@ public static class ContagionSeedingExecutionUtility
                 resolvedProfile.ResolveHediffForPawn(pawn),
                 resolvedProfile.PartsToAffect,
                 ContagionDiagnosticOrigin.Incidence,
+                ContagionSeedSource.Storyteller,
                 out HediffDef seedImmunityCause))
             {
                 seededPawns.Add(pawn);
@@ -113,13 +114,23 @@ public static class ContagionSeedingExecutionUtility
 
     public static bool TrySeedExactPawn(Pawn pawn, ResolvedTransmissionProfile resolvedProfile, out HediffDef immunityCause)
     {
-        return TrySeedExactPawn(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out immunityCause);
+        return TrySeedExactPawn(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, ContagionSeedSource.Acausal, out immunityCause);
     }
 
     public static bool TrySeedExactPawn(
         Pawn pawn,
         ResolvedTransmissionProfile resolvedProfile,
         ContagionDiagnosticOrigin origin,
+        out HediffDef immunityCause)
+    {
+        return TrySeedExactPawn(pawn, resolvedProfile, origin, ContagionSeedSource.Acausal, out immunityCause);
+    }
+
+    public static bool TrySeedExactPawn(
+        Pawn pawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        ContagionDiagnosticOrigin origin,
+        ContagionSeedSource seedSource,
         out HediffDef immunityCause)
     {
         immunityCause = null;
@@ -133,6 +144,7 @@ public static class ContagionSeedingExecutionUtility
             resolvedProfile.ResolveHediffForPawn(pawn),
             resolvedProfile.PartsToAffect,
             origin,
+            seedSource,
             out immunityCause);
     }
 
@@ -141,28 +153,38 @@ public static class ContagionSeedingExecutionUtility
         visibleDisease = false;
         if (pawn?.RaceProps?.Animal == true && resolvedProfile?.Profile?.showsSickSignal == true)
         {
-            return TrySeedExactPawn(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out HediffDef _);
+            return TrySeedExactPawn(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, ContagionSeedSource.Arrival, out HediffDef _);
         }
 
         if (Rand.Chance(Mathf.Clamp01(mildVisibleChance))
-            && TrySeedMildVisibleDisease(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out HediffDef _))
+            && TrySeedMildVisibleDisease(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, ContagionSeedSource.Arrival, out HediffDef _))
         {
             visibleDisease = true;
             return true;
         }
 
-        return TrySeedExactPawn(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out HediffDef _);
+        return TrySeedExactPawn(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, ContagionSeedSource.Arrival, out HediffDef _);
     }
 
     public static bool TrySeedMildVisibleDisease(Pawn pawn, ResolvedTransmissionProfile resolvedProfile, out HediffDef immunityCause)
     {
-        return TrySeedMildVisibleDisease(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, out immunityCause);
+        return TrySeedMildVisibleDisease(pawn, resolvedProfile, ContagionDiagnosticOrigin.Incidence, ContagionSeedSource.Arrival, out immunityCause);
     }
 
     public static bool TrySeedMildVisibleDisease(
         Pawn pawn,
         ResolvedTransmissionProfile resolvedProfile,
         ContagionDiagnosticOrigin origin,
+        out HediffDef immunityCause)
+    {
+        return TrySeedMildVisibleDisease(pawn, resolvedProfile, origin, ContagionSeedSource.Arrival, out immunityCause);
+    }
+
+    public static bool TrySeedMildVisibleDisease(
+        Pawn pawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        ContagionDiagnosticOrigin origin,
+        ContagionSeedSource seedSource,
         out HediffDef immunityCause)
     {
         immunityCause = null;
@@ -198,6 +220,7 @@ public static class ContagionSeedingExecutionUtility
         }
 
         TaleRecorder.RecordTale(TaleDefOf.IllnessRevealed, pawn, targetDef);
+        ContagionDiseaseNotifier.NotifyDiseaseActivated(pawn, addedHediffs.Count > 0 ? addedHediffs[0] : null, targetDef, seedSource);
         ContagionDiagnostics.RecordApplicationResult(origin, seeded: true, immunityCause: null);
         return true;
     }

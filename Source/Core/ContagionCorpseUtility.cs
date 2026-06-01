@@ -148,6 +148,7 @@ public static class ContagionCorpseUtility
             resolvedProfile.DiseaseDef,
             resolvedProfile.PartsToAffect,
             ContagionDiagnosticOrigin.Spread,
+            ContagionSeedSource.CorpseIngestion,
             out HediffDef _))
         {
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneSeeded);

@@ -200,6 +200,7 @@ internal sealed class ContagionPawnTransmissionProcessor
             source.ResolvedProfile.PartsToAffect,
             source.Pawn,
             ContagionDiagnosticOrigin.Spread,
+            ContagionSeedSource.Contact,
             out HediffDef _);
         if (seeded)
         {
@@ -261,6 +262,7 @@ internal sealed class ContagionPawnTransmissionProcessor
             source.ResolvedProfile.PartsToAffect,
             source.Pawn,
             ContagionDiagnosticOrigin.Spread,
+            ContagionSeedSource.Contact,
             out HediffDef _);
         if (seeded)
         {

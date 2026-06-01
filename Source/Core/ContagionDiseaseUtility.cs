@@ -11,7 +11,7 @@ public static class ContagionDiseaseUtility
 
     public static bool TrySeedIncubation(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, out HediffDef immunityCause)
     {
-        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, ContagionDiagnosticOrigin.Unknown, out immunityCause);
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, ContagionDiagnosticOrigin.Unknown, ContagionSeedSource.Unknown, out immunityCause);
     }
 
     public static bool TrySeedIncubation(
@@ -21,12 +21,23 @@ public static class ContagionDiseaseUtility
         ContagionDiagnosticOrigin origin,
         out HediffDef immunityCause)
     {
-        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, null, origin, out immunityCause);
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, null, origin, ContagionSeedSource.Unknown, out immunityCause);
+    }
+
+    public static bool TrySeedIncubation(
+        Pawn pawn,
+        HediffDef diseaseDef,
+        List<BodyPartDef> partsToAffect,
+        ContagionDiagnosticOrigin origin,
+        ContagionSeedSource seedSource,
+        out HediffDef immunityCause)
+    {
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, null, origin, seedSource, out immunityCause);
     }
 
     public static bool TrySeedIncubation(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, Pawn sourcePawn, out HediffDef immunityCause)
     {
-        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, sourcePawn, ContagionDiagnosticOrigin.Unknown, out immunityCause);
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, sourcePawn, ContagionDiagnosticOrigin.Unknown, ContagionSeedSource.Unknown, out immunityCause);
     }
 
     public static bool TrySeedIncubation(
@@ -35,6 +46,18 @@ public static class ContagionDiseaseUtility
         List<BodyPartDef> partsToAffect,
         Pawn sourcePawn,
         ContagionDiagnosticOrigin origin,
+        out HediffDef immunityCause)
+    {
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, sourcePawn, origin, ContagionSeedSource.Unknown, out immunityCause);
+    }
+
+    public static bool TrySeedIncubation(
+        Pawn pawn,
+        HediffDef diseaseDef,
+        List<BodyPartDef> partsToAffect,
+        Pawn sourcePawn,
+        ContagionDiagnosticOrigin origin,
+        ContagionSeedSource seedSource,
         out HediffDef immunityCause)
     {
         immunityCause = null;
@@ -67,7 +90,7 @@ public static class ContagionDiseaseUtility
 
         int activationTick = Find.TickManager.TicksGame + GetIncubationDurationTicks(resolvedProfile.Profile);
         List<BodyPartDef> resolvedParts = ResolvePartsForPawn(pawn, resolvedProfile, partsToAffect);
-        incubation.Configure(targetDiseaseDef, resolvedParts, activationTick);
+        incubation.Configure(targetDiseaseDef, resolvedParts, activationTick, seedSource);
         pawn.health.AddHediff(incubation);
         ContagionDiagnostics.RecordApplicationResult(origin, seeded: true, immunityCause: null);
         ContagionDiagnostics.Trace($"Incubation seeded ({origin}): {targetDiseaseDef.defName} on {pawn.LabelShortCap}.");
@@ -115,8 +138,9 @@ public static class ContagionDiseaseUtility
         }
 
         TaleRecorder.RecordTale(TaleDefOf.IllnessRevealed, pawn, targetDiseaseDef);
-        ContagionDiseaseNotifier.NotifyDiseaseActivated(pawn, addedHediffs.Count > 0 ? addedHediffs[0] : null, targetDiseaseDef);
+        ContagionSeedSource seedSource = incubation.SeedSource;
         pawn.health.RemoveHediff(incubation);
+        ContagionDiseaseNotifier.NotifyDiseaseActivated(pawn, addedHediffs.Count > 0 ? addedHediffs[0] : null, targetDiseaseDef, seedSource);
         return true;
     }
 

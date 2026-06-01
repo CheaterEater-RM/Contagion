@@ -186,6 +186,7 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
                     resolvedProfile.DiseaseDef,
                     resolvedProfile.PartsToAffect,
                     ContagionDiagnosticOrigin.Spread,
+                    ContagionSeedSource.Contact,
                     out HediffDef _))
                 {
                     ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteSeeded);

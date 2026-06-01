@@ -185,6 +185,7 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
                 resolvedProfile.PartsToAffect,
                 sourcePawn,
                 ContagionDiagnosticOrigin.Spread,
+                ContagionSeedSource.Contact,
                 out HediffDef _))
             {
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.SocialSeeded);

@@ -214,6 +214,7 @@ The entire modder-facing contract, attached to any `HediffDef` to make it contag
 | `maxActiveCases` | int | 0 (= no limit) | Suppress all seeding at/above this active+incubating count |
 | `spreadSuppressionScale` | float | 1.0 | Per-disease scaling of colony spread suppression (0 = exempt) |
 | `outbreakNotification` | enum | FirstCase | Player notification mode: `None` / `FirstCase` / `EveryCase` |
+| `outbreakEndDays` | float | 3.0 | Days after the most recent visible case before the outbreak is considered over. The next case resets back to a red first-case letter. |
 | `corpseContagious` | bool | false | When true, animal and humanlike corpses are marked with `Comp_InfectedCorpse` at death. The corpse remains fresh, is visibly/inspectably infected, can be filtered in storage/bills, can expose eaters, and can still enter the butchery contamination chain if a bill explicitly allows it. |
 | `showsSickSignal` | bool | false | When true, handlers who interact with an infected animal may notice a "sick" signal hediff that prompts a vet visit. Enables the animal disease chain — see [Animal Disease Chain](#animal-disease-chain). |
 | `corpseInfectivityDecayPerDay` | float | 0.5 | *Reserved:* per-day infectivity decay of a contagious corpse as a proximity/fomite source. Not yet implemented. |
@@ -506,12 +507,59 @@ Vanilla disease profiles are patched onto their `HediffDef` in `1.6/Patches/Cont
 | Plague | Proximity (cleanliness) | Storyteller, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; incoming humans and animals can carry it; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; `maxActiveCases` 6 |
 | GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; `maxActiveCases` 3; `spreadSuppressionScale 0` |
 | MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; `maxActiveCases` 4; `spreadSuppressionScale 0` |
-| Malaria | Environmental | Environmental, Acausal | 2.0 d | none* | Human | Mosquito pressure; broad warm/wet source; partial indoor penetration; `outbreakNotification None`, `spreadSuppressionScale 0`, seasonal |
-| SleepingSickness | Environmental | Environmental, Acausal | 2.5 d | none* | Human | Tsetse habitat pressure; hotter, wetter, rarer, and more strongly blocked by deep indoor shelter; `outbreakNotification None`, `spreadSuppressionScale 0` |
+| Malaria | Environmental | Environmental, Acausal | 2.0 d | none* | Human | Mosquito pressure; broad warm/wet source; partial indoor penetration; `spreadSuppressionScale 0`, seasonal |
+| SleepingSickness | Environmental | Environmental, Acausal | 2.5 d | none* | Human | Tsetse habitat pressure; hotter, wetter, rarer, and more strongly blocked by deep indoor shelter; `spreadSuppressionScale 0` |
 
 \* Diseases with a vanilla immunity race set `immunityDurationDays 0` and rely on vanilla immunity to prevent reinfection. Non-immunizable diseases (gut worms, muscle parasites) use mod-owned temporary immunity.
 
 **Food poisoning is out of scope for v1.** Vanilla food poisoning already works well; making it contagious would change the food-safety loop without clear benefit. `Vector_Foodborne` covers the real case (a sick cook or infected meat contaminating meals). Modders who want contagious food poisoning can add a `TransmissionProfile` to a custom hediff — the system supports it.
+
+---
+
+## Outbreak Notification System
+
+Every disease activation fires a floating message (`NegativeHealthEvent`) and optionally a persistent letter. The letter tier depends on whether an active outbreak is already in progress.
+
+### Three-tier system
+
+| Tier | Letter type | Condition |
+|---|---|---|
+| Red "first case" letter | `NegativeEvent` (red) | No active outbreak on this map for this disease + track |
+| Yellow "cluster case" letter | `NeutralEvent` (yellow) | Active outbreak detected; replaces the previous yellow letter if undismissed |
+| Floating message only | — | Letter fires for both tiers; floating message fires unconditionally |
+
+Human and animal tracks are independent. An animal carrying a disease does not suppress the human first-case letter, and vice versa.
+
+Pure animal diseases (`affectsHumans false`) receive no persistent letter on the animal track. They use the separate sick-signal and animal examination path.
+
+### Outbreak lifecycle
+
+An outbreak is **active** while `TicksGame - lastCaseTick ≤ outbreakEndTicks`. `outbreakEndTicks = outbreakEndDays × 60000` (default 3 days).
+
+1. First visible case: red letter fires → `RecordHumanOutbreakCase` (or animal equivalent) sets `lastCaseTick`.
+2. Subsequent cases within the window: yellow cluster letter fires. If the previous yellow letter is still on the stack, it is replaced with an updated count. If dismissed, a fresh yellow letter is created.
+3. No new cases for `outbreakEndDays` → `PruneStaleOutbreaks` clears the entry → next case triggers a fresh red letter.
+
+The cluster letter is not saved across sessions (Letter references don't survive save/load). On the first post-load cluster case the mod creates a new yellow letter.
+
+### Source attribution
+
+`ContagionSeedSource` is stored on `Hediff_ContagionIncubation` and forwarded to `NotifyDiseaseActivated` when the incubation activates. The first-case red letter body text is selected from a set of translation keys based on this value:
+
+| Source | Letter key suffix |
+|---|---|
+| `Environmental` | `_Environmental` — "came from the local environment" |
+| `Arrival` | `_Arrival` — "arrived with recent visitors" |
+| `Foodborne` | `_Foodborne` — "traced to contaminated food" |
+| `Cooking` | `_Cooking` — "contracted while preparing contaminated ingredients" |
+| `Corpse` | `_Corpse` — "contracted from handling an infected corpse" |
+| `CorpseIngestion` | `_CorpseIngestion` — "contracted from eating a diseased corpse" |
+| `Contact` / `Storyteller` | *(base key)* — "transmission may already be underway" |
+| `Acausal` / `Unknown` / `Developer` | `_Unknown` — "infection vector is unknown" |
+
+### Animal cluster notification toggle
+
+`suppressAnimalClusterNotifications` (default: on) suppresses yellow cluster letters for animals. The red first-case letter and floating messages are unaffected. Human, slave, and prisoner notifications are unaffected by this setting.
 
 ---
 

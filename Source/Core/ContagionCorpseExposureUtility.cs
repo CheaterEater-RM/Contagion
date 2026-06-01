@@ -266,6 +266,7 @@ public static class ContagionCorpseExposureUtility
             resolvedProfile.DiseaseDef,
             resolvedProfile.PartsToAffect,
             ContagionDiagnosticOrigin.Spread,
+            ContagionSeedSource.Corpse,
             out HediffDef _);
         if (seeded)
         {

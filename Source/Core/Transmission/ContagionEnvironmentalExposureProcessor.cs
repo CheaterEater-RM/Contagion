@@ -128,6 +128,7 @@ internal sealed class ContagionEnvironmentalExposureProcessor
             environmentalProfile.ResolvedProfile.DiseaseDef,
             environmentalProfile.ResolvedProfile.PartsToAffect,
             ContagionDiagnosticOrigin.Incidence,
+            ContagionSeedSource.Environmental,
             out HediffDef _);
         if (seeded)
         {

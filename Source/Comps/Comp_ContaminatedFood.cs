@@ -182,6 +182,7 @@ public sealed class Comp_ContaminatedFood : ThingComp
                 resolvedProfile.DiseaseDef,
                 resolvedProfile.PartsToAffect,
                 ContagionDiagnosticOrigin.Spread,
+                ContagionSeedSource.Foodborne,
                 out HediffDef _))
             {
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneSeeded);

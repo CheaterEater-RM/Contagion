@@ -78,6 +78,13 @@ public sealed class TransmissionProfile : DefModExtension
 
     public OutbreakNotificationMode outbreakNotification = OutbreakNotificationMode.FirstCase;
 
+    // How long (in days) after the most recent case before an outbreak is considered over and
+    // the next case resets back to a red first-case letter. Defaults to 3 days.
+    public float outbreakEndDays = 3f;
+
+    // Convenience property used by Contagion_MapTransmissionComponent.IsOutbreakActive.
+    public int OutbreakEndTicks => (int)(outbreakEndDays * 60000f);
+
     public bool corpseContagious;
 
     public float corpseInfectivityDecayPerDay = 0.5f;

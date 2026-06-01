@@ -6,7 +6,8 @@ namespace Contagion;
 
 internal static class ContagionDiseaseNotifier
 {
-    public static void NotifyDiseaseActivated(Pawn pawn, Hediff diseaseHediff, HediffDef diseaseDef)
+    public static void NotifyDiseaseActivated(Pawn pawn, Hediff diseaseHediff, HediffDef diseaseDef,
+        ContagionSeedSource seedSource = ContagionSeedSource.Unknown)
     {
         if (pawn == null || diseaseDef == null || !PawnUtility.ShouldSendNotificationAbout(pawn))
         {
@@ -31,10 +32,12 @@ internal static class ContagionDiseaseNotifier
             MessageTypeDefOf.NegativeHealthEvent,
             historical: false);
 
-        NotifyOutbreakIfFirstVisibleCase(pawn, diseaseHediff, diseaseDef);
+        NotifyOutbreakLetter(pawn, diseaseHediff, diseaseDef, seedSource);
     }
 
-    private static void NotifyOutbreakIfFirstVisibleCase(Pawn pawn, Hediff diseaseHediff, HediffDef diseaseDef)
+    // Sends either a red "first case" letter or a yellow "cluster case" letter depending on
+    // whether an active outbreak is already being tracked on this map.
+    private static void NotifyOutbreakLetter(Pawn pawn, Hediff diseaseHediff, HediffDef diseaseDef, ContagionSeedSource seedSource)
     {
         Map map = pawn.MapHeld;
         if (map == null)
@@ -52,88 +55,191 @@ internal static class ContagionDiseaseNotifier
             return;
         }
 
-        string diseaseLabel = diseaseHediff?.LabelCap ?? diseaseDef.LabelCap;
         bool isAnimal = pawn.RaceProps?.Animal == true;
 
-        if (isAnimal)
+        // Pure animal diseases (e.g. Animal_Flu) that don't affect humans get no outbreak letter —
+        // they have their own notification path through the sick signal and animal examination system.
+        if (isAnimal && !resolvedProfile.Profile.affectsHumans)
         {
-            // Only fire an animal outbreak letter when the disease is also a threat to humans.
-            // Pure animal diseases (e.g. Animal_Flu) get no outbreak letter — they have their
-            // own notification path via the sick signal and animal examination system.
-            if (!resolvedProfile.Profile.affectsHumans)
-            {
-                return;
-            }
+            return;
+        }
 
-            if (resolvedProfile.Profile.outbreakNotification == OutbreakNotificationMode.FirstCase
-                && HasOtherVisibleCaseOnMap(map, pawn, resolvedProfile, animalsOnly: true))
-            {
-                return;
-            }
+        Contagion_MapTransmissionComponent mapComp = map.GetComponent<Contagion_MapTransmissionComponent>();
+        if (mapComp == null)
+        {
+            return;
+        }
 
-            Find.LetterStack.ReceiveLetter(
-                "Contagion_LetterLabelAnimalOutbreak".Translate(diseaseDef.LabelCap),
-                "Contagion_LetterAnimalOutbreakFirstCase".Translate(pawn.LabelShortCap, diseaseLabel),
-                LetterDefOf.NegativeEvent,
-                pawn);
+        // Use separate outbreak tracks for animals vs humanlike. An animal case never suppresses
+        // the human first-case letter and vice versa.
+        bool outbreakActive = isAnimal
+            ? mapComp.IsAnimalOutbreakActive(resolvedProfile)
+            : mapComp.IsHumanOutbreakActive(resolvedProfile);
+
+        if (!outbreakActive)
+        {
+            SendFirstCaseLetter(pawn, diseaseDef, diseaseHediff, resolvedProfile, isAnimal, seedSource, mapComp);
         }
         else
         {
-            // Human track: check only other humanlike pawns (colonists, slaves, prisoners).
-            // Animals with the same disease do not suppress this letter — both notifications
-            // can and should fire independently so the player gets the full picture.
-            if (resolvedProfile.Profile.outbreakNotification == OutbreakNotificationMode.FirstCase
-                && HasOtherVisibleCaseOnMap(map, pawn, resolvedProfile, animalsOnly: false))
-            {
-                return;
-            }
-
-            Find.LetterStack.ReceiveLetter(
-                "Contagion_LetterLabelOutbreak".Translate(diseaseDef.LabelCap),
-                "Contagion_LetterOutbreakFirstCase".Translate(pawn.LabelShortCap, diseaseLabel),
-                LetterDefOf.NegativeEvent,
-                pawn);
+            SendClusterCaseLetter(pawn, diseaseDef, diseaseHediff, resolvedProfile, isAnimal, mapComp);
         }
     }
 
-    // Checks whether any other pawn on the map already has a visible active case of the same
-    // disease profile. animalsOnly=true restricts the search to animals; false restricts to
-    // humanlike pawns (colonists, slaves, prisoners). The two tracks are intentionally separate
-    // so that an animal case never suppresses a human outbreak letter, and vice versa.
-    private static bool HasOtherVisibleCaseOnMap(Map map, Pawn currentPawn, ResolvedTransmissionProfile profile, bool animalsOnly)
+    private static void SendFirstCaseLetter(
+        Pawn pawn,
+        HediffDef diseaseDef,
+        Hediff diseaseHediff,
+        ResolvedTransmissionProfile resolvedProfile,
+        bool isAnimal,
+        ContagionSeedSource seedSource,
+        Contagion_MapTransmissionComponent mapComp)
+    {
+        string diseaseLabel = diseaseHediff?.LabelCap ?? diseaseDef.LabelCap;
+
+        string label;
+        string body;
+
+        if (isAnimal)
+        {
+            label = "Contagion_LetterLabelAnimalOutbreak".Translate(diseaseDef.LabelCap);
+            body = GetFirstCaseBody(pawn, diseaseLabel, seedSource, animal: true);
+            mapComp.RecordAnimalOutbreakCase(resolvedProfile);
+        }
+        else
+        {
+            label = "Contagion_LetterLabelOutbreak".Translate(diseaseDef.LabelCap);
+            body = GetFirstCaseBody(pawn, diseaseLabel, seedSource, animal: false);
+            mapComp.RecordHumanOutbreakCase(resolvedProfile);
+        }
+
+        Find.LetterStack.ReceiveLetter(label, body, LetterDefOf.NegativeEvent, pawn);
+    }
+
+    private static void SendClusterCaseLetter(
+        Pawn pawn,
+        HediffDef diseaseDef,
+        Hediff diseaseHediff,
+        ResolvedTransmissionProfile resolvedProfile,
+        bool isAnimal,
+        Contagion_MapTransmissionComponent mapComp)
+    {
+        // Respect the suppress-animal-cluster-notifications toggle.
+        if (isAnimal && Contagion_Mod.Settings.suppressAnimalClusterNotifications)
+        {
+            // The floating message already fired; just record the case for outbreak timing.
+            mapComp.RecordAnimalOutbreakCase(resolvedProfile);
+            return;
+        }
+
+        if (isAnimal)
+        {
+            mapComp.RecordAnimalOutbreakCase(resolvedProfile);
+        }
+        else
+        {
+            mapComp.RecordHumanOutbreakCase(resolvedProfile);
+        }
+
+        string diseaseLabel = diseaseHediff?.LabelCap ?? diseaseDef.LabelCap;
+        int caseCount = CountActiveCasesOnMap(pawn.MapHeld, resolvedProfile, isAnimal);
+        string countLabel = isAnimal
+            ? "Contagion_ClusterAffectedAnimals".Translate(caseCount)
+            : "Contagion_ClusterAffectedColonists".Translate(caseCount);
+
+        string label = "Contagion_LetterLabelClusterCase".Translate(diseaseDef.LabelCap);
+        string body = "Contagion_LetterClusterCase".Translate(pawn.LabelShortCap, diseaseLabel, countLabel);
+
+        // Retrieve the existing cluster letter for this track and replace it if still on stack,
+        // or create a new one if it has been dismissed.
+        Letter existingLetter = isAnimal
+            ? mapComp.GetAnimalClusterLetter(resolvedProfile)
+            : mapComp.GetHumanClusterLetter(resolvedProfile);
+
+        if (existingLetter != null && Find.LetterStack.LettersListForReading.Contains(existingLetter))
+        {
+            Find.LetterStack.RemoveLetter(existingLetter);
+        }
+
+        Letter newLetter = LetterMaker.MakeLetter(label, body, LetterDefOf.NeutralEvent, pawn);
+        Find.LetterStack.ReceiveLetter(newLetter);
+
+        if (isAnimal)
+        {
+            mapComp.SetAnimalClusterLetter(resolvedProfile, newLetter);
+        }
+        else
+        {
+            mapComp.SetHumanClusterLetter(resolvedProfile, newLetter);
+        }
+    }
+
+    private static string GetFirstCaseBody(Pawn pawn, string diseaseLabel, ContagionSeedSource seedSource, bool animal)
+    {
+        string bodyKey = seedSource switch
+        {
+            ContagionSeedSource.Environmental => animal
+                ? "Contagion_LetterAnimalOutbreakFirstCase_Environmental"
+                : "Contagion_LetterOutbreakFirstCase_Environmental",
+            ContagionSeedSource.Arrival => animal
+                ? "Contagion_LetterAnimalOutbreakFirstCase_Arrival"
+                : "Contagion_LetterOutbreakFirstCase_Arrival",
+            ContagionSeedSource.Foodborne => animal
+                ? "Contagion_LetterAnimalOutbreakFirstCase_Foodborne"
+                : "Contagion_LetterOutbreakFirstCase_Foodborne",
+            ContagionSeedSource.Cooking => "Contagion_LetterOutbreakFirstCase_Cooking",
+            ContagionSeedSource.Corpse => animal
+                ? "Contagion_LetterAnimalOutbreakFirstCase_Corpse"
+                : "Contagion_LetterOutbreakFirstCase_Corpse",
+            ContagionSeedSource.CorpseIngestion => animal
+                ? "Contagion_LetterAnimalOutbreakFirstCase_CorpseIngestion"
+                : "Contagion_LetterOutbreakFirstCase_CorpseIngestion",
+            ContagionSeedSource.Contact or ContagionSeedSource.Storyteller => animal
+                ? "Contagion_LetterAnimalOutbreakFirstCase"
+                : "Contagion_LetterOutbreakFirstCase",
+            _ => animal
+                ? "Contagion_LetterAnimalOutbreakFirstCase_Unknown"
+                : "Contagion_LetterOutbreakFirstCase_Unknown",
+        };
+
+        return bodyKey.Translate(pawn.LabelShortCap, diseaseLabel);
+    }
+
+    private static int CountActiveCasesOnMap(Map map, ResolvedTransmissionProfile resolvedProfile, bool animalsOnly)
     {
         IReadOnlyList<Pawn> spawnedPawns = map?.mapPawns?.AllPawnsSpawned;
         if (spawnedPawns == null)
         {
-            return false;
+            return 0;
         }
 
+        int count = 0;
         for (int i = 0; i < spawnedPawns.Count; i++)
         {
-            Pawn otherPawn = spawnedPawns[i];
-            if (otherPawn == null || otherPawn == currentPawn)
+            Pawn p = spawnedPawns[i];
+            if (p == null)
             {
                 continue;
             }
 
-            bool otherIsAnimal = otherPawn.RaceProps?.Animal == true;
-            if (animalsOnly != otherIsAnimal)
+            bool pIsAnimal = p.RaceProps?.Animal == true;
+            if (animalsOnly != pIsAnimal)
             {
                 continue;
             }
 
-            if (!PawnUtility.ShouldSendNotificationAbout(otherPawn))
+            if (!PawnUtility.ShouldSendNotificationAbout(p))
             {
                 continue;
             }
 
-            if (HasVisibleProfileDisease(otherPawn, profile))
+            if (HasVisibleProfileDisease(p, resolvedProfile))
             {
-                return true;
+                count++;
             }
         }
 
-        return false;
+        return count;
     }
 
     private static bool HasVisibleProfileDisease(Pawn pawn, ResolvedTransmissionProfile profile)

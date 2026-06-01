@@ -18,6 +18,10 @@ public sealed class Hediff_ContagionIncubation : Hediff
 
     public HediffDef TargetDiseaseDef;
 
+    private ContagionSeedSource _seedSource;
+
+    public ContagionSeedSource SeedSource => _seedSource;
+
     public override bool Visible => false;
 
     public override string LabelBase => TargetDiseaseDef == null
@@ -43,9 +47,10 @@ public sealed class Hediff_ContagionIncubation : Hediff
 
     public bool ReadyToActivate => _activationTick >= 0 && Find.TickManager.TicksGame >= _activationTick;
 
-    public void Configure(HediffDef targetDiseaseDef, List<BodyPartDef> partsToAffect, int activationTick)
+    public void Configure(HediffDef targetDiseaseDef, List<BodyPartDef> partsToAffect, int activationTick, ContagionSeedSource seedSource = ContagionSeedSource.Unknown)
     {
         TargetDiseaseDef = targetDiseaseDef;
+        _seedSource = seedSource;
         _activationTick = activationTick;
         _durationTicks = Mathf.Max(1, activationTick - Find.TickManager.TicksGame);
         _nextLazyCheckTick = Mathf.Min(activationTick, Find.TickManager.TicksGame + LazyActivationCheckInterval);
@@ -61,6 +66,7 @@ public sealed class Hediff_ContagionIncubation : Hediff
         Scribe_Values.Look(ref _activationTick, "activationTick", -1);
         Scribe_Values.Look(ref _durationTicks, "durationTicks", 1);
         Scribe_Values.Look(ref _nextLazyCheckTick, "nextLazyCheckTick", -1);
+        Scribe_Values.Look(ref _seedSource, "seedSource", ContagionSeedSource.Unknown);
     }
 
     public override void PostTickInterval(int delta)
