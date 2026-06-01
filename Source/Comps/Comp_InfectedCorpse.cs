@@ -116,11 +116,6 @@ public sealed class Comp_InfectedCorpse : ThingComp
             return "Contagion_InfectedCorpseInspectUnknown".Translate();
         }
 
-        if (ContagionCorpseUtility.TryGetCorpseContagiousDiseaseFromInnerPawn((parent as Corpse)?.InnerPawn, out HediffDef diseaseDef))
-        {
-            return "Contagion_InfectedCorpseInspect".Translate(diseaseDef.LabelCap);
-        }
-
         return null;
     }
 
@@ -136,12 +131,10 @@ public sealed class Comp_InfectedCorpse : ThingComp
 
     public bool TryGetDiseaseForDisplay(out HediffDef diseaseDef)
     {
+        // Display is driven purely by comp state. The disease is set on the comp at spawn
+        // (visible-before-death) or after a post-mortem inspection — never read straight off
+        // the inner pawn, which would leak hidden/undiagnosed diseases with no roll.
         diseaseDef = _infectedDiseaseDef;
-        if (diseaseDef != null)
-        {
-            return true;
-        }
-
-        return ContagionCorpseUtility.TryGetCorpseContagiousDiseaseFromInnerPawn((parent as Corpse)?.InnerPawn, out diseaseDef);
+        return diseaseDef != null;
     }
 }

@@ -18,6 +18,14 @@ public static class ContagionAnimalDiseaseUtility
 
     public static HediffDef GetHumanCorpseContagiousDisease(Pawn innerPawn)
     {
+        return GetHumanCorpseContagiousDisease(innerPawn, includeHidden: false);
+    }
+
+    // includeHidden: transmission paths (eating infected meat) treat the meat as infectious
+    // even when the disease was never diagnosed — undiagnosed hidden disease hediffs are
+    // included. Display paths pass false so hidden diseases are never leaked without a roll.
+    public static HediffDef GetHumanCorpseContagiousDisease(Pawn innerPawn, bool includeHidden)
+    {
         if (innerPawn?.health?.hediffSet == null || innerPawn.RaceProps?.Humanlike != true)
         {
             return null;
@@ -26,7 +34,7 @@ public static class ContagionAnimalDiseaseUtility
         List<Hediff> hediffs = innerPawn.health.hediffSet.hediffs;
         for (int i = 0; i < hediffs.Count; i++)
         {
-            HediffDef diseaseDef = GetDiseaseDef(hediffs[i]);
+            HediffDef diseaseDef = GetDiseaseDef(hediffs[i], includeHidden);
             if (diseaseDef == null)
             {
                 continue;
@@ -45,6 +53,11 @@ public static class ContagionAnimalDiseaseUtility
 
     public static HediffDef GetAnimalCorpseContagiousDisease(Pawn innerPawn)
     {
+        return GetAnimalCorpseContagiousDisease(innerPawn, includeHidden: false);
+    }
+
+    public static HediffDef GetAnimalCorpseContagiousDisease(Pawn innerPawn, bool includeHidden)
+    {
         if (innerPawn?.health?.hediffSet == null || innerPawn.RaceProps?.Animal != true)
         {
             return null;
@@ -53,7 +66,7 @@ public static class ContagionAnimalDiseaseUtility
         List<Hediff> hediffs = innerPawn.health.hediffSet.hediffs;
         for (int i = 0; i < hediffs.Count; i++)
         {
-            HediffDef diseaseDef = GetDiseaseDef(hediffs[i]);
+            HediffDef diseaseDef = GetDiseaseDef(hediffs[i], includeHidden);
             if (diseaseDef == null)
             {
                 continue;
@@ -111,18 +124,19 @@ public static class ContagionAnimalDiseaseUtility
         return null;
     }
 
-    private static HediffDef GetDiseaseDef(Hediff hediff)
+    private static HediffDef GetDiseaseDef(Hediff hediff, bool includeHidden)
     {
-        // Incubation: disease never manifested — the pawn showed no symptoms and the player had
-        // no prior indication. The corpse should not appear visibly infected.
+        // Incubation: disease never manifested — the pawn showed no symptoms and the meat is
+        // not yet carrying an active infection. Excluded for both display and transmission.
         if (hediff is Hediff_ContagionIncubation)
         {
             return null;
         }
 
-        // Active but undiagnosed: disease is present and spreading, but still invisible to the player.
-        // Same principle: no visible warning before death means no infected-corpse marker.
-        if (hediff is Hediff_ContagionAnimalHiddenDisease { Diagnosed: false })
+        // Active but undiagnosed: disease is present and spreading, but invisible to the player.
+        // Excluded from display (no visible warning before death means no infected-corpse marker),
+        // but included for transmission — infected meat is infectious whether or not it was diagnosed.
+        if (!includeHidden && hediff is Hediff_ContagionAnimalHiddenDisease { Diagnosed: false })
         {
             return null;
         }

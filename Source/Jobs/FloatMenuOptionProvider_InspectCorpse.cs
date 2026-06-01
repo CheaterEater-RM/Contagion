@@ -72,6 +72,9 @@ public class FloatMenuOptionProvider_InspectCorpse : FloatMenuOptionProvider
             new FloatMenuOption("Contagion_InspectCorpse".Translate(), () =>
             {
                 Job job = JobMaker.MakeJob(DefDatabase<JobDef>.GetNamed("Contagion_InspectCorpse"), table, corpse);
+                // The driver carries a single corpse via Toils_Haul.StartCarryThing(TargetIndex.B),
+                // which reads job.count. Without this it defaults to -1 and logs "Invalid count: -1".
+                job.count = 1;
                 pawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
             }),
             pawn,

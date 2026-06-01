@@ -36,6 +36,10 @@ public static class ContagionCorpseUtility
             return false;
         }
 
+        // Comp-driven only: the infected flag and display reveal are set on the comp at spawn
+        // (visible-before-death) or after a post-mortem inspection. Reading straight off the
+        // inner pawn here would leak hidden/undiagnosed diseases into rendering, filters, and
+        // the inspect string with no roll. Transmission uses a separate include-hidden path.
         Comp_InfectedCorpse comp = corpse.TryGetComp<Comp_InfectedCorpse>();
         if (comp?.IsInfected == true)
         {
@@ -43,7 +47,7 @@ public static class ContagionCorpseUtility
             return diseaseDef != null;
         }
 
-        return TryGetCorpseContagiousDiseaseFromInnerPawn(corpse.InnerPawn, out diseaseDef);
+        return false;
     }
 
     public static bool TryGetCorpseContagiousDiseaseFromInnerPawn(Pawn innerPawn, out HediffDef diseaseDef)
@@ -61,6 +65,43 @@ public static class ContagionCorpseUtility
         else if (innerPawn.RaceProps?.Humanlike == true)
         {
             diseaseDef = ContagionAnimalDiseaseUtility.GetHumanCorpseContagiousDisease(innerPawn);
+        }
+
+        return diseaseDef != null;
+    }
+
+    // Transmission-only detector: unlike the display-facing TryGetInfectedDisease, this does NOT
+    // gate on diagnosis. Infected meat is infectious whether or not the disease was ever revealed,
+    // so this includes undiagnosed hidden disease hediffs. Prefers the comp flag, then scans the
+    // inner pawn with includeHidden.
+    public static bool TryGetCorpseInfectionForTransmission(Corpse corpse, out HediffDef diseaseDef)
+    {
+        diseaseDef = null;
+        if (corpse == null)
+        {
+            return false;
+        }
+
+        Comp_InfectedCorpse comp = corpse.TryGetComp<Comp_InfectedCorpse>();
+        if (comp?.IsInfected == true)
+        {
+            diseaseDef = comp.InfectedDiseaseDef;
+            return diseaseDef != null;
+        }
+
+        Pawn innerPawn = corpse.InnerPawn;
+        if (innerPawn == null)
+        {
+            return false;
+        }
+
+        if (innerPawn.RaceProps?.Animal == true)
+        {
+            diseaseDef = ContagionAnimalDiseaseUtility.GetAnimalCorpseContagiousDisease(innerPawn, includeHidden: true);
+        }
+        else if (innerPawn.RaceProps?.Humanlike == true)
+        {
+            diseaseDef = ContagionAnimalDiseaseUtility.GetHumanCorpseContagiousDisease(innerPawn, includeHidden: true);
         }
 
         return diseaseDef != null;
@@ -117,7 +158,7 @@ public static class ContagionCorpseUtility
 
     public static void NotifyCorpseIngested(Corpse corpse, Pawn ingester)
     {
-        if (corpse == null || ingester?.MapHeld == null || !TryGetInfectedDisease(corpse, out HediffDef diseaseDef))
+        if (corpse == null || ingester?.MapHeld == null || !TryGetCorpseInfectionForTransmission(corpse, out HediffDef diseaseDef))
         {
             return;
         }
@@ -127,32 +168,66 @@ public static class ContagionCorpseUtility
             return;
         }
 
-        ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneAttempted);
+        // Eating a raw corpse is the most dangerous corpse interaction: it combines ingesting
+        // contaminated tissue with direct, unprotected flea and fluid contact (tearing into the
+        // carcass with bare hands and mouth). Roll each available vector independently. Once any
+        // one seeds an incubation the remaining rolls naturally no-op, because the target is no
+        // longer eligible (FindIncubation != null in GetTargetEligibilityFactor).
 
-        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
-        float chance = ContagionTransmissionUtility.BuildSeederChance(
-            1f,
-            ingester,
-            resolvedProfile,
-            ingester.MapHeld,
-            transmissionMultiplier,
-            out HediffDef _);
-
-        if (!Rand.Chance(Mathf.Clamp01(chance)))
+        // Foodborne: contaminated tissue, mitigated by the ingester's stomach resistance.
+        if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Foodborne foodborneVector))
         {
-            return;
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneAttempted);
+
+            float foodborneBase = ContagionIngestionUtility.ApplyTaintedFoodInfectionFactor(
+                foodborneVector.baseChancePerMeal,
+                ingester);
+            float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
+            float chance = ContagionTransmissionUtility.BuildSeederChance(
+                foodborneBase,
+                ingester,
+                resolvedProfile,
+                ingester.MapHeld,
+                transmissionMultiplier,
+                out HediffDef _);
+
+            if (Rand.Chance(Mathf.Clamp01(chance))
+                && ContagionDiseaseUtility.TrySeedIncubation(
+                    ingester,
+                    resolvedProfile.DiseaseDef,
+                    resolvedProfile.PartsToAffect,
+                    ContagionDiagnosticOrigin.Spread,
+                    ContagionSeedSource.CorpseIngestion,
+                    out HediffDef _))
+            {
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneSeeded);
+                ContagionDiagnostics.Trace($"Corpse ingestion (foodborne) transmission: {resolvedProfile.DiseaseDef.defName} to {ingester.LabelShortCap}.");
+            }
         }
 
-        if (ContagionDiseaseUtility.TrySeedIncubation(
-            ingester,
-            resolvedProfile.DiseaseDef,
-            resolvedProfile.PartsToAffect,
-            ContagionDiagnosticOrigin.Spread,
-            ContagionSeedSource.CorpseIngestion,
-            out HediffDef _))
+        // Direct contact vectors at full exposure (contextFactor 1f — no skill mitigation, unlike
+        // butchering). Flea contact uses the same butcher-level base chance as tearing the carcass open.
+        if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_CorpseFlea fleaVector))
         {
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneSeeded);
-            ContagionDiagnostics.Trace($"Corpse ingestion transmission: {resolvedProfile.DiseaseDef.defName} to {ingester.LabelShortCap}.");
+            ContagionCorpseExposureUtility.UpdateCorpseFleas(corpse, resolvedProfile, fleaVector, 0);
+            ContagionCorpseExposureUtility.TryApplyFleaExposure(
+                ingester,
+                corpse,
+                resolvedProfile,
+                fleaVector,
+                fleaVector.butcherBaseChance,
+                1f);
+        }
+
+        if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_CorpseFluid fluidVector))
+        {
+            ContagionCorpseExposureUtility.TryApplyFluidExposure(
+                ingester,
+                corpse,
+                resolvedProfile,
+                fluidVector,
+                ContagionCorpseFluidExposureKind.Butcher,
+                1f);
         }
     }
 

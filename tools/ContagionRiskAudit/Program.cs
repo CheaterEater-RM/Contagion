@@ -9,7 +9,6 @@ using Contagion;
 internal static class Program
 {
     private const int Skill = 10;
-    private const float RawCorpseBaseChance = 1f;
 
     private static readonly string Root = FindRepoRoot();
 
@@ -63,7 +62,12 @@ internal static class Program
             Check.Close("muscle parasites strong-stomach raw meat ingestion", ContagionRiskMath.ApplyIngestionResistance(Field(muscleFood, "baseChancePerMeal"), 0.1f), 0.085f, 0.001f),
             Check.Close("muscle parasites bionic stomach raw meat ingestion", ContagionRiskMath.ApplyIngestionResistance(Field(muscleFood, "baseChancePerMeal"), 0f), 0f, 0.001f),
             Check.Close("muscle parasites ordinary cooked meal ingestion", Field(muscleFood, "baseChancePerMeal") * ordinaryMealFactor, 0.077626f, 0.002f),
-            Check.Close("raw infected corpse ingestion base", RawCorpseBaseChance, 1f, 0f),
+            // Eating a raw infected corpse now transmits via the foodborne vector's baseChancePerMeal
+            // run through the ingester's stomach resistance (NotifyCorpseIngested →
+            // ApplyTaintedFoodInfectionFactor), identical to eating raw contaminated meat — not a flat
+            // 100%. Assert the post-resistance value (strong stomach, factor 0.1) so this exercises the
+            // transformation rather than re-stating the raw baseChancePerMeal already checked above.
+            Check.Close("raw infected corpse ingestion (strong stomach) applies resistance", ContagionRiskMath.ApplyIngestionResistance(Field(plagueFood, "baseChancePerMeal"), 0.1f), 0.025f, 0.001f),
             Check.Close("gut worms butchery exposure remains low", Field(gutFluid, "butcherChance") * Curve(gutFluid.Element("corpseAgePotencyCurve"), 2f) * butcherFactor, 0.001234f, 0.0005f),
             Check.Close("muscle parasites butchery exposure remains low", Field(muscleFluid, "butcherChance") * Curve(muscleFluid.Element("corpseAgePotencyCurve"), 2f) * butcherFactor, 0.001175f, 0.0005f),
             Check.Close("plague cooking exposure", Field(plagueCooking, "baseChancePerRecipe") * cookExposureFactor, 0.005f, 0.0005f),
@@ -73,8 +77,15 @@ internal static class Program
             Check.Bool("pemmican stays risky", pemmicanFactor > ordinaryMealFactor, true),
         };
 
+        // Guard against regressing to the old flat 100% corpse-ingestion chance: the code must
+        // derive the base chance from the foodborne vector's baseChancePerMeal, not a hardcoded 1f.
         string corpseUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionCorpseUtility.cs"));
-        checks.Add(Check.Bool("corpse ingestion source constant present", corpseUtility.Contains("BuildSeederChance(\r\n            1f,") || corpseUtility.Contains("BuildSeederChance(\n            1f,"), true));
+        checks.Add(Check.Bool("corpse ingestion uses foodborne baseChancePerMeal", corpseUtility.Contains("foodborneVector.baseChancePerMeal"), true));
+        checks.Add(Check.Bool("corpse ingestion no longer hardcodes 1f base", !corpseUtility.Contains("BuildSeederChance(\r\n            1f,") && !corpseUtility.Contains("BuildSeederChance(\n            1f,"), true));
+        // Eating a raw corpse must also roll direct flea + fluid contact (butcher-level), not just
+        // the foodborne meal — raw ingestion is the highest-contact corpse interaction.
+        checks.Add(Check.Bool("corpse ingestion rolls fluid contact", corpseUtility.Contains("TryApplyFluidExposure"), true));
+        checks.Add(Check.Bool("corpse ingestion rolls flea contact", corpseUtility.Contains("TryApplyFleaExposure"), true));
 
         int failures = 0;
         foreach (Check check in checks)
