@@ -12,6 +12,8 @@ public static class ContagionDefOf
 
     public static HediffDef Contagion_TraitSeedCooldown;
 
+    public static HediffDef Contagion_AnimalDiagnosisCooldown;
+
     public static HediffDef Contagion_CorpseFleas;
 
     public static HediffDef Contagion_AnimalSick;

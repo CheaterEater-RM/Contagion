@@ -9,4 +9,14 @@
     <casualInterruptible>false</casualInterruptible>
     <allowOpportunisticPrefix>false</allowOpportunisticPrefix>
   </JobDef>
+
+  <JobDef>
+    <defName>Contagion_DiagnoseAnimal</defName>
+    <driverClass>Contagion.JobDriver_DiagnoseAnimal</driverClass>
+    <reportString>Examining {0} for illness.</reportString>
+    <playerInterruptible>true</playerInterruptible>
+    <suspendable>true</suspendable>
+    <casualInterruptible>false</casualInterruptible>
+    <allowOpportunisticPrefix>false</allowOpportunisticPrefix>
+  </JobDef>
 </Defs>

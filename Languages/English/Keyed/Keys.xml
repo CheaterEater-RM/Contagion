@@ -124,4 +124,8 @@
   <Contagion_InspectCorpseSuccessDisease>{0} identified {1} in {2}.</Contagion_InspectCorpseSuccessDisease>
   <Contagion_InspectCorpseSuccessClean>{0} confirmed {1} is disease-free.</Contagion_InspectCorpseSuccessClean>
   <Contagion_InspectCorpseNoTable>No butchery table available for inspection.</Contagion_InspectCorpseNoTable>
+
+  <!-- Animal proactive examination (JobDriver_DiagnoseAnimal / FloatMenuOptionProvider_DiagnoseAnimal) -->
+  <Contagion_ExamineAnimal>Examine for illness</Contagion_ExamineAnimal>
+  <Contagion_ExamineAnimalCooldown>Examined recently (cooldown)</Contagion_ExamineAnimalCooldown>
 </LanguageData>

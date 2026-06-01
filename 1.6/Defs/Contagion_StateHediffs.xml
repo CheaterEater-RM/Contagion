@@ -60,5 +60,19 @@
         <disappearsAfterTicks>420000~600000</disappearsAfterTicks>
       </li>
     </comps>
+  </HediffDef>  <!-- Per-animal cooldown applied after any examination (tending-path or proactive job).
+       Prevents spamming exam attempts to statistically guarantee finding a hidden disease.
+       Duration: 1 game-week (7 × 60,000 ticks). Uses the same timed-hediff class as the
+       trait-seed cooldown but is scoped to animal diagnosis. -->
+  <HediffDef>
+    <defName>Contagion_AnimalDiagnosisCooldown</defName>
+    <hediffClass>Contagion.Hediff_ContagionTraitSeedCooldown</hediffClass>
+    <label>examined recently</label>
+    <description>This animal was recently examined by a veterinarian. Another examination can be requested once the cooldown expires (one week).</description>
+    <initialSeverity>1.0</initialSeverity>
+    <maxSeverity>1.0</maxSeverity>
+    <isBad>false</isBad>
+    <scenarioCanAdd>false</scenarioCanAdd>
   </HediffDef>
+
 </Defs>
