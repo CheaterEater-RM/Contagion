@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Global tuning constants for the Contagion mod.
+     Values here are intentionally separate from per-disease profiles so modpacks can
+     override them with a single PatchOperationReplace without touching disease XML. -->
+<Defs>
+
+  <!-- Spontaneous false-positive sick-signal rates for animals.
+       Per-day probability that a healthy animal develops Contagion_AnimalSick with no
+       underlying disease. Domestic animals are monitored more closely, so a failed
+       handler check is the dominant source of false positives there; this constant adds
+       background noise. Wild animals on the map accumulate sick signals at a higher
+       base rate because they receive no routine handler checks. -->
+  <Contagion.ContagionAnimalFalsePositiveDef>
+    <defName>Contagion_FalsePositiveTuning</defName>
+    <label>animal false-positive tuning</label>
+    <spontaneousSickChanceDomesticPerDay>0.002</spontaneousSickChanceDomesticPerDay>
+    <spontaneousSickChanceWildPerDay>0.005</spontaneousSickChanceWildPerDay>
+  </Contagion.ContagionAnimalFalsePositiveDef>
+
+</Defs>

@@ -20,7 +20,16 @@ public sealed class Comp_InfectedCorpse : ThingComp
 
     private bool _hasBeenInspected;
 
+    // True when the inner pawn died showing Contagion_AnimalSick but with no confirmed
+    // contagious disease. The corpse is treated as potentially infected for filtering and
+    // rendering, but post-mortem inspection will clear it as a false positive.
+    private bool _suspectedInfected;
+
     public bool IsInfected => _infectedDiseaseDef != null;
+
+    // Suspected-infected: sick signal was present at death, but no disease has been confirmed.
+    // Cleared to false by MarkInspectedClean after a successful post-mortem inspection.
+    public bool IsSuspectedInfected => _suspectedInfected && _infectedDiseaseDef == null;
 
     public HediffDef InfectedDiseaseDef => _infectedDiseaseDef;
 
@@ -38,12 +47,23 @@ public sealed class Comp_InfectedCorpse : ThingComp
     {
         _infectedDiseaseDef = null;
         _diseaseIdentified = false;
+        _suspectedInfected = false;
         _hasBeenInspected = true;
+        (parent as Corpse)?.InnerPawn?.Drawer?.renderer?.SetAllGraphicsDirty();
     }
 
     internal void MarkInspectedFailed()
     {
         _hasBeenInspected = true;
+    }
+
+    // Marks the corpse as suspected infected: the animal was showing the sick signal at
+    // death but carried no confirmed contagious disease. Triggers the infected-corpse
+    // appearance and filters. Clears on post-mortem inspection (MarkInspectedClean).
+    internal void SetSuspectedInfection()
+    {
+        _suspectedInfected = true;
+        (parent as Corpse)?.InnerPawn?.Drawer?.renderer?.SetAllGraphicsDirty();
     }
 
     public void SetInfection(HediffDef diseaseDef, bool identified = true)
@@ -91,6 +111,11 @@ public sealed class Comp_InfectedCorpse : ThingComp
                 : "Contagion_InfectedCorpseInspectUnknown".Translate();
         }
 
+        if (_suspectedInfected)
+        {
+            return "Contagion_InfectedCorpseInspectUnknown".Translate();
+        }
+
         if (ContagionCorpseUtility.TryGetCorpseContagiousDiseaseFromInnerPawn((parent as Corpse)?.InnerPawn, out HediffDef diseaseDef))
         {
             return "Contagion_InfectedCorpseInspect".Translate(diseaseDef.LabelCap);
@@ -106,6 +131,7 @@ public sealed class Comp_InfectedCorpse : ThingComp
         Scribe_Values.Look(ref _infectionTick, "infectionTick", -1);
         Scribe_Values.Look(ref _diseaseIdentified, "diseaseIdentified", defaultValue: true);
         Scribe_Values.Look(ref _hasBeenInspected, "hasBeenInspected");
+        Scribe_Values.Look(ref _suspectedInfected, "suspectedInfected");
     }
 
     public bool TryGetDiseaseForDisplay(out HediffDef diseaseDef)

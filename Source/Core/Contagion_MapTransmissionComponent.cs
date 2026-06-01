@@ -129,6 +129,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             long environmentalTiming = ContagionDiagnostics.BeginTiming();
             RunGeneralSeederPass(spawnedPawns);
             _environmentalExposureProcessor.RunEnvironmentalExposurePass(spawnedPawns);
+            ContagionSeedingCoordinator.RunSpontaneousFalsePositives(spawnedPawns, EnvironmentalCheckInterval);
             ContagionDiagnostics.EndTiming(ContagionPerformanceMetric.EnvironmentalPass, environmentalTiming);
         }
 

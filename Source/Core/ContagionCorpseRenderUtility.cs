@@ -9,8 +9,13 @@ public static class ContagionCorpseRenderUtility
 
     public static bool IsInfectedCorpsePawn(Pawn pawn)
     {
-        return pawn?.Dead == true
-            && pawn.Corpse?.TryGetComp<Comp_InfectedCorpse>()?.TryGetDiseaseForDisplay(out HediffDef _) == true;
+        if (pawn?.Dead != true)
+        {
+            return false;
+        }
+
+        Comp_InfectedCorpse comp = pawn.Corpse?.TryGetComp<Comp_InfectedCorpse>();
+        return comp?.TryGetDiseaseForDisplay(out HediffDef _) == true || comp?.IsSuspectedInfected == true;
     }
 
     public static Color GetInfectedColor(Color color)

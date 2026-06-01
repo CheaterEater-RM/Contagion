@@ -208,6 +208,82 @@ public static class ContagionSeedingCoordinator
         ResolvePendingMapFulfillment(component, spawnedPawns);
     }
 
+    // Randomly applies Contagion_AnimalSick (with no underlying disease) to otherwise-healthy
+    // animals at a low per-day rate. These "false positives" mimic an animal feeling under the
+    // weather for unrelated reasons and give the player genuine uncertainty: a sick signal is not
+    // proof of disease. The corpse of an animal that dies while flagged this way is marked as
+    // suspected-infected and must be inspected at a butchery table before the threat is cleared.
+    // Notification fires for colony animals only; wild animals are silent.
+    public static void RunSpontaneousFalsePositives(IReadOnlyList<Pawn> spawnedPawns, int checkIntervalTicks)
+    {
+        if (spawnedPawns == null || spawnedPawns.Count == 0)
+        {
+            return;
+        }
+
+        ContagionAnimalFalsePositiveDef tuning = ContagionAnimalFalsePositiveDef.Active;
+        if (tuning == null)
+        {
+            return;
+        }
+
+        float domesticChance = tuning.spontaneousSickChanceDomesticPerDay;
+        float wildChance = tuning.spontaneousSickChanceWildPerDay;
+        if (domesticChance <= 0f && wildChance <= 0f)
+        {
+            return;
+        }
+
+        for (int i = 0; i < spawnedPawns.Count; i++)
+        {
+            Pawn pawn = spawnedPawns[i];
+            if (pawn == null || pawn.Dead || pawn.RaceProps?.Animal != true || !pawn.Spawned)
+            {
+                continue;
+            }
+
+            if (pawn.health.hediffSet.HasHediff(ContagionDefOf.Contagion_AnimalSick))
+            {
+                continue;
+            }
+
+            // Don't stack a false-positive on top of a real sick-signal disease — the true
+            // signal will present on its own schedule via passive symptom presentation.
+            if (ContagionAnimalDiseaseUtility.HasSickSignalDisease(pawn))
+            {
+                continue;
+            }
+
+            bool isDomestic = pawn.Faction == Faction.OfPlayer;
+            float chancePerDay = isDomestic ? domesticChance : wildChance;
+            if (chancePerDay <= 0f)
+            {
+                continue;
+            }
+
+            // MTBEventOccurs interprets the first argument as mean-time-between-events in
+            // units matching the second argument. We want chancePerDay probability per day,
+            // so mtbDays = 1/chancePerDay.
+            if (!Rand.MTBEventOccurs(1f / chancePerDay, TicksPerDay, checkIntervalTicks))
+            {
+                continue;
+            }
+
+            pawn.health.AddHediff(HediffMaker.MakeHediff(ContagionDefOf.Contagion_AnimalSick, pawn));
+
+            if (isDomestic && PawnUtility.ShouldSendNotificationAbout(pawn))
+            {
+                Messages.Message(
+                    "Contagion_AnimalSickPresented".Translate(pawn.LabelShortCap),
+                    pawn,
+                    MessageTypeDefOf.CautionInput,
+                    historical: false);
+            }
+
+            ContagionDiagnostics.Trace($"Spontaneous sick signal (false positive): {pawn.LabelShortCap}.");
+        }
+    }
+
     public static bool TryGetEnvironmentalSeedingContext(
         Contagion_MapTransmissionComponent component,
         ResolvedTransmissionProfile resolvedProfile,

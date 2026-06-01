@@ -9,12 +9,23 @@ public static class ContagionCorpseUtility
 {
     public static bool IsInfectedCorpse(Thing thing)
     {
-        return TryGetInfectedDisease(thing as Corpse, out HediffDef _);
+        if (thing is not Corpse corpse)
+        {
+            return false;
+        }
+
+        Comp_InfectedCorpse comp = corpse.TryGetComp<Comp_InfectedCorpse>();
+        if (comp?.IsSuspectedInfected == true)
+        {
+            return true;
+        }
+
+        return TryGetInfectedDisease(corpse, out HediffDef _);
     }
 
     public static bool IsUninfectedCorpse(Thing thing)
     {
-        return thing is Corpse corpse && !TryGetInfectedDisease(corpse, out HediffDef _);
+        return thing is Corpse && !IsInfectedCorpse(thing);
     }
 
     public static bool TryGetInfectedDisease(Corpse corpse, out HediffDef diseaseDef)
@@ -93,6 +104,15 @@ public static class ContagionCorpseUtility
             infectedComp.SetInfection(resolvedProfile.DiseaseDef, identified: false);
             return;
         }
+
+        // Fallback: if the animal had the sick signal at death but no confirmed active
+        // disease, mark the corpse as suspected infected. Post-mortem inspection will
+        // clear it as a false positive once the roll passes.
+        if (!infectedComp.IsInfected && !infectedComp.IsSuspectedInfected
+            && innerPawn.health.hediffSet.HasHediff(ContagionDefOf.Contagion_AnimalSick))
+        {
+            infectedComp.SetSuspectedInfection();
+        }
     }
 
     public static void NotifyCorpseIngested(Corpse corpse, Pawn ingester)
@@ -146,7 +166,10 @@ public static class ContagionCorpseUtility
         }
 
         Comp_InfectedCorpse comp = corpse.TryGetComp<Comp_InfectedCorpse>();
-        if (comp == null || comp.HasBeenInspected)
+        // Allow re-inspection of suspected-infected corpses until a passing roll clears the
+        // flag. The MarkInspectedFailed path sets HasBeenInspected, but a suspected corpse
+        // with no real disease should remain diagnosable so the player isn't locked out.
+        if (comp == null || (comp.HasBeenInspected && !comp.IsSuspectedInfected))
         {
             return;
         }
