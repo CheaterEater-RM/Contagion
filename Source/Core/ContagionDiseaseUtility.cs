@@ -141,6 +141,7 @@ public static class ContagionDiseaseUtility
         ContagionSeedSource seedSource = incubation.SeedSource;
         pawn.health.RemoveHediff(incubation);
         ContagionDiseaseNotifier.NotifyDiseaseActivated(pawn, addedHediffs.Count > 0 ? addedHediffs[0] : null, targetDiseaseDef, seedSource);
+        ContagionDiagnostics.Trace($"Incubation activated: {targetDiseaseDef.defName} now visible on {pawn.LabelShortCap} (source {seedSource}).");
         return true;
     }
 
@@ -292,6 +293,33 @@ public static class ContagionDiseaseUtility
 
         return pawn.health.hediffSet.HasHediff(diseaseDef)
             || FindIncubation(pawn, diseaseDef) != null;
+    }
+
+    // True if the pawn carries any Contagion disease, incubation, or hidden-animal disease —
+    // used by the dev-mode always-on infected indicator to mark every infected pawn at a glance.
+    public static bool IsInfectedOrIncubating(Pawn pawn)
+    {
+        if (pawn?.health?.hediffSet == null)
+        {
+            return false;
+        }
+
+        List<Hediff> hediffs = pawn.health.hediffSet.hediffs;
+        for (int i = 0; i < hediffs.Count; i++)
+        {
+            Hediff hediff = hediffs[i];
+            if (hediff is Hediff_ContagionIncubation || hediff is Hediff_ContagionAnimalHiddenDisease)
+            {
+                return true;
+            }
+
+            if (DiseaseProfileCache.TryGetResolvedProfile(hediff.def, out _))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static bool HasTraitSeedCooldown(Pawn pawn)

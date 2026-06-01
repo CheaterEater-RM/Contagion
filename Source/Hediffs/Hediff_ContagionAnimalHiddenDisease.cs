@@ -1,4 +1,5 @@
 using RimWorld;
+using UnityEngine;
 using Verse;
 
 namespace Contagion;
@@ -66,7 +67,9 @@ public sealed class Hediff_ContagionAnimalHiddenDisease : HediffWithComps
         }
 
         float chance = curve.Evaluate(Severity);
-        if (chance <= 0f || !Rand.Chance(chance))
+        bool passed = chance > 0f && Rand.Chance(chance);
+        ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Environmental, pawn, pawn, def, Mathf.Clamp01(chance), passed);
+        if (!passed)
         {
             return;
         }
@@ -77,6 +80,7 @@ public sealed class Hediff_ContagionAnimalHiddenDisease : HediffWithComps
         }
 
         pawn.health.AddHediff(ContagionDefOf.Contagion_AnimalSick);
+        ContagionDiagnostics.Trace($"Animal sick signal presented: {def.defName} hidden disease became visible on {pawn.LabelShortCap}.");
 
         // Notify for colony animals only — wild animals show the sick signal on their health bar
         // but don't warrant a message the player may have no context for.

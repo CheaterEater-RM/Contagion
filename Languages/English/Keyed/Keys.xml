@@ -26,19 +26,14 @@
   <Contagion_SettingIncubationLength>Incubation length: {0}</Contagion_SettingIncubationLength>
   <Contagion_SettingIncubationLengthTooltip>Global multiplier applied to incubation duration before the real disease appears.</Contagion_SettingIncubationLengthTooltip>
   <Contagion_SettingsDiagnosticsHeader>Diagnostics</Contagion_SettingsDiagnosticsHeader>
-  <Contagion_DiagnosticsModeOff>Off</Contagion_DiagnosticsModeOff>
-  <Contagion_DiagnosticsModeOffTooltip>Disable Contagion runtime counters and optional tracing.</Contagion_DiagnosticsModeOffTooltip>
-  <Contagion_DiagnosticsModeSummary>Summary</Contagion_DiagnosticsModeSummary>
-  <Contagion_DiagnosticsModeSummaryTooltip>Collect lightweight counters for disease incidence, spread, and blocked application outcomes.</Contagion_DiagnosticsModeSummaryTooltip>
-  <Contagion_DiagnosticsModeVerbose>Verbose</Contagion_DiagnosticsModeVerbose>
-  <Contagion_DiagnosticsModeVerboseTooltip>Enable event-level tracing for debugging. Traces should remain gated behind dev mode.</Contagion_DiagnosticsModeVerboseTooltip>
-  <Contagion_DiagnosticsModeDeveloper>Developer</Contagion_DiagnosticsModeDeveloper>
-  <Contagion_DiagnosticsModeDeveloperTooltip>Enable developer-only contagion debugging tools such as forced arrivals, pawn seeding gizmos, hover breakdowns, and trace overlays.</Contagion_DiagnosticsModeDeveloperTooltip>
-  <Contagion_ShowPerformanceStats>Collect performance stats</Contagion_ShowPerformanceStats>
-  <Contagion_ShowPerformanceStatsTooltip>Track transmission tick timings and candidate counts while diagnostics are enabled.</Contagion_ShowPerformanceStatsTooltip>
+  <Contagion_SettingEnableLogging>Enable logging</Contagion_SettingEnableLogging>
+  <Contagion_SettingEnableLoggingTooltip>Write Contagion event logs to the debug log: every infection roll (with pass/fail, vector, chance, and the pawns involved), disease activations, diagnoses, and hidden-to-visible transitions.</Contagion_SettingEnableLoggingTooltip>
+  <Contagion_SettingSuppressLowProbabilityLogs>Suppress low-probability roll logs (under 10%)</Contagion_SettingSuppressLowProbabilityLogs>
+  <Contagion_SettingSuppressLowProbabilityLogsTooltip>Hide failed infection rolls whose chance was below 10% to keep the log readable. Passing rolls are always logged.</Contagion_SettingSuppressLowProbabilityLogsTooltip>
+  <Contagion_SettingDeveloperMode>Developer mode</Contagion_SettingDeveloperMode>
+  <Contagion_SettingDeveloperModeTooltip>Enable Contagion developer tools: incidence/spread counters, infection tracing graph, map overlays, infected indicators, and the forced-arrival and pawn-seeding controls. Independent of RimWorld's own dev mode.</Contagion_SettingDeveloperModeTooltip>
   <Contagion_DiagnosticsPending>Runtime counters and trace summaries will appear here once the contagion engine is implemented.</Contagion_DiagnosticsPending>
   <Contagion_DiagnosticsRuntimeHeader>Runtime summary</Contagion_DiagnosticsRuntimeHeader>
-  <Contagion_DiagnosticsPerformanceHeader>Performance</Contagion_DiagnosticsPerformanceHeader>
   <Contagion_DiagnosticsIncidenceHeader>Disease incidence</Contagion_DiagnosticsIncidenceHeader>
   <Contagion_DiagnosticsSpreadHeader>Disease spread</Contagion_DiagnosticsSpreadHeader>
   <Contagion_DeveloperDiagnosticsHeader>Developer tools</Contagion_DeveloperDiagnosticsHeader>
@@ -85,12 +80,7 @@
   <Contagion_DiagnosticsSpreadVectors>Spread success/attempts: airborne {0}, proximity {1}, social {2}, foodborne {3}, fomite {4}.</Contagion_DiagnosticsSpreadVectors>
   <Contagion_DiagnosticsSpreadContamination>Contamination: meals tagged {0}, vomit tagged {1}.</Contagion_DiagnosticsSpreadContamination>
   <Contagion_DiagnosticsSummaryDirector>Director: debt human {0}, animal {1}; burden human {2}, animal {3}; recent {4}; mult {5}.</Contagion_DiagnosticsSummaryDirector>
-  <Contagion_DiagnosticsNoPerformanceData>No performance samples recorded yet.</Contagion_DiagnosticsNoPerformanceData>
-  <Contagion_DiagnosticsPerformanceTransmission>Transmission pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceTransmission>
-  <Contagion_DiagnosticsPerformanceEnvironmental>Environmental pass ms avg/max: {0}/{1} across {2} passes.</Contagion_DiagnosticsPerformanceEnvironmental>
   <Contagion_ClearDiagnostics>Clear diagnostics</Contagion_ClearDiagnostics>
-  <Contagion_DiagnosticsVerboseDevMode>Verbose traces only emit while RimWorld dev mode is enabled.</Contagion_DiagnosticsVerboseDevMode>
-  <Contagion_DiagnosticsDeveloperDevMode>Developer tools only run while RimWorld dev mode is enabled.</Contagion_DiagnosticsDeveloperDevMode>
   <Contagion_IncubationLabel>{0} incubation</Contagion_IncubationLabel>
   <Contagion_MessageDiseaseActivated>{0} has developed {1}.</Contagion_MessageDiseaseActivated>
   <Contagion_LetterLabelOutbreak>Outbreak detected: {0}</Contagion_LetterLabelOutbreak>

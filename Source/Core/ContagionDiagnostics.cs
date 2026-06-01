@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
+using UnityEngine;
 using Verse;
 
 namespace Contagion;
@@ -67,22 +67,9 @@ public enum ContagionDiagnosticCounter
     Count
 }
 
-public enum ContagionPerformanceMetric
-{
-    TransmissionPass,
-    EnvironmentalPass,
-    Count
-}
-
 public static class ContagionDiagnostics
 {
     private static readonly long[] Counters = new long[(int)ContagionDiagnosticCounter.Count];
-
-    private static readonly long[] PerformanceCounts = new long[(int)ContagionPerformanceMetric.Count];
-
-    private static readonly double[] PerformanceTotalMilliseconds = new double[(int)ContagionPerformanceMetric.Count];
-
-    private static readonly double[] PerformanceMaxMilliseconds = new double[(int)ContagionPerformanceMetric.Count];
 
     private static readonly ContagionDiagnosticCounter[] IncidenceCounters =
     {
@@ -156,24 +143,21 @@ public static class ContagionDiagnostics
 
     private static float DirectorMultiplier;
 
-    public static bool Enabled => Contagion_Mod.Settings?.DiagnosticsEnabled ?? false;
+    // Logging gate: the single "enable logging" toggle. Controls every Log.Message the mod emits.
+    public static bool LoggingEnabled => Contagion_Mod.Settings?.LoggingEnabled ?? false;
 
-    public static bool PerformanceEnabled => Enabled && (Contagion_Mod.Settings?.showPerformanceStats ?? false);
-
-    public static bool VerboseEnabled => Contagion_Mod.Settings?.VerboseDiagnosticsEnabled ?? false;
+    // Counter gate: developer mode. The incidence/spread tallies and director summary live here.
+    public static bool CountersEnabled => Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled ?? false;
 
     public static void Reset()
     {
         System.Array.Clear(Counters, 0, Counters.Length);
-        System.Array.Clear(PerformanceCounts, 0, PerformanceCounts.Length);
-        System.Array.Clear(PerformanceTotalMilliseconds, 0, PerformanceTotalMilliseconds.Length);
-        System.Array.Clear(PerformanceMaxMilliseconds, 0, PerformanceMaxMilliseconds.Length);
         HasDirectorSummary = false;
     }
 
     public static void Record(ContagionDiagnosticCounter counter, int amount = 1)
     {
-        if (!Enabled || amount == 0)
+        if (!CountersEnabled || amount == 0)
         {
             return;
         }
@@ -201,36 +185,84 @@ public static class ContagionDiagnostics
         }
     }
 
-    public static long BeginTiming()
-    {
-        return PerformanceEnabled ? Stopwatch.GetTimestamp() : 0L;
-    }
-
-    public static void EndTiming(ContagionPerformanceMetric metric, long startTimestamp)
-    {
-        if (!PerformanceEnabled || startTimestamp == 0L)
-        {
-            return;
-        }
-
-        double elapsedMilliseconds = (Stopwatch.GetTimestamp() - startTimestamp) * 1000d / Stopwatch.Frequency;
-        int index = (int)metric;
-        PerformanceCounts[index]++;
-        PerformanceTotalMilliseconds[index] += elapsedMilliseconds;
-        if (elapsedMilliseconds > PerformanceMaxMilliseconds[index])
-        {
-            PerformanceMaxMilliseconds[index] = elapsedMilliseconds;
-        }
-    }
-
     public static void Trace(string message)
     {
-        if (!VerboseEnabled || message.NullOrEmpty())
+        if (!LoggingEnabled || message.NullOrEmpty())
         {
             return;
         }
 
         Log.Message($"[Contagion] {message}");
+    }
+
+    // Structured per-roll log line. Always emits passes; suppresses sub-10% failures when the
+    // "suppress low-probability roll logs" toggle is on, so the log isn't drowned in 0.02% misses.
+    public static void LogRoll(
+        ContagionDebugVectorKind vector,
+        Thing source,
+        Thing target,
+        HediffDef disease,
+        float chance,
+        bool passed)
+    {
+        if (!LoggingEnabled)
+        {
+            return;
+        }
+
+        if (!passed
+            && (Contagion_Mod.Settings?.suppressLowProbabilityLogs ?? true)
+            && chance < 0.10f)
+        {
+            return;
+        }
+
+        Log.Message(
+            $"[Contagion] ROLL {vector} {(disease != null ? disease.defName : "?")} "
+            + $"{DescribeThing(source)}→{DescribeThing(target)}: "
+            + $"chance={chance:P2} → {(passed ? "PASS" : "fail")}");
+    }
+
+    // Verbose variant that dumps the factor breakdown for airborne/proximity rolls.
+    public static void LogRoll(Thing source, Thing target, ContagionSpreadBreakdown breakdown, bool passed)
+    {
+        if (breakdown == null)
+        {
+            return;
+        }
+
+        if (!LoggingEnabled)
+        {
+            return;
+        }
+
+        float chance = Mathf.Clamp01(breakdown.FinalChance);
+        if (!passed
+            && (Contagion_Mod.Settings?.suppressLowProbabilityLogs ?? true)
+            && chance < 0.10f)
+        {
+            return;
+        }
+
+        Log.Message(
+            $"[Contagion] ROLL {breakdown.VectorKind} {(breakdown.DiseaseDef != null ? breakdown.DiseaseDef.defName : "?")} "
+            + $"{DescribeThing(source)}→{DescribeThing(target)}: chance={chance:P2} → {(passed ? "PASS" : "fail")} "
+            + $"[base={breakdown.BaseChance:0.###} infectivity={breakdown.Infectivity:0.###} "
+            + $"dist={breakdown.Distance:0.#}/{breakdown.DistanceFactor:0.##} enclosure={breakdown.EnclosureFactor:0.##} "
+            + $"obstruction={breakdown.ObstructionFactor:0.##} outdoor={breakdown.OutdoorFactor:0.##} "
+            + $"cleanliness={breakdown.CleanlinessFactor:0.##} mask={breakdown.MaskFactor:0.##} "
+            + $"suppression={breakdown.SuppressionFactor:0.##} eligibility={breakdown.TargetEligibilityFactor:0.##} "
+            + $"seasonal={breakdown.SeasonalMultiplier:0.##} settings={breakdown.SettingsMultiplier:0.##}]");
+    }
+
+    private static string DescribeThing(Thing thing)
+    {
+        if (thing == null)
+        {
+            return "env";
+        }
+
+        return $"{thing.LabelShort}#{thing.thingIDNumber}";
     }
 
     public static void UpdateDirectorSummary(
@@ -241,7 +273,7 @@ public static class ContagionDiagnostics
         float animalBurden,
         float multiplier)
     {
-        if (!Enabled)
+        if (!CountersEnabled)
         {
             return;
         }
@@ -257,7 +289,7 @@ public static class ContagionDiagnostics
 
     public static string BuildIncidenceReport()
     {
-        if (!Enabled)
+        if (!CountersEnabled)
         {
             return string.Empty;
         }
@@ -306,7 +338,7 @@ public static class ContagionDiagnostics
 
     public static string BuildSpreadReport()
     {
-        if (!Enabled)
+        if (!CountersEnabled)
         {
             return string.Empty;
         }
@@ -330,31 +362,6 @@ public static class ContagionDiagnostics
         stringBuilder.Append("Contagion_DiagnosticsSpreadContamination".Translate(
             GetCounter(ContagionDiagnosticCounter.MealsContaminated),
             GetCounter(ContagionDiagnosticCounter.VomitFilthContaminated)).Resolve());
-        return stringBuilder.ToString();
-    }
-
-    public static string BuildPerformanceReport()
-    {
-        if (!PerformanceEnabled)
-        {
-            return string.Empty;
-        }
-
-        if (PerformanceCounts[(int)ContagionPerformanceMetric.TransmissionPass] == 0
-            && PerformanceCounts[(int)ContagionPerformanceMetric.EnvironmentalPass] == 0)
-        {
-            return "Contagion_DiagnosticsNoPerformanceData".Translate().Resolve();
-        }
-
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.AppendLine("Contagion_DiagnosticsPerformanceTransmission".Translate(
-            FormatAverageMilliseconds(ContagionPerformanceMetric.TransmissionPass),
-            FormatMaxMilliseconds(ContagionPerformanceMetric.TransmissionPass),
-            PerformanceCounts[(int)ContagionPerformanceMetric.TransmissionPass]).Resolve());
-        stringBuilder.Append("Contagion_DiagnosticsPerformanceEnvironmental".Translate(
-            FormatAverageMilliseconds(ContagionPerformanceMetric.EnvironmentalPass),
-            FormatMaxMilliseconds(ContagionPerformanceMetric.EnvironmentalPass),
-            PerformanceCounts[(int)ContagionPerformanceMetric.EnvironmentalPass]).Resolve());
         return stringBuilder.ToString();
     }
 
@@ -395,21 +402,5 @@ public static class ContagionDiagnostics
     private static string FormatSuccessAttempts(ContagionDiagnosticCounter successCounter, ContagionDiagnosticCounter attemptCounter)
     {
         return $"{GetCounter(successCounter)}/{GetCounter(attemptCounter)}";
-    }
-
-    private static string FormatAverageMilliseconds(ContagionPerformanceMetric metric)
-    {
-        int index = (int)metric;
-        if (PerformanceCounts[index] <= 0)
-        {
-            return "0.00";
-        }
-
-        return (PerformanceTotalMilliseconds[index] / PerformanceCounts[index]).ToString("0.00");
-    }
-
-    private static string FormatMaxMilliseconds(ContagionPerformanceMetric metric)
-    {
-        return PerformanceMaxMilliseconds[(int)metric].ToString("0.00");
     }
 }

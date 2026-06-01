@@ -26,6 +26,11 @@ public sealed class Comp_ContaminatedFood : ThingComp
 
     private int _contaminationTick = -1;
 
+    // Session-only trace-graph link: the node id that contaminated this stack. Carries the
+    // infection chain forward (corpse/bench → meat → meal → eater). Deliberately NOT scribed —
+    // the graph it points into is rebuilt fresh each session.
+    public int sourceTraceNodeId = -1;
+
     public bool IsContaminated => _contaminatedDiseaseDef != null;
 
     public HediffDef ContaminatedDiseaseDef => _contaminatedDiseaseDef;
@@ -71,9 +76,32 @@ public sealed class Comp_ContaminatedFood : ThingComp
             _contaminatedDiseaseDef = resolvedProfile.DiseaseDef;
             _contaminationFactor = sourceInfectivity * GetCleanlinessFactor(pawn.GetRoom(), foodborneVector.cleanlinessImpact);
             _contaminationTick = Find.TickManager.TicksGame;
+            // Trace lineage: the contagious cook is this meal's source node. The meal's own node
+            // is created when it spawns (PostSpawnSetup), linking from here.
+            sourceTraceNodeId = ContagionTrace.EnsureNode(pawn, _contaminatedDiseaseDef);
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
             ContagionDiagnostics.Trace($"Meal contaminated: {_contaminatedDiseaseDef.defName} by {pawn.LabelShortCap}.");
             return;
+        }
+    }
+
+    public override void PostSpawnSetup(bool respawningAfterLoad)
+    {
+        base.PostSpawnSetup(respawningAfterLoad);
+
+        // When a contaminated stack spawns with a recorded upstream source, create its own trace
+        // node and link the chain through it. sourceTraceNodeId is not saved, so this only fires
+        // for freshly-produced food in the current session — which is exactly what we trace.
+        if (respawningAfterLoad || _contaminatedDiseaseDef == null || sourceTraceNodeId < 0)
+        {
+            return;
+        }
+
+        int selfNode = ContagionTrace.EnsureNode(parent, _contaminatedDiseaseDef);
+        if (selfNode >= 0)
+        {
+            ContagionTrace.Edge(parent.MapHeld, sourceTraceNodeId, selfNode, ContagionDebugVectorKind.Foodborne);
+            sourceTraceNodeId = selfNode;
         }
     }
 
@@ -92,6 +120,11 @@ public sealed class Comp_ContaminatedFood : ThingComp
             _contaminatedDiseaseDef = otherComp._contaminatedDiseaseDef;
             _contaminationFactor = otherComp._contaminationFactor;
             _contaminationTick = otherComp._contaminationTick;
+            if (sourceTraceNodeId < 0)
+            {
+                sourceTraceNodeId = otherComp.sourceTraceNodeId;
+            }
+
             return;
         }
 
@@ -175,20 +208,28 @@ public sealed class Comp_ContaminatedFood : ThingComp
             ingester.MapHeld,
             transmissionMultiplier,
             out HediffDef _);
-        if (Rand.Chance(Mathf.Clamp01(chance)))
+        bool passed = Rand.Chance(Mathf.Clamp01(chance));
+        bool seeded = false;
+        if (passed)
         {
-            if (ContagionDiseaseUtility.TrySeedIncubation(
+            seeded = ContagionDiseaseUtility.TrySeedIncubation(
                 ingester,
                 resolvedProfile.DiseaseDef,
                 resolvedProfile.PartsToAffect,
                 ContagionDiagnosticOrigin.Spread,
                 ContagionSeedSource.Foodborne,
-                out HediffDef _))
+                out HediffDef _);
+            if (seeded)
             {
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneSeeded);
                 ContagionDiagnostics.Trace($"Foodborne transmission: {resolvedProfile.DiseaseDef.defName} to {ingester.LabelShortCap}.");
+                // Link the meal node (this stack) → eater. EnsureNode dedups on the parent anchor,
+                // so the eater connects to the existing meal node and its upstream chain.
+                ContagionTrace.Transmission(parent, ingester, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.Foodborne);
             }
         }
+
+        ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Foodborne, parent, ingester, resolvedProfile.DiseaseDef, Mathf.Clamp01(chance), seeded);
     }
 
     public override void PostExposeData()

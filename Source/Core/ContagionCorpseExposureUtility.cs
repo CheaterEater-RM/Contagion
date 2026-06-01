@@ -132,10 +132,12 @@ public static class ContagionCorpseExposureUtility
 
         return TryApplyCorpseExposure(
             target,
+            corpse,
             resolvedProfile,
             Mathf.Max(0f, baseChance) * fleaPotency * Mathf.Max(0f, contextFactor),
             ContagionDiagnosticCounter.CorpseFleaAttempted,
             ContagionDiagnosticCounter.CorpseFleaSeeded,
+            ContagionDebugVectorKind.CorpseFlea,
             "Corpse flea");
     }
 
@@ -167,10 +169,12 @@ public static class ContagionCorpseExposureUtility
 
         return TryApplyCorpseExposure(
             target,
+            corpse,
             resolvedProfile,
             baseChance * potency * Mathf.Max(0f, contextFactor),
             ContagionDiagnosticCounter.CorpseFluidAttempted,
             ContagionDiagnosticCounter.CorpseFluidSeeded,
+            ContagionDebugVectorKind.CorpseFluid,
             "Corpse fluid");
     }
 
@@ -235,10 +239,12 @@ public static class ContagionCorpseExposureUtility
 
     private static bool TryApplyCorpseExposure(
         Pawn target,
+        Corpse corpse,
         ResolvedTransmissionProfile resolvedProfile,
         float baseChance,
         ContagionDiagnosticCounter attemptedCounter,
         ContagionDiagnosticCounter seededCounter,
+        ContagionDebugVectorKind vectorKind,
         string label)
     {
         if (target?.MapHeld == null || baseChance <= 0f)
@@ -256,24 +262,27 @@ public static class ContagionCorpseExposureUtility
             transmissionMultiplier,
             out HediffDef _);
 
-        if (!Rand.Chance(Mathf.Clamp01(chance)))
+        float finalChance = Mathf.Clamp01(chance);
+        bool passed = Rand.Chance(finalChance);
+        bool seeded = false;
+        if (passed)
         {
-            return false;
+            seeded = ContagionDiseaseUtility.TrySeedIncubation(
+                target,
+                resolvedProfile.DiseaseDef,
+                resolvedProfile.PartsToAffect,
+                ContagionDiagnosticOrigin.Spread,
+                ContagionSeedSource.Corpse,
+                out HediffDef _);
+            if (seeded)
+            {
+                ContagionDiagnostics.Record(seededCounter);
+                ContagionDiagnostics.Trace($"{label} transmission: {resolvedProfile.DiseaseDef.defName} to {target.LabelShortCap}.");
+                ContagionTrace.Transmission(corpse, target, resolvedProfile.DiseaseDef, vectorKind);
+            }
         }
 
-        bool seeded = ContagionDiseaseUtility.TrySeedIncubation(
-            target,
-            resolvedProfile.DiseaseDef,
-            resolvedProfile.PartsToAffect,
-            ContagionDiagnosticOrigin.Spread,
-            ContagionSeedSource.Corpse,
-            out HediffDef _);
-        if (seeded)
-        {
-            ContagionDiagnostics.Record(seededCounter);
-            ContagionDiagnostics.Trace($"{label} transmission: {resolvedProfile.DiseaseDef.defName} to {target.LabelShortCap}.");
-        }
-
+        ContagionDiagnostics.LogRoll(vectorKind, corpse, target, resolvedProfile.DiseaseDef, finalChance, seeded);
         return seeded;
     }
 }

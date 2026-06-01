@@ -3,11 +3,28 @@ using Verse;
 
 namespace Contagion;
 
+// Saved nowhere — the trace graph is session-only. Ordering is cosmetic; appended for tidiness.
 public enum ContagionDebugVectorKind
 {
     Airborne,
     Proximity,
-    Social
+    Social,
+    Foodborne,
+    CorpseFlea,
+    CorpseFluid,
+    Cooking,
+    Fomite,
+    Environmental
+}
+
+// Glyph selector for rendering a trace node. Derived from the node's current anchor.
+public enum ContagionTraceNodeKind
+{
+    Pawn,
+    Corpse,
+    Bench,
+    Item,
+    Cell
 }
 
 public sealed class ContagionSpreadBreakdown
@@ -58,71 +75,87 @@ public sealed class ContagionSpreadBreakdown
         * Mathf.Max(0f, SettingsMultiplier);
 }
 
-public sealed class ContagionTransmissionTrace
+// A node in the session-only infection trace graph. Anchors to a live Thing (pawn / corpse /
+// item stack / bench) while it exists, then falls back to LastCell as a "ghost" once the Thing
+// is destroyed or unspawned. Plain runtime object — never serialized.
+public sealed class ContagionTraceNode
 {
-    public ContagionTransmissionTrace(
-        Pawn sourcePawn,
-        Pawn targetPawn,
-        HediffDef diseaseDef,
-        ContagionDebugVectorKind vectorKind,
-        int tick)
+    public ContagionTraceNode(int id, Thing anchor, IntVec3 lastCell, HediffDef disease, int createdTick)
     {
-        SourcePawn = sourcePawn;
-        TargetPawn = targetPawn;
-        DiseaseDef = diseaseDef;
-        VectorKind = vectorKind;
+        Id = id;
+        Anchor = anchor;
+        LastCell = lastCell;
+        Disease = disease;
+        CreatedTick = createdTick;
+    }
+
+    public int Id { get; }
+
+    public Thing Anchor { get; set; }
+
+    public IntVec3 LastCell { get; set; }
+
+    public HediffDef Disease { get; }
+
+    public int CreatedTick { get; }
+
+    public bool Orphaned => Anchor == null || Anchor.Destroyed || !Anchor.SpawnedOrAnyParentSpawned;
+
+    public ContagionTraceNodeKind Kind
+    {
+        get
+        {
+            switch (Anchor)
+            {
+                case null:
+                    return ContagionTraceNodeKind.Cell;
+                case Corpse:
+                    return ContagionTraceNodeKind.Corpse;
+                case Pawn:
+                    return ContagionTraceNodeKind.Pawn;
+                case Building:
+                    return ContagionTraceNodeKind.Bench;
+                default:
+                    return ContagionTraceNodeKind.Item;
+            }
+        }
+    }
+
+    // Best draw position: the live anchor (or its holder) centre, else the last-known cell.
+    public Vector3 DrawPosition
+    {
+        get
+        {
+            if (Anchor != null && Anchor.SpawnedOrAnyParentSpawned)
+            {
+                Thing spawned = Anchor.SpawnedParentOrMe;
+                if (spawned != null && spawned.Spawned)
+                {
+                    return spawned.DrawPos;
+                }
+            }
+
+            return LastCell.ToVector3Shifted();
+        }
+    }
+}
+
+// A directed link in the trace graph (source → target) tagged with the vector that carried it.
+public sealed class ContagionTraceEdge
+{
+    public ContagionTraceEdge(int fromId, int toId, ContagionDebugVectorKind vector, int tick)
+    {
+        FromId = fromId;
+        ToId = toId;
+        Vector = vector;
         Tick = tick;
     }
 
-    public Pawn SourcePawn { get; }
+    public int FromId { get; }
 
-    public Pawn TargetPawn { get; }
+    public int ToId { get; }
 
-    public HediffDef DiseaseDef { get; }
-
-    public ContagionDebugVectorKind VectorKind { get; }
+    public ContagionDebugVectorKind Vector { get; }
 
     public int Tick { get; }
-
-    public bool Matches(Pawn sourcePawn, Pawn targetPawn, HediffDef diseaseDef, ContagionDebugVectorKind vectorKind)
-    {
-        return SourcePawn == sourcePawn
-            && TargetPawn == targetPawn
-            && DiseaseDef == diseaseDef
-            && VectorKind == vectorKind;
-    }
-
-    public bool Contains(Pawn pawn)
-    {
-        return pawn != null && (SourcePawn == pawn || TargetPawn == pawn);
-    }
-
-    public bool IsValidFor(Map map)
-    {
-        if (SourcePawn == null || TargetPawn == null || map == null)
-        {
-            return false;
-        }
-
-        if (!SourcePawn.Spawned
-            || !TargetPawn.Spawned
-            || SourcePawn.Map != map
-            || TargetPawn.Map != map
-            || SourcePawn.Destroyed
-            || TargetPawn.Destroyed)
-        {
-            return false;
-        }
-
-        // Resolve the hediff the target pawn actually carries: animals get the animal-variant hediff
-        // (e.g. Animal_Plague) rather than the primary def, so checking against the primary def
-        // would always return false and prune animal-target traces on the very next tick.
-        HediffDef effectiveDef = DiseaseDef;
-        if (DiseaseProfileCache.TryGetResolvedProfile(DiseaseDef, out ResolvedTransmissionProfile profile))
-        {
-            effectiveDef = profile.ResolveHediffForPawn(TargetPawn);
-        }
-
-        return ContagionDiseaseUtility.HasDiseaseOrIncubation(TargetPawn, effectiveDef);
-    }
 }

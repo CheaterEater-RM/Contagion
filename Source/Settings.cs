@@ -45,9 +45,11 @@ public sealed class Contagion_Settings : ModSettings
 
     private const bool DefaultMaskProtection = true;
 
-    private const ContagionDiagnosticsMode DefaultDiagnosticsMode = ContagionDiagnosticsMode.Off;
+    private const bool DefaultEnableLogging = false;
 
-    private const bool DefaultShowPerformanceStats = false;
+    private const bool DefaultDeveloperMode = false;
+
+    private const bool DefaultSuppressLowProbabilityLogs = true;
 
     private const bool DefaultSuppressAnimalClusterNotifications = true;
 
@@ -63,17 +65,20 @@ public sealed class Contagion_Settings : ModSettings
 
     public bool maskProtection = DefaultMaskProtection;
 
-    public ContagionDiagnosticsMode diagnosticsMode = DefaultDiagnosticsMode;
+    public bool enableLogging = DefaultEnableLogging;
 
-    public bool showPerformanceStats = DefaultShowPerformanceStats;
+    public bool developerMode = DefaultDeveloperMode;
+
+    public bool suppressLowProbabilityLogs = DefaultSuppressLowProbabilityLogs;
 
     public bool suppressAnimalClusterNotifications = DefaultSuppressAnimalClusterNotifications;
 
-    public bool DiagnosticsEnabled => diagnosticsMode != ContagionDiagnosticsMode.Off;
+    public bool LoggingEnabled => enableLogging;
 
-    public bool VerboseDiagnosticsEnabled => diagnosticsMode == ContagionDiagnosticsMode.Verbose && Prefs.DevMode;
-
-    public bool DeveloperDiagnosticsEnabled => diagnosticsMode == ContagionDiagnosticsMode.Developer && Prefs.DevMode;
+    // The mod's developer mode is a self-contained toggle, deliberately independent of
+    // RimWorld's Prefs.DevMode: enabling it turns on every Contagion dev feature (overlays,
+    // tracing, infected indicators, seed/force-arrival controls) without further gating.
+    public bool DeveloperDiagnosticsEnabled => developerMode;
 
     // Difficulty scales person-to-person transmission on top of the user slider.
     public float DifficultyTransmissionScale => difficulty switch
@@ -103,8 +108,9 @@ public sealed class Contagion_Settings : ModSettings
         difficulty = DefaultDifficulty;
         seedingMode = DefaultSeedingMode;
         maskProtection = DefaultMaskProtection;
-        diagnosticsMode = DefaultDiagnosticsMode;
-        showPerformanceStats = DefaultShowPerformanceStats;
+        enableLogging = DefaultEnableLogging;
+        developerMode = DefaultDeveloperMode;
+        suppressLowProbabilityLogs = DefaultSuppressLowProbabilityLogs;
         suppressAnimalClusterNotifications = DefaultSuppressAnimalClusterNotifications;
     }
 
@@ -117,8 +123,9 @@ public sealed class Contagion_Settings : ModSettings
         Scribe_Values.Look(ref difficulty, "difficulty", DefaultDifficulty);
         Scribe_Values.Look(ref seedingMode, "seedingMode", DefaultSeedingMode);
         Scribe_Values.Look(ref maskProtection, "maskProtection", DefaultMaskProtection);
-        Scribe_Values.Look(ref diagnosticsMode, "diagnosticsMode", DefaultDiagnosticsMode);
-        Scribe_Values.Look(ref showPerformanceStats, "showPerformanceStats", DefaultShowPerformanceStats);
+        Scribe_Values.Look(ref enableLogging, "enableLogging", DefaultEnableLogging);
+        Scribe_Values.Look(ref developerMode, "developerMode", DefaultDeveloperMode);
+        Scribe_Values.Look(ref suppressLowProbabilityLogs, "suppressLowProbabilityLogs", DefaultSuppressLowProbabilityLogs);
         Scribe_Values.Look(ref suppressAnimalClusterNotifications, "suppressAnimalClusterNotifications", DefaultSuppressAnimalClusterNotifications);
 
         ClampValues();
@@ -236,44 +243,26 @@ public sealed class Contagion_Mod : Mod
         listing.Label("Contagion_SettingsDiagnosticsHeader".Translate());
         listing.Gap();
 
-        if (listing.RadioButton(
-            "Contagion_DiagnosticsModeOff".Translate().Resolve(),
-            settings.diagnosticsMode == ContagionDiagnosticsMode.Off,
-            tooltip: "Contagion_DiagnosticsModeOffTooltip".Translate().Resolve()))
-        {
-            settings.diagnosticsMode = ContagionDiagnosticsMode.Off;
-        }
-
-        if (listing.RadioButton(
-            "Contagion_DiagnosticsModeSummary".Translate().Resolve(),
-            settings.diagnosticsMode == ContagionDiagnosticsMode.Summary,
-            tooltip: "Contagion_DiagnosticsModeSummaryTooltip".Translate().Resolve()))
-        {
-            settings.diagnosticsMode = ContagionDiagnosticsMode.Summary;
-        }
-
-        if (listing.RadioButton(
-            "Contagion_DiagnosticsModeVerbose".Translate().Resolve(),
-            settings.diagnosticsMode == ContagionDiagnosticsMode.Verbose,
-            tooltip: "Contagion_DiagnosticsModeVerboseTooltip".Translate().Resolve()))
-        {
-            settings.diagnosticsMode = ContagionDiagnosticsMode.Verbose;
-        }
-
-        if (listing.RadioButton(
-            "Contagion_DiagnosticsModeDeveloper".Translate().Resolve(),
-            settings.diagnosticsMode == ContagionDiagnosticsMode.Developer,
-            tooltip: "Contagion_DiagnosticsModeDeveloperTooltip".Translate().Resolve()))
-        {
-            settings.diagnosticsMode = ContagionDiagnosticsMode.Developer;
-        }
-
         listing.CheckboxLabeled(
-            "Contagion_ShowPerformanceStats".Translate().Resolve(),
-            ref settings.showPerformanceStats,
-            "Contagion_ShowPerformanceStatsTooltip".Translate().Resolve());
+            "Contagion_SettingEnableLogging".Translate().Resolve(),
+            ref settings.enableLogging,
+            "Contagion_SettingEnableLoggingTooltip".Translate().Resolve());
 
-        if (settings.DiagnosticsEnabled)
+        if (settings.enableLogging)
+        {
+            listing.CheckboxLabeled(
+                "Contagion_SettingSuppressLowProbabilityLogs".Translate().Resolve(),
+                ref settings.suppressLowProbabilityLogs,
+                "Contagion_SettingSuppressLowProbabilityLogsTooltip".Translate().Resolve());
+        }
+
+        listing.Gap(6f);
+        listing.CheckboxLabeled(
+            "Contagion_SettingDeveloperMode".Translate().Resolve(),
+            ref settings.developerMode,
+            "Contagion_SettingDeveloperModeTooltip".Translate().Resolve());
+
+        if (settings.developerMode)
         {
             listing.Gap(6f);
             listing.Label("Contagion_DiagnosticsRuntimeHeader".Translate());
@@ -283,34 +272,14 @@ public sealed class Contagion_Mod : Mod
             listing.Label("Contagion_DiagnosticsSpreadHeader".Translate());
             listing.SubLabel(ContagionDiagnostics.BuildSpreadReport(), 1f);
 
-            if (settings.showPerformanceStats)
-            {
-                listing.Gap(4f);
-                listing.Label("Contagion_DiagnosticsPerformanceHeader".Translate());
-                listing.SubLabel(ContagionDiagnostics.BuildPerformanceReport(), 1f);
-            }
-
-            if (settings.diagnosticsMode == ContagionDiagnosticsMode.Developer)
-            {
-                listing.Gap(6f);
-                DrawDeveloperDiagnosticsControls(listing);
-            }
+            listing.Gap(6f);
+            DrawDeveloperDiagnosticsControls(listing);
 
             listing.Gap(6f);
 
             if (listing.ButtonText("Contagion_ClearDiagnostics".Translate()))
             {
                 ContagionDiagnostics.Reset();
-            }
-
-            if (settings.diagnosticsMode == ContagionDiagnosticsMode.Verbose && !Prefs.DevMode)
-            {
-                listing.SubLabel("Contagion_DiagnosticsVerboseDevMode".Translate().Resolve(), 1f);
-            }
-
-            if (settings.diagnosticsMode == ContagionDiagnosticsMode.Developer && !Prefs.DevMode)
-            {
-                listing.SubLabel("Contagion_DiagnosticsDeveloperDevMode".Translate().Resolve(), 1f);
             }
         }
 
@@ -327,11 +296,6 @@ public sealed class Contagion_Mod : Mod
     private static void DrawDeveloperDiagnosticsControls(Listing_Standard listing)
     {
         listing.Label("Contagion_DeveloperDiagnosticsHeader".Translate());
-        if (!Prefs.DevMode)
-        {
-            listing.SubLabel("Contagion_DiagnosticsDeveloperDevMode".Translate().Resolve(), 1f);
-            return;
-        }
 
         Map currentMap = Find.CurrentMap;
         if (currentMap == null)
@@ -385,9 +349,9 @@ public sealed class Contagion_Mod : Mod
         listing.Gap(4f);
         listing.Label("Contagion_DeveloperTraceHeader".Translate());
         listing.SubLabel(
-            "Contagion_DeveloperTraceCount".Translate(component.DeveloperDiagnostics.TransmissionTraces.Count).Resolve(),
+            "Contagion_DeveloperTraceCount".Translate(component.DeveloperDiagnostics.TraceElementCount).Resolve(),
             1f);
-        if (component.DeveloperDiagnostics.TransmissionTraces.Count > 0
+        if (component.DeveloperDiagnostics.TraceElementCount > 0
             && listing.ButtonText("Contagion_DeveloperClearAllTraces".Translate()))
         {
             component.DeveloperDiagnostics.ClearAllTraces();

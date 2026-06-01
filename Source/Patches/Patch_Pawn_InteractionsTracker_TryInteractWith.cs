@@ -173,28 +173,38 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
                 obstructionFactor,
                 maskFactor,
                 suppressionFactor,
-                out ContagionSpreadBreakdown breakdown)
-                || !Rand.Chance(Mathf.Clamp01(breakdown.FinalChance)))
+                out ContagionSpreadBreakdown breakdown))
             {
                 continue;
             }
 
-            if (ContagionDiseaseUtility.TrySeedIncubation(
-                targetPawn,
-                resolvedProfile.DiseaseDef,
-                resolvedProfile.PartsToAffect,
-                sourcePawn,
-                ContagionDiagnosticOrigin.Spread,
-                ContagionSeedSource.Contact,
-                out HediffDef _))
+            bool passed = Rand.Chance(Mathf.Clamp01(breakdown.FinalChance));
+            bool seeded = false;
+            if (passed)
             {
-                ContagionDiagnostics.Record(ContagionDiagnosticCounter.SocialSeeded);
-                ContagionDiagnostics.Trace($"Social transmission: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap} to {targetPawn.LabelShortCap}.");
-                map.GetComponent<Contagion_MapTransmissionComponent>()?.DeveloperDiagnostics.RecordTransmissionTrace(
-                    sourcePawn,
+                seeded = ContagionDiseaseUtility.TrySeedIncubation(
                     targetPawn,
                     resolvedProfile.DiseaseDef,
-                    ContagionDebugVectorKind.Social);
+                    resolvedProfile.PartsToAffect,
+                    sourcePawn,
+                    ContagionDiagnosticOrigin.Spread,
+                    ContagionSeedSource.Contact,
+                    out HediffDef _);
+                if (seeded)
+                {
+                    ContagionDiagnostics.Record(ContagionDiagnosticCounter.SocialSeeded);
+                    ContagionDiagnostics.Trace($"Social transmission: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap} to {targetPawn.LabelShortCap}.");
+                    map.GetComponent<Contagion_MapTransmissionComponent>()?.DeveloperDiagnostics.RecordTransmissionTrace(
+                        sourcePawn,
+                        targetPawn,
+                        resolvedProfile.DiseaseDef,
+                        ContagionDebugVectorKind.Social);
+                }
+            }
+
+            ContagionDiagnostics.LogRoll(sourcePawn, targetPawn, breakdown, seeded);
+            if (seeded)
+            {
                 break;
             }
         }

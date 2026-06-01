@@ -176,21 +176,29 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
                     map,
                     transmissionMultiplier,
                     out HediffDef _);
-                if (!Rand.Chance(Mathf.Clamp01(chance)))
+                float finalChance = Mathf.Clamp01(chance);
+                bool passed = Rand.Chance(finalChance);
+                bool seeded = false;
+                if (passed)
                 {
-                    continue;
+                    seeded = ContagionDiseaseUtility.TrySeedIncubation(
+                        pawn,
+                        resolvedProfile.DiseaseDef,
+                        resolvedProfile.PartsToAffect,
+                        ContagionDiagnosticOrigin.Spread,
+                        ContagionSeedSource.Contact,
+                        out HediffDef _);
+                    if (seeded)
+                    {
+                        ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteSeeded);
+                        ContagionDiagnostics.Trace($"Fomite transmission: {resolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap} from vomit filth.");
+                        ContagionTrace.Transmission(filth, pawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.Fomite);
+                    }
                 }
 
-                if (ContagionDiseaseUtility.TrySeedIncubation(
-                    pawn,
-                    resolvedProfile.DiseaseDef,
-                    resolvedProfile.PartsToAffect,
-                    ContagionDiagnosticOrigin.Spread,
-                    ContagionSeedSource.Contact,
-                    out HediffDef _))
+                ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Fomite, filth, pawn, resolvedProfile.DiseaseDef, finalChance, seeded);
+                if (seeded)
                 {
-                    ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteSeeded);
-                    ContagionDiagnostics.Trace($"Fomite transmission: {resolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap} from vomit filth.");
                     break;
                 }
             }

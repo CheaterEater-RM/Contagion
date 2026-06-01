@@ -49,6 +49,7 @@ public static class ContagionSeedingExecutionUtility
 
             if (!Rand.Chance(Mathf.Clamp01(chance)))
             {
+                ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Environmental, null, pawn, resolvedProfile.DiseaseDef, Mathf.Clamp01(chance), passed: false);
                 continue;
             }
 
@@ -61,6 +62,7 @@ public static class ContagionSeedingExecutionUtility
                 out HediffDef seedImmunityCause))
             {
                 seededPawns.Add(pawn);
+                ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Environmental, null, pawn, resolvedProfile.DiseaseDef, Mathf.Clamp01(chance), passed: true);
             }
             else if (seedImmunityCause != null)
             {

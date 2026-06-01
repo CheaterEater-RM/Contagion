@@ -145,12 +145,10 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
         if (runEnvironmental)
         {
-            long environmentalTiming = ContagionDiagnostics.BeginTiming();
             RunGeneralSeederPass(spawnedPawns);
             _environmentalExposureProcessor.RunEnvironmentalExposurePass(spawnedPawns);
             ContagionSeedingCoordinator.RunSpontaneousFalsePositives(spawnedPawns, EnvironmentalCheckInterval);
             PruneStaleOutbreaks();
-            ContagionDiagnostics.EndTiming(ContagionPerformanceMetric.EnvironmentalPass, environmentalTiming);
         }
 
         if (!runTransmission)
@@ -158,7 +156,6 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             return;
         }
 
-        long transmissionTiming = ContagionDiagnostics.BeginTiming();
         _vomitFomiteTracker.RunFomiteExposurePass(spawnedPawns, map);
         _corpseExposureProcessor.RunCorpseExposurePass(spawnedPawns, TransmissionCheckInterval);
 
@@ -166,8 +163,6 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         {
             _pawnTransmissionProcessor.RunPawnTransmissionPass(spawnedPawns);
         }
-
-        ContagionDiagnostics.EndTiming(ContagionPerformanceMetric.TransmissionPass, transmissionTiming);
     }
 
     public void NotifyVomitFilthCreated(Filth filth, Pawn sourcePawn)

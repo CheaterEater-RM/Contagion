@@ -57,11 +57,27 @@ internal static class Patch_Corpse_ButcherProducts
 
         ApplyButcheryExposure(butcher, __instance, resolvedProfile);
 
-        if (!infectionWasKnown && Rand.Chance(ContagionDiagnosticSkillUtility.ComputeDiagnosticChance(butcher, isAnimalSubject: !isHuman, isButchery: true)))
+        if (!infectionWasKnown)
         {
-            // Butcher noticed an unknown infection — discard all products, forbid and alert.
-            NotifyButcherNoticed(butcher, __instance, contagiousDisease);
-            yield break;
+            float noticeChance = ContagionDiagnosticSkillUtility.ComputeDiagnosticChance(butcher, isAnimalSubject: !isHuman, isButchery: true);
+            bool noticed = Rand.Chance(noticeChance);
+            ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.CorpseFluid, __instance, butcher, contagiousDisease, noticeChance, noticed);
+            if (noticed)
+            {
+                // Butcher noticed an unknown infection — discard all products, forbid and alert.
+                NotifyButcherNoticed(butcher, __instance, contagiousDisease);
+                yield break;
+            }
+        }
+
+        // Tie the corpse to the butchery bench so the meat chain has a clear origin point.
+        int benchNodeId = -1;
+        Building bench = butcher?.CurJob?.GetTarget(Verse.AI.TargetIndex.A).Thing as Building;
+        if (bench != null)
+        {
+            int corpseNodeId = ContagionTrace.EnsureNode(__instance, contagiousDisease);
+            benchNodeId = ContagionTrace.EnsureNode(bench, contagiousDisease);
+            ContagionTrace.Edge(bench.Map, corpseNodeId, benchNodeId, ContagionDebugVectorKind.CorpseFluid);
         }
 
         // Didn't notice — contaminate produced meat items.
@@ -71,6 +87,8 @@ internal static class Patch_Corpse_ButcherProducts
             if (comp != null)
             {
                 comp.SetContamination(contagiousDisease, 1.0f);
+                // Stamp the upstream node so each meat stack links from the bench when it spawns.
+                comp.sourceTraceNodeId = benchNodeId;
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
                 ContagionDiagnostics.Trace($"Butchery contamination: {contagiousDisease.defName} baked into {item.def.defName} from {innerPawn.LabelShortCap}.");
             }

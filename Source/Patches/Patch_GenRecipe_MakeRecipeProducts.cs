@@ -27,6 +27,7 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
         // Find the worst contamination among all ingredients.
         HediffDef worstDisease = null;
         float worstFactor = 0f;
+        int worstSourceNodeId = -1;
 
         if (ingredients != null)
         {
@@ -50,6 +51,7 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
                 {
                     worstFactor = comp.ContaminationFactor;
                     worstDisease = comp.ContaminatedDiseaseDef;
+                    worstSourceNodeId = comp.sourceTraceNodeId;
                 }
             }
         }
@@ -64,6 +66,8 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
                 if (productComp != null && !productComp.IsContaminated)
                 {
                     productComp.SetContamination(worstDisease, worstFactor * cookingFactor);
+                    // Carry the ingredient's trace node forward so the meal links to the meat.
+                    productComp.sourceTraceNodeId = worstSourceNodeId;
                     ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
                     ContagionDiagnostics.Trace($"Ingredient contamination: {worstDisease.defName} propagated to {product.def.defName} (factor {worstFactor * cookingFactor:F2}).");
                 }
@@ -123,6 +127,7 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
         ResolvedTransmissionProfile worstProfile = null;
         Vector_CookingExposure worstVector = null;
         float worstFactor = 0f;
+        int worstSourceNodeId = -1;
 
         for (int i = 0; i < ingredients.Count; i++)
         {
@@ -144,6 +149,7 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
                 worstProfile = resolvedProfile;
                 worstVector = cookingVector;
                 worstFactor = comp.ContaminationFactor;
+                worstSourceNodeId = comp.sourceTraceNodeId;
             }
         }
 
@@ -169,21 +175,28 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
             transmissionMultiplier,
             out HediffDef _);
 
-        if (!Rand.Chance(Mathf.Clamp01(chance)))
+        float finalChance = Mathf.Clamp01(chance);
+        bool passed = Rand.Chance(finalChance);
+        bool seeded = false;
+        if (passed)
         {
-            return;
+            seeded = ContagionDiseaseUtility.TrySeedIncubation(
+                cook,
+                worstProfile.DiseaseDef,
+                worstProfile.PartsToAffect,
+                ContagionDiagnosticOrigin.Spread,
+                ContagionSeedSource.Cooking,
+                out HediffDef _);
+            if (seeded)
+            {
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.CookingExposureSeeded);
+                ContagionDiagnostics.Trace($"Cooking exposure: {worstProfile.DiseaseDef.defName} to {cook.LabelShortCap}.");
+                // Link the contaminated ingredient's node → the infected cook.
+                int cookNodeId = ContagionTrace.EnsureNode(cook, worstProfile.DiseaseDef);
+                ContagionTrace.Edge(cook.MapHeld, worstSourceNodeId, cookNodeId, ContagionDebugVectorKind.Cooking);
+            }
         }
 
-        if (ContagionDiseaseUtility.TrySeedIncubation(
-            cook,
-            worstProfile.DiseaseDef,
-            worstProfile.PartsToAffect,
-            ContagionDiagnosticOrigin.Spread,
-            ContagionSeedSource.Cooking,
-            out HediffDef _))
-        {
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.CookingExposureSeeded);
-            ContagionDiagnostics.Trace($"Cooking exposure: {worstProfile.DiseaseDef.defName} to {cook.LabelShortCap}.");
-        }
+        ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Cooking, null, cook, worstProfile.DiseaseDef, finalChance, seeded);
     }
 }

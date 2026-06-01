@@ -189,25 +189,26 @@ internal sealed class ContagionPawnTransmissionProcessor
             return false;
         }
 
-        if (!Rand.Chance(Mathf.Clamp01(breakdown.FinalChance)))
+        bool passed = Rand.Chance(Mathf.Clamp01(breakdown.FinalChance));
+        bool seeded = false;
+        if (passed)
         {
-            return false;
+            seeded = ContagionDiseaseUtility.TrySeedIncubation(
+                targetPawn,
+                source.ResolvedProfile.ResolveHediffForPawn(targetPawn),
+                source.ResolvedProfile.PartsToAffect,
+                source.Pawn,
+                ContagionDiagnosticOrigin.Spread,
+                ContagionSeedSource.Contact,
+                out HediffDef _);
+            if (seeded)
+            {
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneSeeded);
+                _developerDiagnosticsController.RecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Airborne);
+            }
         }
 
-        bool seeded = ContagionDiseaseUtility.TrySeedIncubation(
-            targetPawn,
-            source.ResolvedProfile.ResolveHediffForPawn(targetPawn),
-            source.ResolvedProfile.PartsToAffect,
-            source.Pawn,
-            ContagionDiagnosticOrigin.Spread,
-            ContagionSeedSource.Contact,
-            out HediffDef _);
-        if (seeded)
-        {
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneSeeded);
-            _developerDiagnosticsController.RecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Airborne);
-        }
-
+        ContagionDiagnostics.LogRoll(source.Pawn, targetPawn, breakdown, seeded);
         return seeded;
     }
 
@@ -251,25 +252,26 @@ internal sealed class ContagionPawnTransmissionProcessor
             return false;
         }
 
-        if (!Rand.Chance(Mathf.Clamp01(breakdown.FinalChance)))
+        bool passed = Rand.Chance(Mathf.Clamp01(breakdown.FinalChance));
+        bool seeded = false;
+        if (passed)
         {
-            return false;
+            seeded = ContagionDiseaseUtility.TrySeedIncubation(
+                targetPawn,
+                source.ResolvedProfile.ResolveHediffForPawn(targetPawn),
+                source.ResolvedProfile.PartsToAffect,
+                source.Pawn,
+                ContagionDiagnosticOrigin.Spread,
+                ContagionSeedSource.Contact,
+                out HediffDef _);
+            if (seeded)
+            {
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.ProximitySeeded);
+                _developerDiagnosticsController.RecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Proximity);
+            }
         }
 
-        bool seeded = ContagionDiseaseUtility.TrySeedIncubation(
-            targetPawn,
-            source.ResolvedProfile.ResolveHediffForPawn(targetPawn),
-            source.ResolvedProfile.PartsToAffect,
-            source.Pawn,
-            ContagionDiagnosticOrigin.Spread,
-            ContagionSeedSource.Contact,
-            out HediffDef _);
-        if (seeded)
-        {
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.ProximitySeeded);
-            _developerDiagnosticsController.RecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Proximity);
-        }
-
+        ContagionDiagnostics.LogRoll(source.Pawn, targetPawn, breakdown, seeded);
         return seeded;
     }
 

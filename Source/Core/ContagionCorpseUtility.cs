@@ -143,6 +143,7 @@ public static class ContagionCorpseUtility
             }
 
             infectedComp.SetInfection(resolvedProfile.DiseaseDef, identified: false);
+            ContagionDiagnostics.Trace($"Posthumous presentation: corpse of {innerPawn.LabelShortCap} flagged infectious with hidden {resolvedProfile.DiseaseDef.defName}.");
             return;
         }
 
@@ -191,18 +192,27 @@ public static class ContagionCorpseUtility
                 transmissionMultiplier,
                 out HediffDef _);
 
-            if (Rand.Chance(Mathf.Clamp01(chance))
-                && ContagionDiseaseUtility.TrySeedIncubation(
+            float finalChance = Mathf.Clamp01(chance);
+            bool passed = Rand.Chance(finalChance);
+            bool seeded = false;
+            if (passed)
+            {
+                seeded = ContagionDiseaseUtility.TrySeedIncubation(
                     ingester,
                     resolvedProfile.DiseaseDef,
                     resolvedProfile.PartsToAffect,
                     ContagionDiagnosticOrigin.Spread,
                     ContagionSeedSource.CorpseIngestion,
-                    out HediffDef _))
-            {
-                ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneSeeded);
-                ContagionDiagnostics.Trace($"Corpse ingestion (foodborne) transmission: {resolvedProfile.DiseaseDef.defName} to {ingester.LabelShortCap}.");
+                    out HediffDef _);
+                if (seeded)
+                {
+                    ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneSeeded);
+                    ContagionDiagnostics.Trace($"Corpse ingestion (foodborne) transmission: {resolvedProfile.DiseaseDef.defName} to {ingester.LabelShortCap}.");
+                    ContagionTrace.Transmission(corpse, ingester, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.Foodborne);
+                }
             }
+
+            ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Foodborne, corpse, ingester, resolvedProfile.DiseaseDef, finalChance, seeded);
         }
 
         // Direct contact vectors at full exposure (contextFactor 1f — no skill mitigation, unlike

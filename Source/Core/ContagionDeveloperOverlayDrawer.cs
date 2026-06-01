@@ -21,6 +21,34 @@ public static class ContagionDeveloperOverlayDrawer
 
     private static readonly Color TraceSocialColor = new Color(0.86f, 0.38f, 1f, 0.72f);
 
+    private static readonly Color TraceFoodborneColor = new Color(0.46f, 0.92f, 0.40f, 0.72f);
+
+    private static readonly Color TraceCorpseFleaColor = new Color(0.74f, 0.55f, 0.26f, 0.72f);
+
+    private static readonly Color TraceCorpseFluidColor = new Color(0.85f, 0.22f, 0.22f, 0.72f);
+
+    private static readonly Color TraceCookingColor = new Color(0.98f, 0.86f, 0.30f, 0.72f);
+
+    private static readonly Color TraceFomiteColor = new Color(0.95f, 0.40f, 0.74f, 0.72f);
+
+    private static readonly Color TraceEnvironmentalColor = new Color(0.30f, 0.78f, 0.78f, 0.72f);
+
+    // Node glyph colors, keyed by anchor kind.
+    private static readonly Color NodePawnColor = new Color(0.30f, 0.96f, 0.34f, 0.85f);
+
+    private static readonly Color NodeCorpseColor = new Color(0.80f, 0.20f, 0.20f, 0.85f);
+
+    private static readonly Color NodeBenchColor = new Color(1f, 0.62f, 0.16f, 0.85f);
+
+    private static readonly Color NodeItemColor = new Color(0.98f, 0.90f, 0.30f, 0.85f);
+
+    private static readonly Color NodeGhostColor = new Color(0.70f, 0.70f, 0.74f, 0.65f);
+
+    // Always-on infected indicator colors (dev mode).
+    private static readonly Color IndicatorPawnColor = new Color(0.95f, 0.30f, 0.30f, 0.80f);
+
+    private static readonly Color IndicatorCorpseColor = new Color(0.62f, 0.16f, 0.62f, 0.80f);
+
     private static readonly Color[] ValueBands = BuildValueBands();
 
     private static readonly Dictionary<int, Material> MaterialCache = new Dictionary<int, Material>();
@@ -47,27 +75,136 @@ public static class ContagionDeveloperOverlayDrawer
         DrawMarker(end, HoverLineColor, 0.22f, 0.02f);
     }
 
-    public static void DrawTransmissionTraces(Map map, IReadOnlyList<ContagionTransmissionTrace> traces)
+    // Renders the session-only infection trace graph: an edge line per transmission (colored by
+    // vector) plus a glyph per node (live pawn / corpse / bench / item, or a hollow ghost circle
+    // for a removed carrier so the chain doesn't visually vanish).
+    public static void DrawTraceGraph(
+        Map map,
+        IReadOnlyList<ContagionTraceNode> nodes,
+        IReadOnlyList<ContagionTraceEdge> edges)
     {
-        if (map == null || traces == null || traces.Count == 0)
+        if (map == null || nodes == null || nodes.Count == 0)
         {
             return;
         }
 
-        for (int i = 0; i < traces.Count; i++)
+        Dictionary<int, ContagionTraceNode> byId = new Dictionary<int, ContagionTraceNode>(nodes.Count);
+        for (int i = 0; i < nodes.Count; i++)
         {
-            ContagionTransmissionTrace trace = traces[i];
-            if (trace?.SourcePawn == null || trace.TargetPawn == null)
-            {
-                continue;
-            }
+            byId[nodes[i].Id] = nodes[i];
+        }
 
-            Color color = GetTraceColor(trace.VectorKind);
-            Material material = GetMaterial(color);
-            Vector3 origin = GetPawnLinePosition(trace.SourcePawn);
-            Vector3 end = GetPawnLinePosition(trace.TargetPawn);
-            GenDraw.DrawLineBetween(origin, end, material, 0.045f);
-            DrawDirectionMarker(origin, end, color);
+        if (edges != null)
+        {
+            for (int i = 0; i < edges.Count; i++)
+            {
+                ContagionTraceEdge edge = edges[i];
+                if (!byId.TryGetValue(edge.FromId, out ContagionTraceNode fromNode)
+                    || !byId.TryGetValue(edge.ToId, out ContagionTraceNode toNode))
+                {
+                    continue;
+                }
+
+                Color color = GetTraceColor(edge.Vector);
+                Material material = GetMaterial(color);
+                Vector3 origin = LiftToOverlay(fromNode.DrawPosition);
+                Vector3 end = LiftToOverlay(toNode.DrawPosition);
+                GenDraw.DrawLineBetween(origin, end, material, 0.045f);
+                DrawDirectionMarker(origin, end, color);
+            }
+        }
+
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            DrawTraceNode(nodes[i]);
+        }
+    }
+
+    private static void DrawTraceNode(ContagionTraceNode node)
+    {
+        Vector3 position = LiftToOverlay(node.DrawPosition);
+
+        if (node.Orphaned)
+        {
+            // Removed carrier — leave a small hollow circle so the chain stays visible.
+            GenDraw.DrawCircleOutline(position, 0.20f, GetMaterial(NodeGhostColor));
+            return;
+        }
+
+        switch (node.Kind)
+        {
+            case ContagionTraceNodeKind.Pawn:
+                DrawMarker(position, NodePawnColor, 0.24f, 0.02f);
+                break;
+            case ContagionTraceNodeKind.Corpse:
+                DrawMarker(position, NodeCorpseColor, 0.24f, 0.02f);
+                GenDraw.DrawCircleOutline(position, 0.26f, GetMaterial(NodeCorpseColor));
+                break;
+            case ContagionTraceNodeKind.Bench:
+                DrawMarker(position, NodeBenchColor, 0.18f, 0.02f);
+                break;
+            case ContagionTraceNodeKind.Item:
+                DrawMarker(position, NodeItemColor, 0.16f, 0.02f);
+                break;
+            default:
+                GenDraw.DrawCircleOutline(position, 0.20f, GetMaterial(NodeGhostColor));
+                break;
+        }
+    }
+
+    private static Vector3 LiftToOverlay(Vector3 position)
+    {
+        position.y = AltitudeLayer.MetaOverlays.AltitudeFor() + 0.1f;
+        return position;
+    }
+
+    // Always-on infected indicators: a small marker over every infected pawn (human/animal,
+    // colony or not) and every infectious corpse on the map. Dev-mode only, view-rect culled.
+    public static void DrawInfectedIndicators(Map map)
+    {
+        if (map == null)
+        {
+            return;
+        }
+
+        IReadOnlyList<Pawn> pawns = map.mapPawns?.AllPawnsSpawned;
+        if (pawns != null)
+        {
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                if (pawn == null || !pawn.Spawned || !ShouldDrawCell(map, pawn.Position))
+                {
+                    continue;
+                }
+
+                if (ContagionDiseaseUtility.IsInfectedOrIncubating(pawn))
+                {
+                    Vector3 position = LiftToOverlay(pawn.DrawPos);
+                    GenDraw.DrawCircleOutline(position, 0.42f, GetMaterial(IndicatorPawnColor));
+                }
+            }
+        }
+
+        List<Thing> corpses = map.listerThings?.ThingsInGroup(ThingRequestGroup.Corpse);
+        if (corpses != null)
+        {
+            for (int i = 0; i < corpses.Count; i++)
+            {
+                if (corpses[i] is not Corpse corpse
+                    || !corpse.Spawned
+                    || !ShouldDrawCell(map, corpse.Position))
+                {
+                    continue;
+                }
+
+                Comp_InfectedCorpse comp = corpse.TryGetComp<Comp_InfectedCorpse>();
+                if (comp != null && (comp.IsInfected || comp.IsSuspectedInfected))
+                {
+                    Vector3 position = LiftToOverlay(corpse.DrawPos);
+                    GenDraw.DrawCircleOutline(position, 0.42f, GetMaterial(IndicatorCorpseColor));
+                }
+            }
         }
     }
 
@@ -228,6 +365,92 @@ public static class ContagionDeveloperOverlayDrawer
         }
     }
 
+    // Heatmap of a corpse's spatial infectivity, mirroring the live flea-exposure pass: per-cell
+    // chance = baseChancePerCheck × flea potency × distance falloff over the flea vector range.
+    public static void DrawCorpseInfectivityOverlay(Corpse corpse)
+    {
+        if (corpse?.Map == null || !corpse.Spawned)
+        {
+            return;
+        }
+
+        if (!ContagionCorpseExposureUtility.TryGetCorpseFleaVector(corpse, out _, out Vector_CorpseFlea vector)
+            || vector.maxRange <= 0f)
+        {
+            return;
+        }
+
+        Hediff_ContagionCorpseFleas fleas = ContagionCorpseExposureUtility.FindCorpseFleas(corpse);
+        float potency = Mathf.Max(0f, fleas?.Severity ?? 0f);
+        if (potency <= 0f)
+        {
+            return;
+        }
+
+        Map map = corpse.Map;
+        foreach (List<IntVec3> bucket in FillOverlayBuckets.Values)
+        {
+            bucket.Clear();
+        }
+
+        FillOverlayBucketColors.Clear();
+        Dictionary<int, float> chanceByCell = new Dictionary<int, float>();
+        float strongestChance = 0f;
+        foreach (IntVec3 cell in GenRadial.RadialCellsAround(corpse.Position, vector.maxRange, useCenter: true))
+        {
+            if (!ShouldDrawCell(map, cell))
+            {
+                continue;
+            }
+
+            float distance = ContagionTransmissionUtility.GetHorizontalDistance(corpse.Position, cell);
+            float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(distance, vector.distanceFalloffRate);
+            float chance = Mathf.Clamp01(vector.baseChancePerCheck * potency * distanceFactor);
+            if (chance < MinVisibleNominalChance)
+            {
+                continue;
+            }
+
+            int cellIndex = map.cellIndices.CellToIndex(cell);
+            chanceByCell[cellIndex] = chance;
+            strongestChance = Mathf.Max(strongestChance, chance);
+        }
+
+        if (strongestChance <= 0f || chanceByCell.Count == 0)
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<int, float> chanceEntry in chanceByCell)
+        {
+            float normalizedChance = GetDisplayStrength(chanceEntry.Value, strongestChance);
+            if (normalizedChance <= 0f)
+            {
+                continue;
+            }
+
+            IntVec3 cell = CellIndicesUtility.IndexToCell(chanceEntry.Key, map.Size.x);
+            Color color = ValueBands[GetValueBand(normalizedChance)];
+            int colorKey = PackColor(color);
+            if (!FillOverlayBuckets.TryGetValue(colorKey, out List<IntVec3> bucket))
+            {
+                bucket = new List<IntVec3>();
+                FillOverlayBuckets[colorKey] = bucket;
+            }
+
+            FillOverlayBucketColors[colorKey] = color;
+            bucket.Add(cell);
+        }
+
+        foreach (KeyValuePair<int, List<IntVec3>> bucket in FillOverlayBuckets)
+        {
+            if (bucket.Value.Count > 0)
+            {
+                DrawFilledCells(bucket.Value, FillOverlayBucketColors[bucket.Key]);
+            }
+        }
+    }
+
     private static float CombineChance(float existingChance, float additionalChance)
     {
         float existing = Mathf.Clamp01(existingChance);
@@ -242,10 +465,30 @@ public static class ContagionDeveloperOverlayDrawer
         return position;
     }
 
+    // Draws an arrowhead chevron pointing from origin toward end, so trace direction reads at a
+    // glance. Two short back-swept line segments (a "V") rather than a square blob.
     private static void DrawDirectionMarker(Vector3 origin, Vector3 end, Color color)
     {
-        Vector3 markerPosition = Vector3.Lerp(origin, end, 0.82f);
-        DrawMarker(markerPosition, color, 0.18f, 0.03f);
+        Vector3 direction = end - origin;
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f)
+        {
+            return;
+        }
+
+        direction.Normalize();
+        Vector3 perpendicular = new Vector3(-direction.z, 0f, direction.x);
+        const float ArmLength = 0.15f;
+        const float ArmWidth = 0.11f;
+
+        Vector3 tip = Vector3.Lerp(origin, end, 0.82f);
+        Vector3 back = tip - direction * ArmLength;
+        Vector3 leftArm = back + perpendicular * ArmWidth;
+        Vector3 rightArm = back - perpendicular * ArmWidth;
+
+        Material material = GetMaterial(color);
+        GenDraw.DrawLineBetween(tip, leftArm, material, 0.04f);
+        GenDraw.DrawLineBetween(tip, rightArm, material, 0.04f);
     }
 
     private static void DrawMarker(Vector3 position, Color color, float scale, float heightOffset)
@@ -275,6 +518,13 @@ public static class ContagionDeveloperOverlayDrawer
         {
             ContagionDebugVectorKind.Airborne => TraceAirborneColor,
             ContagionDebugVectorKind.Proximity => TraceProximityColor,
+            ContagionDebugVectorKind.Social => TraceSocialColor,
+            ContagionDebugVectorKind.Foodborne => TraceFoodborneColor,
+            ContagionDebugVectorKind.CorpseFlea => TraceCorpseFleaColor,
+            ContagionDebugVectorKind.CorpseFluid => TraceCorpseFluidColor,
+            ContagionDebugVectorKind.Cooking => TraceCookingColor,
+            ContagionDebugVectorKind.Fomite => TraceFomiteColor,
+            ContagionDebugVectorKind.Environmental => TraceEnvironmentalColor,
             _ => TraceSocialColor
         };
     }

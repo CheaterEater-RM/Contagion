@@ -118,25 +118,29 @@ internal sealed class ContagionEnvironmentalExposureProcessor
             chance = _owner.DiseaseDirector.ClampChance(chance, enforceMinimum: false);
         }
 
-        if (!Rand.Chance(Mathf.Clamp01(chance)))
+        float finalChance = Mathf.Clamp01(chance);
+        bool passed = Rand.Chance(finalChance);
+        bool seeded = false;
+        if (passed)
         {
-            return false;
+            seeded = ContagionDiseaseUtility.TrySeedIncubation(
+                pawn,
+                environmentalProfile.ResolvedProfile.DiseaseDef,
+                environmentalProfile.ResolvedProfile.PartsToAffect,
+                ContagionDiagnosticOrigin.Incidence,
+                ContagionSeedSource.Environmental,
+                out HediffDef _);
+            if (seeded)
+            {
+                ContagionSeedingCoordinator.NotifyEnvironmentalSeeded(_owner, environmentalProfile.ResolvedProfile, environmentalProfile.Seeder, windowEvent);
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalSeeded);
+                ContagionDiagnostics.Trace($"Environmental transmission: {environmentalProfile.ResolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap}.");
+                // No source thing — anchor the chain origin at the pawn's cell.
+                ContagionTrace.Transmission(null, pawn, environmentalProfile.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Environmental);
+            }
         }
 
-        bool seeded = ContagionDiseaseUtility.TrySeedIncubation(
-            pawn,
-            environmentalProfile.ResolvedProfile.DiseaseDef,
-            environmentalProfile.ResolvedProfile.PartsToAffect,
-            ContagionDiagnosticOrigin.Incidence,
-            ContagionSeedSource.Environmental,
-            out HediffDef _);
-        if (seeded)
-        {
-            ContagionSeedingCoordinator.NotifyEnvironmentalSeeded(_owner, environmentalProfile.ResolvedProfile, environmentalProfile.Seeder, windowEvent);
-            ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalSeeded);
-            ContagionDiagnostics.Trace($"Environmental transmission: {environmentalProfile.ResolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap}.");
-        }
-
+        ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Environmental, null, pawn, environmentalProfile.ResolvedProfile.DiseaseDef, finalChance, seeded);
         return seeded;
     }
 
