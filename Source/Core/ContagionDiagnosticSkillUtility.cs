@@ -15,11 +15,15 @@ namespace Contagion;
 // Sight scales the whole score: 30% floor (blind is impaired, not useless), 140% cap
 // (bionic eyes). Medical Specialist role (Ideology DLC) gives a 1.5× Medical bonus.
 //
-// Sigmoid: ~50% at score 7, ~75% at score 10, ~95% at score 15, ~99% at score 20.
+// Passive butchery notice is deliberately weak now that players can run a dedicated post-mortem
+// inspection (ComputeInspectionChance) to diagnose suspicious corpses on demand. This is the
+// "happened to spot it while cutting" fallback, not a reliable screen.
+// Sigmoid: ~15% at score 6, ~50% at score 12, ~75% at score 16, ~88% at score 20.
+//   e.g. medical 2 / animals 7 / cooking 4 → ~15% (was ~34%); medical 10 → ~50% (was ~75%).
 internal static class ContagionDiagnosticSkillUtility
 {
-    private const float SigmoidK = 0.37f;
-    private const float SigmoidX0 = 7f;
+    private const float SigmoidK = 0.275f;
+    private const float SigmoidX0 = 12f;
     private const float MaxChance = 0.995f;
 
     internal static float ComputeDiagnosticChance(Pawn observer, bool isAnimalSubject, bool isButchery)

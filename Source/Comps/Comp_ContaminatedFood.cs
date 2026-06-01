@@ -77,9 +77,11 @@ public sealed class Comp_ContaminatedFood : ThingComp
             _contaminatedDiseaseDef = resolvedProfile.DiseaseDef;
             _contaminationFactor = sourceInfectivity * GetCleanlinessFactor(pawn.GetRoom(), foodborneVector.cleanlinessImpact);
             _contaminationTick = Find.TickManager.TicksGame;
-            // Trace lineage: the contagious cook is this meal's source node. The meal's own node
-            // is created when it spawns (PostSpawnSetup), linking from here.
-            sourceTraceNodeId = ContagionTrace.EnsureNode(pawn, _contaminatedDiseaseDef);
+            // Trace lineage: a contagious cook contaminates the bench they work at, which in turn
+            // contaminates the meal — so route cook → stove → meal. The meal's own node is created
+            // when it spawns (PostSpawnSetup), linking from the bench node recorded here.
+            int cookNodeId = ContagionTrace.EnsureNode(pawn, _contaminatedDiseaseDef);
+            sourceTraceNodeId = ContagionTrace.RouteThroughBench(pawn, _contaminatedDiseaseDef, cookNodeId, ContagionDebugVectorKind.Cooking);
             EnsureTraceNode();
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
             ContagionDiagnostics.Trace($"Meal contaminated: {_contaminatedDiseaseDef.defName} by {pawn.LabelShortCap}.");
@@ -125,6 +127,38 @@ public sealed class Comp_ContaminatedFood : ThingComp
         }
 
         sourceTraceNodeId = selfNode;
+    }
+
+    // When a contaminated stack is split (stack-limit overflow on placement, hauling, trading),
+    // Thing.SplitOff creates a fresh Thing that copies only stackCount/HitPoints — comp state is
+    // lost, so the split-off piece would be clean. Carry contamination onto the new piece so every
+    // stack descended from infected meat stays infected. The piece is a sibling of the source, so
+    // it inherits the source's *upstream* origin (e.g. the butcher table) rather than pointing at
+    // the source stack itself — otherwise a split spawned stack reads as a confusing meat→meat link.
+    // Once the source has spawned its sourceTraceNodeId is its own node, so we look up its upstream
+    // edge; before spawn (placement-time split) sourceTraceNodeId is still the real origin.
+    public override void PostSplitOff(Thing piece)
+    {
+        base.PostSplitOff(piece);
+
+        if (_contaminatedDiseaseDef == null || piece == parent)
+        {
+            return;
+        }
+
+        Comp_ContaminatedFood pieceComp = piece.TryGetComp<Comp_ContaminatedFood>();
+        if (pieceComp == null)
+        {
+            return;
+        }
+
+        pieceComp._contaminatedDiseaseDef = _contaminatedDiseaseDef;
+        pieceComp._contaminationFactor = _contaminationFactor;
+        pieceComp._contaminationTick = _contaminationTick;
+
+        int upstream = ContagionTrace.GetUpstreamNode(parent, _contaminatedDiseaseDef);
+        pieceComp.sourceTraceNodeId = upstream >= 0 ? upstream : sourceTraceNodeId;
+        pieceComp.EnsureTraceNode();
     }
 
     public override void PreAbsorbStack(Thing otherStack, int count)
@@ -248,9 +282,9 @@ public sealed class Comp_ContaminatedFood : ThingComp
             {
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.FoodborneSeeded);
                 ContagionDiagnostics.Trace($"Foodborne transmission: {resolvedProfile.DiseaseDef.defName} to {ingester.LabelShortCap}.");
-                // Link the meal node (this stack) → eater. EnsureNode dedups on the parent anchor,
-                // so the eater connects to the existing meal node and its upstream chain.
-                ContagionTrace.Transmission(parent, ingester, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.Foodborne);
+                // Thing.Ingested calls this after the eaten item is removed/destroyed. Resolve via
+                // the stored lineage so meals trace stove->pawn instead of falling back to a cell.
+                ContagionTrace.FoodborneIngestion(parent, ingester, resolvedProfile.DiseaseDef, sourceTraceNodeId);
             }
         }
 

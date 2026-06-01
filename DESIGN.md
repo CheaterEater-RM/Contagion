@@ -478,10 +478,12 @@ Because both are allowed by default, stockpiles accept all corpses unless the pl
 
 **Butcher bill safety:** New `ButcherCorpseFlesh` bills disallow `AllowInfectedCorpses` by default, and a one-time save migration applies the same safety default to existing butcher bills. Players can opt a specific bill back in by enabling infected corpses in that bill's ingredient filter. This keeps storage permissive while making food production conservative.
 
-**Butchering contamination:** `Patch_Corpse_ButcherProducts` runs when an infected corpse is butchered:
-1. Roll a notice chance via `ContagionDiagnosticSkillUtility` (`isButchery: true`). Medical is the primary skill; Animals adds at 0.25× weight for animal corpses; Cooking adds at 0.60× weight for both. Sight-scaled; Medical Specialist bonus applies.
-2. **Notice:** All products are discarded, the butcher sends an alert, the remnants are forbidden.
-3. **Miss:** Each raw meat product that has `Comp_ContaminatedFood` receives `contaminationFactor 1.0` (full contamination). The contamination timestamp is set; expiry applies after `contaminationExpiryDays`.
+**Butchering contamination:** `Patch_Corpse_ButcherProducts` runs when a corpse is infectious (detected via the transmission-facing `TryGetCorpseInfectionForTransmission`, which includes hidden/undiagnosed disease — infected meat is infectious whether or not the disease was ever revealed):
+1. **Known infection:** if the corpse already displayed an infected *or* suspected-infected label (`IsInfected` / `IsSuspectedInfected`), the player saw the warning and allowed butchering via the bill filter. Skip the notice roll and go straight to contamination — never silently discard products the player chose to butcher.
+2. **Unknown infection:** the butcher stumbled onto it mid-job. Roll a notice chance via `ContagionDiagnosticSkillUtility` (`isButchery: true`). Medical is primary; Animals adds at 0.25× weight for animal corpses; Cooking adds at 0.60× weight for both. Sight-scaled; Medical Specialist bonus applies. This is a deliberately weak fallback (~15% at low skill, ~50% at medical 10) now that players can run a dedicated post-mortem inspection to diagnose suspicious corpses on demand.
+   - **Notice:** all products are discarded, the butcher sends an alert, the remnants are forbidden.
+   - **Miss:** falls through to contamination.
+3. **Contamination:** each raw meat product that has `Comp_ContaminatedFood` receives `contaminationFactor 1.0` (full contamination), with the timestamp set for `contaminationExpiryDays` expiry. Contamination is carried onto split-off stacks via `Comp_ContaminatedFood.PostSplitOff`, so every stack from one corpse stays infected, not just the first.
 
 **Ingredient propagation:** `Patch_GenRecipe_MakeRecipeProducts` propagates contamination from raw ingredients to cooked products, reduced by the recipe's `CookingContaminationExtension.reductionFactor`. See [Vector_Foodborne](#vector_foodborne) for the full reduction table.
 
@@ -669,6 +671,14 @@ When an actual transmission succeeds, Developer diagnostics retain a short-lived
 - The visual is a world-space line between source and target, ideally with a simple direction marker or source/target cap so direction is obvious. LOS-Check's line drawing gives the base pattern; a small plane marker near the target end is enough for directionality.
 - The trace system needs bounded lifetime and bounded count. A short time-to-live plus a capped ring buffer prevents diagnostic clutter from becoming permanent map noise.
 - Clearing should be available in two places: a global button in the Developer diagnostics section of mod settings, and a selected-pawn gizmo action that clears traces involving that pawn.
+
+**Food-chain node graph.** Beyond pawn↔pawn lines, the trace graph chains contamination through the *workstations* food passes over, so the path reads logically:
+
+- **Butchery:** `corpse → butcher table → meat`. The corpse contaminates the bench (job `TargetA`); each meat product links from the bench node.
+- **Cooking:** routed through the bench via `ContagionTrace.RouteThroughBench`, giving `… meat → stove → meal` (ingredient path) or `cook → stove → meal` (when the cook is the vector). The meal links from the durable *stove* node rather than the meat node, which is consumed mid-recipe — this also avoids a dangling edge when the meat node is spliced out.
+- **Eating:** `meal → eater`; once the meal is consumed its (Item) node splices out, reconnecting `stove → eater`.
+
+Consumed/destroyed food (`Item`) nodes splice out of the chain (predecessor → successor reconnect, carrying the downstream vector), while benches/stoves/corpses/pawns persist. Benches are inert nodes kept alive only while reachable from an active carrier (a contaminated stack, an infectious corpse, or an infected pawn). A split-off stack inherits the source stack's *upstream* origin (e.g. the butcher table) rather than pointing at the source stack, so partial hauls don't produce confusing meat→meat links. Net effect for a typical run: `corpse → butcher table → stove → eater`, with the transient meat and meal stacks splicing out as they're consumed.
 
 ---
 

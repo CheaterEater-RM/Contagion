@@ -36,6 +36,18 @@ internal static class ContagionTrace
         return Controller(anchor.MapHeld)?.EnsureNode(anchor, disease) ?? -1;
     }
 
+    // Re-anchors any trace nodes for a freshly-dead pawn onto its corpse, so the infection chain
+    // survives the pawn→corpse transition instead of being pruned. No-op if tracing is off.
+    public static int ReanchorPawnToCorpse(Pawn pawn, Corpse corpse)
+    {
+        if (pawn == null || corpse == null)
+        {
+            return 0;
+        }
+
+        return Controller(corpse.MapHeld)?.ReanchorPawnToCorpse(pawn, corpse) ?? 0;
+    }
+
     public static void Edge(Map map, int fromId, int toId, ContagionDebugVectorKind vector)
     {
         if (fromId < 0 || toId < 0)
@@ -44,5 +56,63 @@ internal static class ContagionTrace
         }
 
         Controller(map)?.RecordEdge(fromId, toId, vector);
+    }
+
+    public static void FoodborneIngestion(Thing food, Pawn ingester, HediffDef disease, int fallbackSourceNodeId)
+    {
+        if (ingester == null)
+        {
+            return;
+        }
+
+        Controller(ingester.MapHeld)?.RecordFoodborneIngestionTrace(food, ingester, disease, fallbackSourceNodeId);
+    }
+
+    // Routes a cooked product's trace through the bench the worker is using (the stove/table in
+    // job TargetA), so the chain reads source → bench → meal rather than source → meal. Ensures a
+    // node for the bench, links the upstream source (contaminated ingredient or contagious cook)
+    // into it, and returns the bench node id to stamp on the product. Falls back to the upstream
+    // id unchanged when there's no usable bench (e.g. a nutrient-paste dispenser) or tracing is off.
+    public static int RouteThroughBench(Pawn worker, HediffDef disease, int upstreamNodeId, ContagionDebugVectorKind upstreamVector)
+    {
+        if (worker?.CurJob?.GetTarget(Verse.AI.TargetIndex.A).Thing is not Building bench)
+        {
+            return upstreamNodeId;
+        }
+
+        int benchNodeId = EnsureNode(bench, disease);
+        if (benchNodeId < 0)
+        {
+            return upstreamNodeId;
+        }
+
+        if (upstreamNodeId >= 0 && upstreamNodeId != benchNodeId)
+        {
+            Edge(bench.MapHeld, upstreamNodeId, benchNodeId, upstreamVector);
+        }
+
+        return benchNodeId;
+    }
+
+    // Finds the node that contaminated this anchor (the edge leading into its node), or -1.
+    public static int GetUpstreamNode(Thing anchor, HediffDef disease)
+    {
+        if (anchor == null || disease == null)
+        {
+            return -1;
+        }
+
+        return Controller(anchor.MapHeld)?.GetUpstreamNodeId(anchor, disease) ?? -1;
+    }
+
+    public static int GetContaminationSourceNode(Map map, Thing anchor, HediffDef disease, int fallbackSourceNodeId)
+    {
+        if (map == null || disease == null)
+        {
+            return fallbackSourceNodeId;
+        }
+
+        return Controller(map)?.GetContaminationSourceNodeId(anchor, disease, fallbackSourceNodeId)
+            ?? fallbackSourceNodeId;
     }
 }

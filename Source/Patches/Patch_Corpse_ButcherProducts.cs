@@ -61,11 +61,12 @@ internal static class Patch_Corpse_ButcherProducts
         }
 
         // Notice-and-discard only fires when the infection was *unknown* at butchering time —
-        // the butcher stumbled onto it mid-job. If the corpse was already flagged as infected
-        // at spawn (Comp_InfectedCorpse.IsInfected == true), the player saw the "Infected
-        // corpse" label and consciously allowed butchering via the job filter. Nothing to
-        // discover; proceed straight to meat contamination.
-        bool infectionWasKnown = __instance.TryGetComp<Comp_InfectedCorpse>()?.IsInfected == true;
+        // the butcher stumbled onto it mid-job. If the corpse already displayed an infected OR
+        // suspected-infected label (IsInfected / IsSuspectedInfected), the player saw the warning
+        // and consciously allowed butchering via the job filter. Nothing to discover; proceed
+        // straight to meat contamination rather than silently destroying the products.
+        Comp_InfectedCorpse infectedComp = __instance.TryGetComp<Comp_InfectedCorpse>();
+        bool infectionWasKnown = infectedComp?.IsInfected == true || infectedComp?.IsSuspectedInfected == true;
 
         ApplyButcheryExposure(butcher, __instance, resolvedProfile);
 
@@ -98,9 +99,9 @@ internal static class Patch_Corpse_ButcherProducts
             Comp_ContaminatedFood comp = item.TryGetComp<Comp_ContaminatedFood>();
             if (comp != null)
             {
-                comp.SetContamination(contagiousDisease, 1.0f);
                 // Stamp the upstream node so each meat stack links from the bench when it spawns.
                 comp.sourceTraceNodeId = benchNodeId;
+                comp.SetContamination(contagiousDisease, 1.0f);
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
                 ContagionDiagnostics.Trace($"Butchery contamination: {contagiousDisease.defName} baked into {item.def.defName} from {innerPawn.LabelShortCap}.");
             }

@@ -33,7 +33,8 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
         {
             for (int i = 0; i < ingredients.Count; i++)
             {
-                Comp_ContaminatedFood comp = ingredients[i]?.TryGetComp<Comp_ContaminatedFood>();
+                Thing ingredient = ingredients[i];
+                Comp_ContaminatedFood comp = ingredient?.TryGetComp<Comp_ContaminatedFood>();
                 if (comp == null || !comp.IsContaminated)
                 {
                     continue;
@@ -51,7 +52,11 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
                 {
                     worstFactor = comp.ContaminationFactor;
                     worstDisease = comp.ContaminatedDiseaseDef;
-                    worstSourceNodeId = comp.sourceTraceNodeId;
+                    worstSourceNodeId = ContagionTrace.GetContaminationSourceNode(
+                        worker?.MapHeld,
+                        ingredient,
+                        comp.ContaminatedDiseaseDef,
+                        comp.sourceTraceNodeId);
                 }
             }
         }
@@ -65,9 +70,12 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
                 Comp_ContaminatedFood productComp = product?.TryGetComp<Comp_ContaminatedFood>();
                 if (productComp != null && !productComp.IsContaminated)
                 {
+                    // Route the chain through the cooking bench: ingredient (meat) → stove → meal,
+                    // so the trace reads logically and the meal links to the durable bench node
+                    // rather than the meat node that's about to be consumed (and spliced out).
+                    productComp.sourceTraceNodeId = ContagionTrace.RouteThroughBench(
+                        worker, worstDisease, worstSourceNodeId, ContagionDebugVectorKind.Cooking);
                     productComp.SetContamination(worstDisease, worstFactor * cookingFactor);
-                    // Carry the ingredient's trace node forward so the meal links to the meat.
-                    productComp.sourceTraceNodeId = worstSourceNodeId;
                     ContagionDiagnostics.Record(ContagionDiagnosticCounter.MealsContaminated);
                     ContagionDiagnostics.Trace($"Ingredient contamination: {worstDisease.defName} propagated to {product.def.defName} (factor {worstFactor * cookingFactor:F2}).");
                 }
@@ -131,7 +139,8 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
 
         for (int i = 0; i < ingredients.Count; i++)
         {
-            Comp_ContaminatedFood comp = ingredients[i]?.TryGetComp<Comp_ContaminatedFood>();
+            Thing ingredient = ingredients[i];
+            Comp_ContaminatedFood comp = ingredient?.TryGetComp<Comp_ContaminatedFood>();
             if (comp == null || !comp.IsContaminated)
             {
                 continue;
@@ -149,7 +158,11 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
                 worstProfile = resolvedProfile;
                 worstVector = cookingVector;
                 worstFactor = comp.ContaminationFactor;
-                worstSourceNodeId = comp.sourceTraceNodeId;
+                worstSourceNodeId = ContagionTrace.GetContaminationSourceNode(
+                    cook.MapHeld,
+                    ingredient,
+                    comp.ContaminatedDiseaseDef,
+                    comp.sourceTraceNodeId);
             }
         }
 

@@ -96,10 +96,32 @@ public sealed class Comp_InfectedCorpse : ThingComp
         if (ContagionCorpseUtility.TryGetCorpseContagiousDiseaseFromInnerPawn(corpse.InnerPawn, out HediffDef diseaseDef))
         {
             SetInfection(diseaseDef);
+            EnsureCorpseTrace(corpse);
             return;
         }
 
         ContagionCorpseUtility.TryApplyPosthumousPresentation(corpse.InnerPawn, this);
+        EnsureCorpseTrace(corpse);
+    }
+
+    // Keep the developer trace graph alive across the pawn→corpse transition. Gate on the
+    // transmission-facing detector (includes hidden/undiagnosed disease) rather than the display
+    // flags, so a dev-killed animal carrying a hidden disease (e.g. gut worms) still traces.
+    // First re-anchor the dead pawn's existing nodes onto the corpse to preserve upstream lineage;
+    // if there were none, create a fresh corpse node so the corpse still shows as a traced danger.
+    private void EnsureCorpseTrace(Corpse corpse)
+    {
+        if (corpse?.InnerPawn == null
+            || !ContagionCorpseUtility.TryGetCorpseInfectionForTransmission(corpse, out HediffDef traceDisease))
+        {
+            return;
+        }
+
+        int moved = ContagionTrace.ReanchorPawnToCorpse(corpse.InnerPawn, corpse);
+        if (moved == 0)
+        {
+            ContagionTrace.EnsureNode(corpse, traceDisease);
+        }
     }
 
     public override string CompInspectStringExtra()

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
@@ -139,6 +140,129 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
         return AddNode(null, cell, diseaseDef);
     }
 
+    // Returns the id of the first node with an edge leading into this anchor's node, or -1. Used
+    // when a stack is split so the new piece can inherit the source's upstream origin (e.g. the
+    // butcher table) instead of pointing at the source stack itself (a confusing meat→meat link).
+    public int GetUpstreamNodeId(Thing anchor, HediffDef diseaseDef)
+    {
+        if (!CaptureActive() || anchor == null || diseaseDef == null)
+        {
+            return -1;
+        }
+
+        int selfId = -1;
+        for (int i = 0; i < _nodes.Count; i++)
+        {
+            if (_nodes[i].Anchor == anchor && _nodes[i].Disease == diseaseDef)
+            {
+                selfId = _nodes[i].Id;
+                break;
+            }
+        }
+
+        if (selfId < 0)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < _edges.Count; i++)
+        {
+            if (_edges[i].ToId == selfId)
+            {
+                return _edges[i].FromId;
+            }
+        }
+
+        return -1;
+    }
+
+    // Returns the node that should be treated as the source for a contaminated food stack:
+    // preferably the node that contaminated the stack (bench/stove/corpse), falling back to the
+    // stack's own node when there is no upstream edge yet.
+    public int GetContaminationSourceNodeId(Thing anchor, HediffDef diseaseDef, int fallbackNodeId = -1)
+    {
+        if (!CaptureActive() || diseaseDef == null)
+        {
+            return -1;
+        }
+
+        int selfId = -1;
+        if (anchor != null)
+        {
+            for (int i = 0; i < _nodes.Count; i++)
+            {
+                if (_nodes[i].Anchor == anchor && _nodes[i].Disease == diseaseDef)
+                {
+                    selfId = _nodes[i].Id;
+                    break;
+                }
+            }
+        }
+
+        int upstreamId = selfId >= 0 ? GetUpstreamNodeId(selfId) : -1;
+        if (upstreamId >= 0)
+        {
+            return upstreamId;
+        }
+
+        if (fallbackNodeId >= 0 && fallbackNodeId != selfId)
+        {
+            return fallbackNodeId;
+        }
+
+        return selfId >= 0 ? selfId : fallbackNodeId;
+    }
+
+    // Ingestion runs after RimWorld removes/destroys the eaten thing, so a normal source→pawn
+    // trace can degrade into a cell-origin edge at the eater's feet. Use the existing food node
+    // and collapse it to its upstream source immediately, yielding stove→pawn for meals and
+    // butcher-table→pawn for raw contaminated meat.
+    public void RecordFoodborneIngestionTrace(
+        Thing food,
+        Pawn ingester,
+        HediffDef diseaseDef,
+        int fallbackSourceNodeId)
+    {
+        if (!CaptureActive() || ingester == null || diseaseDef == null || !ThingOnMap(ingester))
+        {
+            return;
+        }
+
+        int targetId = EnsureNode(ingester, diseaseDef);
+        if (targetId < 0)
+        {
+            return;
+        }
+
+        int sourceId = GetContaminationSourceNodeId(food, diseaseDef, fallbackSourceNodeId);
+        if (sourceId < 0)
+        {
+            sourceId = food != null && ThingOnMap(food)
+                ? EnsureNode(food, diseaseDef)
+                : EnsureCellNode(ingester.PositionHeld, diseaseDef);
+        }
+
+        RecordEdge(sourceId, targetId, ContagionDebugVectorKind.Foodborne);
+    }
+
+    private int GetUpstreamNodeId(int nodeId)
+    {
+        if (nodeId < 0)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < _edges.Count; i++)
+        {
+            if (_edges[i].ToId == nodeId)
+            {
+                return _edges[i].FromId;
+            }
+        }
+
+        return -1;
+    }
+
     public void RecordEdge(int fromId, int toId, ContagionDebugVectorKind vectorKind)
     {
         if (!CaptureActive() || fromId < 0 || toId < 0 || fromId == toId)
@@ -221,6 +345,31 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
         {
             _edges.RemoveAll(edge => removedIds.Contains(edge.FromId) || removedIds.Contains(edge.ToId));
         }
+    }
+
+    // When a pawn dies it becomes a corpse's InnerPawn; the node still anchored to the (now dead)
+    // pawn reads as inactive and the whole chain gets pruned, even though the corpse remains
+    // infectious until it dessicates. Re-anchor those nodes onto the corpse Thing so the chain
+    // survives the pawn→corpse transition — Kind/DrawPosition/IsNodeActive all follow the new anchor.
+    public int ReanchorPawnToCorpse(Pawn pawn, Corpse corpse)
+    {
+        if (pawn == null || corpse == null || _nodes.Count == 0)
+        {
+            return 0;
+        }
+
+        int moved = 0;
+        for (int i = 0; i < _nodes.Count; i++)
+        {
+            if (_nodes[i].Anchor == pawn)
+            {
+                _nodes[i].Anchor = corpse;
+                _nodes[i].LastCell = corpse.PositionHeld;
+                moved++;
+            }
+        }
+
+        return moved;
     }
 
     public bool HasTracesForPawn(Pawn pawn)
@@ -508,8 +657,18 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
         {
             case Corpse corpse:
             {
-                Comp_InfectedCorpse comp = corpse.TryGetComp<Comp_InfectedCorpse>();
-                return comp != null && (comp.IsInfected || comp.IsSuspectedInfected);
+                // A dessicated (skeletonized) corpse is no longer a danger — its fluid potency is
+                // already zeroed out in ContagionCorpseExposureUtility — so let the node go inert.
+                if (corpse.GetComp<CompRottable>()?.Stage == RotStage.Dessicated)
+                {
+                    return false;
+                }
+
+                // Use the transmission-facing detector (includes hidden/undiagnosed disease): a
+                // corpse is a live danger whether or not the infection was ever revealed, matching
+                // the corpse infectivity overlay. The display flags (IsInfected/IsSuspectedInfected)
+                // would miss a hidden disease (e.g. a dev-killed animal carrying gut worms).
+                return ContagionCorpseUtility.TryGetCorpseInfectionForTransmission(corpse, out _);
             }
 
             case Pawn pawn:
