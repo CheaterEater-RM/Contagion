@@ -51,4 +51,41 @@ internal static class ContagionDiagnosticSkillUtility
         float sigmoid = 1f / (1f + Mathf.Exp(-SigmoidK * (score - SigmoidX0)));
         return Mathf.Min(sigmoid, MaxChance);
     }
+
+    // Dedicated post-mortem inspection at a butchery table — more powerful than the
+    // passive butchery notice check. Medical is primary (full weight, no gap penalty).
+    // Animals supplements when examining an animal corpse (0.60, same as clinical).
+    // No Cooking (inspection ≠ butchery). Sight scaling and Medical Specialist apply.
+    //
+    // Improved sigmoid: x0=5.0, k=0.40 (vs butchery notice x0=7.0, k=0.37).
+    // Skill 3≈30%, 5≈50%, 8≈77%, 12≈94%, 15≈98%.
+    private const float InspectionSigmoidK = 0.40f;
+    private const float InspectionSigmoidX0 = 5f;
+    private const float InspectionMaxChance = 0.995f;
+
+    internal static float ComputeInspectionChance(Pawn observer, bool isAnimalSubject)
+    {
+        if (observer?.skills == null || observer.health?.capacities == null)
+            return 0f;
+
+        float medical = observer.skills.GetSkill(SkillDefOf.Medicine).Level;
+
+        if (ModsConfig.IdeologyActive && observer.Ideo != null)
+        {
+            Precept_Role role = observer.Ideo.GetRole(observer);
+            if (role?.def.roleTags?.Contains("MedicalSpecialist") == true)
+                medical *= 1.5f;
+        }
+
+        float support = 0f;
+        if (isAnimalSubject)
+            support += observer.skills.GetSkill(SkillDefOf.Animals).Level * 0.60f;
+        support = Mathf.Min(support, 14f);
+
+        float sight = Mathf.Clamp(observer.health.capacities.GetLevel(PawnCapacityDefOf.Sight), 0.3f, 1.4f);
+        float score = (medical + support) * sight;
+
+        float sigmoid = 1f / (1f + Mathf.Exp(-InspectionSigmoidK * (score - InspectionSigmoidX0)));
+        return Mathf.Min(sigmoid, InspectionMaxChance);
+    }
 }

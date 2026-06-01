@@ -134,4 +134,76 @@ public static class ContagionCorpseUtility
             ContagionDiagnostics.Trace($"Corpse ingestion transmission: {resolvedProfile.DiseaseDef.defName} to {ingester.LabelShortCap}.");
         }
     }
+
+    // Post-mortem inspection at a butchery table. One attempt per corpse, forever.
+    // Skill pass: reveals the truth (disease named, or clean confirmed).
+    // Skill fail: reports an inconclusive result — disease stays hidden (no false positives).
+    public static void TryInspectCorpse(Corpse corpse, Pawn inspector)
+    {
+        if (corpse == null || inspector == null)
+        {
+            return;
+        }
+
+        Comp_InfectedCorpse comp = corpse.TryGetComp<Comp_InfectedCorpse>();
+        if (comp == null || comp.HasBeenInspected)
+        {
+            return;
+        }
+
+        bool isAnimalSubject = corpse.InnerPawn?.RaceProps?.Animal == true;
+
+        // Determine if the corpse has a real disease to find.
+        bool hasDisease = comp.IsInfected
+            || TryGetCorpseContagiousDiseaseFromInnerPawn(corpse.InnerPawn, out HediffDef _);
+
+        bool rollPassed = Rand.Chance(ContagionDiagnosticSkillUtility.ComputeInspectionChance(inspector, isAnimalSubject));
+
+        if (rollPassed)
+        {
+            if (hasDisease)
+            {
+                // Ensure the comp has the disease flagged so MarkIdentified can reveal it.
+                if (!comp.IsInfected)
+                {
+                    if (TryGetCorpseContagiousDiseaseFromInnerPawn(corpse.InnerPawn, out HediffDef diseaseDef))
+                    {
+                        comp.SetInfection(diseaseDef);
+                    }
+                }
+
+                comp.MarkIdentified();
+                Messages.Message(
+                    "Contagion_InspectCorpseSuccessDisease".Translate(
+                        inspector.LabelShortCap,
+                        comp.InfectedDiseaseDef?.LabelCap ?? "unknown disease",
+                        corpse.InnerPawn?.LabelShortCap ?? corpse.Label),
+                    new LookTargets(corpse),
+                    MessageTypeDefOf.PositiveEvent);
+                ContagionDiagnostics.Trace($"Corpse inspection success: {inspector.LabelShortCap} identified {comp.InfectedDiseaseDef?.defName} in {corpse.InnerPawn?.LabelShortCap}.");
+            }
+            else
+            {
+                comp.MarkInspectedClean();
+                Messages.Message(
+                    "Contagion_InspectCorpseSuccessClean".Translate(
+                        inspector.LabelShortCap,
+                        corpse.InnerPawn?.LabelShortCap ?? corpse.Label),
+                    new LookTargets(corpse),
+                    MessageTypeDefOf.NeutralEvent);
+                ContagionDiagnostics.Trace($"Corpse inspection success: {inspector.LabelShortCap} confirmed {corpse.InnerPawn?.LabelShortCap} is clean.");
+            }
+        }
+        else
+        {
+            comp.MarkInspectedFailed();
+            Messages.Message(
+                "Contagion_InspectCorpseFail".Translate(
+                    inspector.LabelShortCap,
+                    corpse.InnerPawn?.LabelShortCap ?? corpse.Label),
+                new LookTargets(corpse),
+                MessageTypeDefOf.NeutralEvent);
+            ContagionDiagnostics.Trace($"Corpse inspection failed: {inspector.LabelShortCap} found nothing conclusive on {corpse.InnerPawn?.LabelShortCap} (actual disease: {hasDisease}).");
+        }
+    }
 }

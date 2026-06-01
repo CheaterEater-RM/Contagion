@@ -18,9 +18,33 @@ public sealed class Comp_InfectedCorpse : ThingComp
 
     private bool _diseaseIdentified;
 
+    private bool _hasBeenInspected;
+
     public bool IsInfected => _infectedDiseaseDef != null;
 
     public HediffDef InfectedDiseaseDef => _infectedDiseaseDef;
+
+    internal bool DiseaseIdentified => _diseaseIdentified;
+
+    internal bool HasBeenInspected => _hasBeenInspected;
+
+    internal void MarkIdentified()
+    {
+        _diseaseIdentified = true;
+        _hasBeenInspected = true;
+    }
+
+    internal void MarkInspectedClean()
+    {
+        _infectedDiseaseDef = null;
+        _diseaseIdentified = false;
+        _hasBeenInspected = true;
+    }
+
+    internal void MarkInspectedFailed()
+    {
+        _hasBeenInspected = true;
+    }
 
     public void SetInfection(HediffDef diseaseDef, bool identified = true)
     {
@@ -81,6 +105,7 @@ public sealed class Comp_InfectedCorpse : ThingComp
         Scribe_Defs.Look(ref _infectedDiseaseDef, "infectedDiseaseDef");
         Scribe_Values.Look(ref _infectionTick, "infectionTick", -1);
         Scribe_Values.Look(ref _diseaseIdentified, "diseaseIdentified", defaultValue: true);
+        Scribe_Values.Look(ref _hasBeenInspected, "hasBeenInspected");
     }
 
     public bool TryGetDiseaseForDisplay(out HediffDef diseaseDef)

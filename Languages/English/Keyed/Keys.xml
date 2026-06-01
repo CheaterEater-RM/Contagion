@@ -117,4 +117,11 @@
   <Contagion_LetterLabelAnimalDiagnosed>{0} diagnosed: {1}</Contagion_LetterLabelAnimalDiagnosed>
   <Contagion_LetterAnimalDiagnosed>{0} examined {1} and diagnosed {2}. The animal should not be butchered while infected — its carcass will be unsafe unless the disease is treated first.</Contagion_LetterAnimalDiagnosed>
   <Contagion_MessageAnimalExamClear>{0} examined {1} and found nothing of concern.</Contagion_MessageAnimalExamClear>
+
+  <!-- Corpse inspection -->
+  <Contagion_InspectCorpse>Inspect for disease</Contagion_InspectCorpse>
+  <Contagion_InspectCorpseFail>{0} found nothing conclusive on {1}.</Contagion_InspectCorpseFail>
+  <Contagion_InspectCorpseSuccessDisease>{0} identified {1} in {2}.</Contagion_InspectCorpseSuccessDisease>
+  <Contagion_InspectCorpseSuccessClean>{0} confirmed {1} is disease-free.</Contagion_InspectCorpseSuccessClean>
+  <Contagion_InspectCorpseNoTable>No butchery table available for inspection.</Contagion_InspectCorpseNoTable>
 </LanguageData>
