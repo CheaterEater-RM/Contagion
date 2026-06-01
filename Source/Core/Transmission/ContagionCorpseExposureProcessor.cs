@@ -7,6 +7,10 @@ internal sealed class ContagionCorpseExposureProcessor
 {
     private readonly Map _map;
 
+    private readonly Dictionary<int, float> _pathDistanceByCell = new Dictionary<int, float>();
+
+    private readonly Queue<IntVec3> _pathOpenCells = new Queue<IntVec3>();
+
     public ContagionCorpseExposureProcessor(Map map)
     {
         _map = map;
@@ -47,16 +51,23 @@ internal sealed class ContagionCorpseExposureProcessor
             }
 
             ContagionCorpseExposureUtility.UpdateCorpseFleas(corpse, resolvedProfile, vector, deltaTicks);
+            ContagionTransmissionUtility.CollectReachablePathDistances(
+                _map,
+                corpse.Position,
+                vector.maxRange,
+                _pathDistanceByCell,
+                _pathOpenCells);
+
             for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
             {
                 Pawn target = spawnedPawns[pawnIndex];
-                if (!CanExpose(target) || !target.Position.InHorDistOf(corpse.Position, vector.maxRange))
+                if (!CanExpose(target)
+                    || !_pathDistanceByCell.TryGetValue(_map.cellIndices.CellToIndex(target.Position), out float pathDistance))
                 {
                     continue;
                 }
 
-                float distance = ContagionTransmissionUtility.GetHorizontalDistance(corpse.Position, target.Position);
-                float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(distance, vector.distanceFalloffRate);
+                float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(pathDistance, vector.distanceFalloffRate);
                 ContagionCorpseExposureUtility.TryApplyFleaExposure(
                     target,
                     corpse,
@@ -92,18 +103,24 @@ internal sealed class ContagionCorpseExposureProcessor
                     fleaVector.carriedBaseChancePerCheck,
                     1f);
 
+                ContagionTransmissionUtility.CollectReachablePathDistances(
+                    _map,
+                    carrier.Position,
+                    fleaVector.carriedRange,
+                    _pathDistanceByCell,
+                    _pathOpenCells);
+
                 for (int targetIndex = 0; targetIndex < spawnedPawns.Count; targetIndex++)
                 {
                     Pawn target = spawnedPawns[targetIndex];
                     if (target == carrier
                         || !CanExpose(target)
-                        || !target.Position.InHorDistOf(carrier.Position, fleaVector.carriedRange))
+                        || !_pathDistanceByCell.TryGetValue(_map.cellIndices.CellToIndex(target.Position), out float pathDistance))
                     {
                         continue;
                     }
 
-                    float distance = ContagionTransmissionUtility.GetHorizontalDistance(carrier.Position, target.Position);
-                    float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(distance, fleaVector.distanceFalloffRate);
+                    float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(pathDistance, fleaVector.distanceFalloffRate);
                     ContagionCorpseExposureUtility.TryApplyFleaExposure(
                         target,
                         corpse,

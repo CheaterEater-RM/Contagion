@@ -1,3 +1,4 @@
+using UnityEngine;
 using Verse;
 
 namespace Contagion;
@@ -37,6 +38,44 @@ public static class ContagionDeveloperDiagnosticsUtility
             breakdown.DistanceFactor = distanceFactor;
             breakdown.EnclosureFactor = enclosureFactor;
             breakdown.ObstructionFactor = obstructionFactor;
+            breakdown.MaskFactor = maskFactor;
+            breakdown.SuppressionFactor = suppressionFactor;
+        }
+
+        return canCompute;
+    }
+
+    public static bool TryBuildAirborneRoomBreakdown(
+        Pawn sourcePawn,
+        Pawn targetPawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        Vector_Airborne vector,
+        Map map,
+        float settingsMultiplier,
+        float effectiveRoomDistance,
+        float roomAirFactor,
+        float maskFactor,
+        float suppressionFactor,
+        out ContagionSpreadBreakdown breakdown)
+    {
+        bool canCompute = TryBuildBreakdown(
+            (vector?.baseChancePerCheck ?? 0f) * Mathf.Max(0f, vector?.roomAirBaseChanceFactor ?? 0f),
+            sourcePawn,
+            targetPawn,
+            resolvedProfile,
+            vector,
+            map,
+            settingsMultiplier,
+            roomAirFactor * maskFactor * suppressionFactor,
+            ContagionDebugVectorKind.AirborneRoom,
+            out breakdown);
+
+        if (breakdown != null)
+        {
+            breakdown.Distance = effectiveRoomDistance;
+            breakdown.DistanceFactor = roomAirFactor;
+            breakdown.EnclosureFactor = 1f;
+            breakdown.ObstructionFactor = 1f;
             breakdown.MaskFactor = maskFactor;
             breakdown.SuppressionFactor = suppressionFactor;
         }
@@ -149,6 +188,38 @@ public static class ContagionDeveloperDiagnosticsUtility
             breakdown.DistanceFactor = distanceFactor;
             breakdown.EnclosureFactor = enclosureFactor;
             breakdown.ObstructionFactor = obstructionFactor;
+        }
+
+        return canCompute;
+    }
+
+    public static bool TryBuildNominalAirborneRoomBreakdown(
+        Pawn sourcePawn,
+        ResolvedTransmissionProfile resolvedProfile,
+        Vector_Airborne vector,
+        Map map,
+        float settingsMultiplier,
+        float effectiveRoomDistance,
+        float roomAirFactor,
+        out ContagionSpreadBreakdown breakdown)
+    {
+        bool canCompute = TryBuildNominalBreakdown(
+            (vector?.baseChancePerCheck ?? 0f) * Mathf.Max(0f, vector?.roomAirBaseChanceFactor ?? 0f),
+            sourcePawn,
+            resolvedProfile,
+            vector,
+            map,
+            settingsMultiplier,
+            roomAirFactor,
+            ContagionDebugVectorKind.AirborneRoom,
+            out breakdown);
+
+        if (breakdown != null)
+        {
+            breakdown.Distance = effectiveRoomDistance;
+            breakdown.DistanceFactor = roomAirFactor;
+            breakdown.EnclosureFactor = 1f;
+            breakdown.ObstructionFactor = 1f;
         }
 
         return canCompute;

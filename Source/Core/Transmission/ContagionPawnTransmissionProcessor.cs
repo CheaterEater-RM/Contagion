@@ -15,6 +15,14 @@ internal sealed class ContagionPawnTransmissionProcessor
 
     private readonly List<Pawn> _rangeQueryBuffer = new List<Pawn>();
 
+    private readonly HashSet<Pawn> _candidatePawnSet = new HashSet<Pawn>();
+
+    private readonly Dictionary<Room, List<Pawn>> _pawnsByRoom = new Dictionary<Room, List<Pawn>>();
+
+    private readonly Dictionary<int, float> _pathDistanceByCell = new Dictionary<int, float>();
+
+    private readonly Queue<IntVec3> _pathOpenCells = new Queue<IntVec3>();
+
     private sealed class TransmissionSource
     {
         public TransmissionSource(Pawn pawn, ResolvedTransmissionProfile resolvedProfile)
@@ -59,14 +67,28 @@ internal sealed class ContagionPawnTransmissionProcessor
         }
 
         _spatialIndex.Build(spawnedPawns);
+        BuildRoomPawnIndex(spawnedPawns);
 
         for (int sourceIndex = 0; sourceIndex < sources.Count; sourceIndex++)
         {
             TransmissionSource source = sources[sourceIndex];
             float maxRange = GetMaxVectorRange(source.ResolvedProfile.Profile);
+            float maxRoomAirRange = GetMaxRoomAirRange(source.ResolvedProfile.Profile);
+            float maxPathRange = GetMaxProximityVectorRange(source.ResolvedProfile.Profile);
+            Dictionary<int, float> pathDistanceByCell = null;
+            if (maxPathRange > 0f)
+            {
+                ContagionTransmissionUtility.CollectReachablePathDistances(
+                    _map,
+                    source.Pawn.Position,
+                    maxPathRange,
+                    _pathDistanceByCell,
+                    _pathOpenCells);
+                pathDistanceByCell = _pathDistanceByCell;
+            }
 
             _rangeQueryBuffer.Clear();
-            _spatialIndex.CollectPawnsInRange(source.Pawn.Position, maxRange, _rangeQueryBuffer);
+            CollectTransmissionCandidates(source.Pawn, source.ResolvedProfile.Profile, maxRange, maxRoomAirRange, _rangeQueryBuffer);
 
             for (int targetIndex = 0; targetIndex < _rangeQueryBuffer.Count; targetIndex++)
             {
@@ -76,7 +98,7 @@ internal sealed class ContagionPawnTransmissionProcessor
                     continue;
                 }
 
-                TryTransmit(source, targetPawn);
+                TryTransmit(source, targetPawn, pathDistanceByCell);
             }
         }
     }
@@ -102,6 +124,74 @@ internal sealed class ContagionPawnTransmissionProcessor
         return sources;
     }
 
+    private void BuildRoomPawnIndex(IReadOnlyList<Pawn> spawnedPawns)
+    {
+        foreach (List<Pawn> pawns in _pawnsByRoom.Values)
+        {
+            pawns.Clear();
+        }
+
+        _pawnsByRoom.Clear();
+        for (int i = 0; i < spawnedPawns.Count; i++)
+        {
+            Pawn pawn = spawnedPawns[i];
+            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != _map)
+            {
+                continue;
+            }
+
+            Room room = pawn.Position.GetRoom(_map);
+            if (room == null || ContagionTransmissionUtility.IsOutdoors(room))
+            {
+                continue;
+            }
+
+            if (!_pawnsByRoom.TryGetValue(room, out List<Pawn> pawns))
+            {
+                pawns = new List<Pawn>();
+                _pawnsByRoom[room] = pawns;
+            }
+
+            pawns.Add(pawn);
+        }
+    }
+
+    private void CollectTransmissionCandidates(Pawn sourcePawn, TransmissionProfile profile, float maxRange, float maxRoomAirRange, List<Pawn> result)
+    {
+        _candidatePawnSet.Clear();
+        if (maxRange > 0f)
+        {
+            _spatialIndex.CollectPawnsInRange(sourcePawn.Position, maxRange, result);
+            for (int i = 0; i < result.Count; i++)
+            {
+                _candidatePawnSet.Add(result[i]);
+            }
+        }
+
+        if (maxRoomAirRange <= 0f || !HasRoomAirborne(profile))
+        {
+            return;
+        }
+
+        Room sourceRoom = sourcePawn.Position.GetRoom(_map);
+        if (sourceRoom == null
+            || ContagionTransmissionUtility.IsOutdoors(sourceRoom)
+            || !_pawnsByRoom.TryGetValue(sourceRoom, out List<Pawn> roomPawns))
+        {
+            return;
+        }
+
+        for (int i = 0; i < roomPawns.Count; i++)
+        {
+            Pawn roomPawn = roomPawns[i];
+            if (sourcePawn.Position.InHorDistOf(roomPawn.Position, maxRoomAirRange)
+                && _candidatePawnSet.Add(roomPawn))
+            {
+                result.Add(roomPawn);
+            }
+        }
+    }
+
     private static float GetMaxVectorRange(TransmissionProfile profile)
     {
         float maxRange = 0f;
@@ -125,7 +215,69 @@ internal sealed class ContagionPawnTransmissionProcessor
         return maxRange;
     }
 
-    private bool TryTransmit(TransmissionSource source, Pawn targetPawn)
+    private static bool HasRoomAirborne(TransmissionProfile profile)
+    {
+        if (profile?.vectors == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < profile.vectors.Count; i++)
+        {
+            if (profile.vectors[i] is Vector_Airborne airborne
+                && airborne.roomAirBaseChanceFactor > 0f
+                && airborne.roomAirMaxRange > 0
+                && airborne.roomAirMaxCells > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static float GetMaxRoomAirRange(TransmissionProfile profile)
+    {
+        float maxRange = 0f;
+        if (profile?.vectors == null)
+        {
+            return maxRange;
+        }
+
+        for (int i = 0; i < profile.vectors.Count; i++)
+        {
+            if (profile.vectors[i] is Vector_Airborne airborne
+                && airborne.roomAirBaseChanceFactor > 0f
+                && airborne.roomAirMaxRange > 0
+                && airborne.roomAirMaxCells > 0)
+            {
+                maxRange = Mathf.Max(maxRange, airborne.roomAirMaxRange);
+            }
+        }
+
+        return maxRange;
+    }
+
+    private static float GetMaxProximityVectorRange(TransmissionProfile profile)
+    {
+        float maxRange = 0f;
+        if (profile.vectors == null)
+        {
+            return maxRange;
+        }
+
+        for (int i = 0; i < profile.vectors.Count; i++)
+        {
+            if (profile.vectors[i] is Vector_Proximity proximity)
+            {
+                maxRange = Mathf.Max(maxRange, proximity.maxRange);
+            }
+        }
+
+        return maxRange;
+    }
+
+    private bool TryTransmit(TransmissionSource source, Pawn targetPawn, Dictionary<int, float> pathDistanceByCell)
     {
         if (targetPawn == null || targetPawn.Dead || !targetPawn.Spawned || targetPawn.Map != _map)
         {
@@ -142,7 +294,7 @@ internal sealed class ContagionPawnTransmissionProcessor
                 return true;
             }
 
-            if (vector is Vector_Proximity proximity && TryTransmitProximity(source, targetPawn, proximity, transmissionMultiplier))
+            if (vector is Vector_Proximity proximity && TryTransmitProximity(source, targetPawn, proximity, transmissionMultiplier, pathDistanceByCell))
             {
                 return true;
             }
@@ -152,6 +304,20 @@ internal sealed class ContagionPawnTransmissionProcessor
     }
 
     private bool TryTransmitAirborne(
+        TransmissionSource source,
+        Pawn targetPawn,
+        Vector_Airborne vector,
+        float transmissionMultiplier)
+    {
+        if (TryTransmitAirborneDirect(source, targetPawn, vector, transmissionMultiplier))
+        {
+            return true;
+        }
+
+        return TryTransmitAirborneRoom(source, targetPawn, vector, transmissionMultiplier);
+    }
+
+    private bool TryTransmitAirborneDirect(
         TransmissionSource source,
         Pawn targetPawn,
         Vector_Airborne vector,
@@ -212,19 +378,80 @@ internal sealed class ContagionPawnTransmissionProcessor
         return seeded;
     }
 
+    private bool TryTransmitAirborneRoom(
+        TransmissionSource source,
+        Pawn targetPawn,
+        Vector_Airborne vector,
+        float transmissionMultiplier)
+    {
+        if (!ContagionTransmissionUtility.TryGetRoomAirFactor(
+            _map,
+            source.Pawn.Position,
+            targetPawn.Position,
+            vector,
+            out float effectiveRoomDistance,
+            out float roomAirFactor))
+        {
+            return false;
+        }
+
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneAttempted);
+        float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
+        float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn) ? source.SuppressionFactor : 1f;
+        if (!ContagionDeveloperDiagnosticsUtility.TryBuildAirborneRoomBreakdown(
+            source.Pawn,
+            targetPawn,
+            source.ResolvedProfile,
+            vector,
+            _map,
+            transmissionMultiplier,
+            effectiveRoomDistance,
+            roomAirFactor,
+            maskFactor,
+            suppressionFactor,
+            out ContagionSpreadBreakdown breakdown))
+        {
+            return false;
+        }
+
+        bool passed = Rand.Chance(Mathf.Clamp01(breakdown.FinalChance));
+        bool seeded = false;
+        if (passed)
+        {
+            seeded = ContagionDiseaseUtility.TrySeedIncubation(
+                targetPawn,
+                source.ResolvedProfile.ResolveHediffForPawn(targetPawn),
+                source.ResolvedProfile.PartsToAffect,
+                source.Pawn,
+                ContagionDiagnosticOrigin.Spread,
+                ContagionSeedSource.Contact,
+                out HediffDef _);
+            if (seeded)
+            {
+                ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneSeeded);
+                _developerDiagnosticsController.RecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.AirborneRoom);
+            }
+        }
+
+        ContagionDiagnostics.LogRoll(source.Pawn, targetPawn, breakdown, seeded);
+        return seeded;
+    }
+
     private bool TryTransmitProximity(
         TransmissionSource source,
         Pawn targetPawn,
         Vector_Proximity vector,
-        float transmissionMultiplier)
+        float transmissionMultiplier,
+        Dictionary<int, float> pathDistanceByCell)
     {
-        if (!source.Pawn.Position.InHorDistOf(targetPawn.Position, vector.maxRange))
+        if (pathDistanceByCell == null
+            || !pathDistanceByCell.TryGetValue(_map.cellIndices.CellToIndex(targetPawn.Position), out float pathDistance)
+            || pathDistance > vector.maxRange)
         {
             return false;
         }
 
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.ProximityAttempted);
-        float distance = ContagionTransmissionUtility.GetHorizontalDistance(source.Pawn.Position, targetPawn.Position);
         Room sourceRoom = source.Pawn.Position.GetRoom(_map);
         Room targetRoom = targetPawn.Position.GetRoom(_map);
         float outdoorFactor = ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
@@ -241,8 +468,8 @@ internal sealed class ContagionPawnTransmissionProcessor
             vector,
             _map,
             transmissionMultiplier,
-            distance,
-            ContagionTransmissionUtility.GetDistanceFactor(distance, vector.distanceFalloffRate),
+            pathDistance,
+            ContagionTransmissionUtility.GetDistanceFactor(pathDistance, vector.distanceFalloffRate),
             outdoorFactor,
             cleanlinessFactor,
             maskFactor,

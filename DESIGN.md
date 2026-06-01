@@ -295,15 +295,16 @@ This is the primary soft-coupling hook for the planned sister mod: it applies a 
 
 ---
 
-## Pawn-Local Context Model (LOS + Roofing, not Rooms)
+## Pawn-Local Context Model (LOS + Roofing + Bounded Room Air)
 
-Airborne, social, and proximity vectors do **not** use room identity as a binary gate (a 50-cell hallway is one "room" but shouldn't transmit across its length; two pawns across an open doorway are in different rooms but 2 cells apart). Instead:
+Airborne direct plume, social, and proximity vectors do **not** use room identity as a binary gate (a 50-cell hallway is one "room" but shouldn't transmit across its length; two pawns across an open doorway are in different rooms but 2 cells apart). Instead:
 
 - **Roofing** — `map.roofGrid.Roofed(cell)` at both endpoints. Both roofed = enclosed, aerosols concentrate (factor 1.0). Either unroofed = outdoor dispersal (`outdoorFactor`). Per-cell, so roofed courtyards and mountain bases behave correctly.
 - **Line of sight** — `GenSight.LineOfSight(source, target, map)`. Clear = air path; blocked by wall/closed door = `obstructedFactor` (airborne default 0.0). Open doors pass LOS (correct: an open doorway is an air path). *Known v1 limitation:* vents are `Impassable` to LOS, so airborne does not pass through them — physically wrong but conservative.
 - **Distance falloff** — smooth exponential, not a hard cutoff, out to `maxRange`.
+- **Bounded room air** — airborne vectors also have an optional same-room aerosol component. It is not LOS-gated, but only applies in the same non-outdoor room, within `roomAirMaxRange`, up to `roomAirMaxCells`; strength decays by `sqrt(room.CellCount)` so tiny rooms are risky and large/hall-like spaces are dilute.
 
-Rooms still apply where they're the correct abstraction: **kitchen cleanliness** for foodborne, and **indoor cleanliness** for proximity (with an outdoor filth-count fallback within `outdoorFilthRadius`).
+Rooms also apply where they're the correct abstraction: **same-room aerosol** for airborne, **kitchen cleanliness** for foodborne, and **indoor cleanliness** for proximity (with an outdoor filth-count fallback within `outdoorFilthRadius`).
 
 ---
 
@@ -348,7 +349,7 @@ suppression = (1 - infectedColonyFraction) ^ effectiveStrength
 
 ## Respiratory Protection (Masks, Lungs, Genes)
 
-Respiratory vectors (`Vector_Airborne`, `Vector_Social`, `Vector_Proximity`) share a `RespiratoryVector` base that reduces transmission based on protection the source and target are actually wearing or carrying, keyed on the vanilla `ToxicEnvironmentResistance` stat so existing gear (gas masks etc.) is immediately relevant. Per side:
+Airborne, social, and short-range physical/contact vectors (`Vector_Airborne`, `Vector_Social`, `Vector_Proximity`) share a `RespiratoryVector` base for historical/schema reasons. The shared base reduces transmission based on protection the source and target are actually wearing or carrying, keyed on the vanilla `ToxicEnvironmentResistance` stat so existing gear (gas masks etc.) is immediately relevant. Per side:
 
 ```
 sideFactor = (1 - airwayBarrierResistance × maskEffectiveness)   ← physical barrier (apparel + body parts)
@@ -368,18 +369,18 @@ A standalone, fully patchable `Def` (shipped as `Contagion_RespiratoryImmunity`)
 
 ## Transmission Vectors
 
-Composable classes. The composition *is* the API: "airborne + social + fomite" is flu, "proximity only" is plague, "social only" is a contact disease a modder could build.
+Composable classes. The composition *is* the API: "airborne + social + fomite" is flu, "live flea/contact proximity" is plague, "social only" is a contact disease a modder could build.
 
 ### Vector_Airborne (respiratory)
-Primary respiratory vector. Distance falloff, roofing-based enclosure, LOS obstruction.
-- `baseChancePerCheck` (0.03), `outdoorFactor` (0.15), `maxRange` (15), `distanceFalloffRate` (0.25), `obstructedFactor` (0.0)
+Primary respiratory vector. Direct plume uses distance falloff, roofing-based enclosure, and LOS obstruction. Optional room air is a separate same-room aerosol roll with room-size dilution and a short range cap.
+- `baseChancePerCheck` (0.03), `outdoorFactor` (0.15), `maxRange` (10), `distanceFalloffRate` (0.25), `obstructedFactor` (0.0), `roomAirBaseChanceFactor` (0.25), `roomAirMaxRange` (10), `roomAirMaxCells` (100)
 
 ### Vector_Social (respiratory)
 A booster on respiratory spread that fires on successful social interactions (face-to-face, so no distance falloff). Hooked via a postfix on `Pawn_InteractionsTracker.TryInteractWith`, evaluated in both directions.
 - `baseChancePerInteraction` (0.02), `outdoorFactor` (0.5)
 
-### Vector_Proximity (respiratory)
-Short-range contact spread modulated by cleanliness — the generalized "flea" vector for plague. Uses indoor room cleanliness or an outdoor filth-count fallback. `airwayImmunityFactor` is typically set to 0 for plague (contact, not airway).
+### Vector_Proximity (short-range physical/contact)
+Short-range physical spread modulated by cleanliness. For plague this is live-host flea/contact transfer, not random near-person infection. It uses reachable path distance, so walls and closed doors block while open doors pass during the check. Uses indoor room cleanliness or an outdoor filth-count fallback. `airwayImmunityFactor` is typically set to 0 for plague (contact, not airway).
 - `baseChancePerCheck` (0.025), `maxRange` (6), `distanceFalloffRate` (0.35), `cleanlinessImpact` (1.0), `outdoorFactor` (0.75), `outdoorFilthRadius` (4)
 
 ### Vector_Environmental

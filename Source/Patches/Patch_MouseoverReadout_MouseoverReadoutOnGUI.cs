@@ -18,6 +18,10 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
 
     private const float ScreenMargin = 18f;
 
+    private static readonly Dictionary<int, float> PathDistanceByCell = new Dictionary<int, float>();
+
+    private static readonly Queue<IntVec3> PathOpenCells = new Queue<IntVec3>();
+
     public static void Postfix()
     {
         if (!TryGetHoverContext(out Pawn sourcePawn, out Pawn targetPawn, out Contagion_MapTransmissionComponent component))
@@ -214,10 +218,40 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
                 }
             }
 
-            if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Proximity proximity)
-                && sourcePawn.Position.InHorDistOf(targetPawn.Position, proximity.maxRange))
+            if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Airborne roomAirborne)
+                && ContagionTransmissionUtility.TryGetRoomAirFactor(
+                    map,
+                    sourcePawn.Position,
+                    targetPawn.Position,
+                    roomAirborne,
+                    out float effectiveRoomDistance,
+                    out float roomAirFactor))
             {
-                float distance = ContagionTransmissionUtility.GetHorizontalDistance(sourcePawn.Position, targetPawn.Position);
+                float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(sourcePawn, targetPawn, roomAirborne);
+                float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn)
+                    ? ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile)
+                    : 1f;
+                ContagionDeveloperDiagnosticsUtility.TryBuildAirborneRoomBreakdown(
+                    sourcePawn,
+                    targetPawn,
+                    resolvedProfile,
+                    roomAirborne,
+                    map,
+                    settingsMultiplier,
+                    effectiveRoomDistance,
+                    roomAirFactor,
+                    maskFactor,
+                    suppressionFactor,
+                    out ContagionSpreadBreakdown breakdown);
+                if (breakdown != null)
+                {
+                    breakdowns.Add(breakdown);
+                }
+            }
+
+            if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Proximity proximity)
+                && TryGetPathDistance(map, sourcePawn.Position, targetPawn.Position, proximity.maxRange, out float pathDistance))
+            {
                 Room sourceRoom = sourcePawn.Position.GetRoom(map);
                 Room targetRoom = targetPawn.Position.GetRoom(map);
                 float outdoorFactor = ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
@@ -236,8 +270,8 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
                     proximity,
                     map,
                     settingsMultiplier,
-                    distance,
-                    ContagionTransmissionUtility.GetDistanceFactor(distance, proximity.distanceFalloffRate),
+                    pathDistance,
+                    ContagionTransmissionUtility.GetDistanceFactor(pathDistance, proximity.distanceFalloffRate),
                     outdoorFactor,
                     cleanlinessFactor,
                     maskFactor,
@@ -281,6 +315,25 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         return breakdowns;
     }
 
+    private static bool TryGetPathDistance(Map map, IntVec3 source, IntVec3 target, float maxRange, out float pathDistance)
+    {
+        pathDistance = 0f;
+        if (map == null || !source.InBounds(map) || !target.InBounds(map) || maxRange < 0f)
+        {
+            return false;
+        }
+
+        ContagionTransmissionUtility.CollectReachablePathDistances(
+            map,
+            source,
+            maxRange,
+            PathDistanceByCell,
+            PathOpenCells);
+
+        return PathDistanceByCell.TryGetValue(map.cellIndices.CellToIndex(target), out pathDistance)
+            && pathDistance <= maxRange;
+    }
+
     private static void DrawBreakdownReadout(Pawn sourcePawn, Pawn targetPawn, List<ContagionSpreadBreakdown> breakdowns)
     {
         StringBuilder builder = new StringBuilder();
@@ -290,7 +343,7 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
             ContagionSpreadBreakdown breakdown = breakdowns[i];
             builder.AppendLine("Contagion_DeveloperHoverBreakdownLine".Translate(
                 breakdown.DiseaseDef?.LabelCap ?? "?",
-                GetVectorLabel(breakdown.VectorKind),
+                GetVectorLabel(breakdown),
                 FormatChance(breakdown.FinalChance)).Resolve());
             builder.AppendLine("Contagion_DeveloperHoverCommonFactors".Translate(
                 FormatChance(breakdown.BaseChance),
@@ -302,6 +355,7 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
             switch (breakdown.VectorKind)
             {
                 case ContagionDebugVectorKind.Airborne:
+                case ContagionDebugVectorKind.AirborneRoom:
                     builder.AppendLine("Contagion_DeveloperHoverAirborneFactors".Translate(
                         FormatMultiplier(breakdown.DistanceFactor),
                         FormatMultiplier(breakdown.EnclosureFactor),
@@ -366,14 +420,27 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         GUI.color = Color.white;
     }
 
-    private static TaggedString GetVectorLabel(ContagionDebugVectorKind vectorKind)
+    private static TaggedString GetVectorLabel(ContagionSpreadBreakdown breakdown)
     {
-        return vectorKind switch
+        if (breakdown?.VectorKind == ContagionDebugVectorKind.Proximity
+            && IsPlagueFleaTransfer(breakdown.DiseaseDef))
+        {
+            return "live flea transfer";
+        }
+
+        return breakdown?.VectorKind switch
         {
             ContagionDebugVectorKind.Airborne => "Contagion_DeveloperHoverVectorAirborne".Translate(),
+            ContagionDebugVectorKind.AirborneRoom => "room air",
             ContagionDebugVectorKind.Proximity => "Contagion_DeveloperHoverVectorProximity".Translate(),
             _ => "Contagion_DeveloperHoverVectorSocial".Translate()
         };
+    }
+
+    private static bool IsPlagueFleaTransfer(HediffDef diseaseDef)
+    {
+        string defName = diseaseDef?.defName;
+        return defName == "Plague" || defName == "Animal_Plague";
     }
 
     private static string FormatChance(float chance)

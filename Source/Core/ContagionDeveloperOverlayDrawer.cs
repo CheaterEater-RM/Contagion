@@ -63,6 +63,10 @@ public static class ContagionDeveloperOverlayDrawer
 
     private static readonly Dictionary<int, Color> FillOverlayBucketColors = new Dictionary<int, Color>();
 
+    private static readonly Dictionary<int, float> PathDistanceByCell = new Dictionary<int, float>();
+
+    private static readonly Queue<IntVec3> PathOpenCells = new Queue<IntVec3>();
+
     public static void DrawHoverLine(Pawn sourcePawn, Pawn targetPawn)
     {
         if (sourcePawn == null || targetPawn == null)
@@ -260,6 +264,8 @@ public static class ContagionDeveloperOverlayDrawer
         Map map = sourcePawn.Map;
         List<ResolvedTransmissionProfile> contagiousProfiles = new List<ResolvedTransmissionProfile>();
         float maxRange = 0f;
+        float maxRoomAirRange = 0f;
+        float maxProximityRange = 0f;
         foreach (ResolvedTransmissionProfile resolvedProfile in ContagionDiseaseUtility.GetContagiousProfiles(sourcePawn))
         {
             contagiousProfiles.Add(resolvedProfile);
@@ -267,14 +273,20 @@ public static class ContagionDeveloperOverlayDrawer
             if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Airborne airborne))
             {
                 maxRange = Mathf.Max(maxRange, airborne.maxRange);
+                if (airborne.roomAirBaseChanceFactor > 0f && airborne.roomAirMaxRange > 0 && airborne.roomAirMaxCells > 0)
+                {
+                    maxRoomAirRange = Mathf.Max(maxRoomAirRange, airborne.roomAirMaxRange);
+                }
             }
 
             if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Proximity proximity))
             {
                 maxRange = Mathf.Max(maxRange, proximity.maxRange);
+                maxProximityRange = Mathf.Max(maxProximityRange, proximity.maxRange);
             }
         }
 
+        maxRange = Mathf.Max(maxRange, maxRoomAirRange);
         if (contagiousProfiles.Count == 0 || maxRange <= 0f)
         {
             return;
@@ -291,6 +303,16 @@ public static class ContagionDeveloperOverlayDrawer
         bool sourceRoofed = map.roofGrid.Roofed(sourcePawn.Position);
         Room sourceRoom = sourcePawn.Position.GetRoom(map);
         float settingsMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
+        if (maxProximityRange > 0f)
+        {
+            ContagionTransmissionUtility.CollectReachablePathDistances(
+                map,
+                sourcePawn.Position,
+                maxProximityRange,
+                PathDistanceByCell,
+                PathOpenCells);
+        }
+
         foreach (IntVec3 cell in GenRadial.RadialCellsAround(sourcePawn.Position, maxRange, useCenter: true))
         {
             if (!ShouldDrawCell(map, cell) || cell == sourcePawn.Position)
@@ -327,12 +349,36 @@ public static class ContagionDeveloperOverlayDrawer
                     }
                 }
 
-                if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Proximity proximity)
-                    && sourcePawn.Position.InHorDistOf(cell, proximity.maxRange))
+                if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Airborne roomAirborne)
+                    && ContagionTransmissionUtility.TryGetRoomAirFactor(
+                        map,
+                        sourcePawn.Position,
+                        cell,
+                        roomAirborne,
+                        out float effectiveRoomDistance,
+                        out float roomAirFactor))
                 {
-                    float distance = ContagionTransmissionUtility.GetHorizontalDistance(sourcePawn.Position, cell);
+                    ContagionDeveloperDiagnosticsUtility.TryBuildNominalAirborneRoomBreakdown(
+                        sourcePawn,
+                        resolvedProfile,
+                        roomAirborne,
+                        map,
+                        settingsMultiplier,
+                        effectiveRoomDistance,
+                        roomAirFactor,
+                        out ContagionSpreadBreakdown roomAirBreakdown);
+                    if (roomAirBreakdown != null)
+                    {
+                        aggregateChance = CombineChance(aggregateChance, roomAirBreakdown.FinalChance);
+                    }
+                }
+
+                if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Proximity proximity)
+                    && PathDistanceByCell.TryGetValue(map.cellIndices.CellToIndex(cell), out float pathDistance)
+                    && pathDistance <= proximity.maxRange)
+                {
                     Room targetRoom = cell.GetRoom(map);
-                    float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(distance, proximity.distanceFalloffRate);
+                    float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(pathDistance, proximity.distanceFalloffRate);
                     float outdoorFactor = ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
                         ? proximity.outdoorFactor
                         : 1f;
@@ -344,7 +390,7 @@ public static class ContagionDeveloperOverlayDrawer
                         proximity,
                         map,
                         settingsMultiplier,
-                        distance,
+                        pathDistance,
                         distanceFactor,
                         outdoorFactor,
                         cleanlinessFactor,
@@ -449,23 +495,29 @@ public static class ContagionDeveloperOverlayDrawer
         FillOverlayBucketColors.Clear();
         Dictionary<int, float> chanceByCell = new Dictionary<int, float>();
         float strongestChance = 0f;
-        foreach (IntVec3 cell in GenRadial.RadialCellsAround(corpse.Position, vector.maxRange, useCenter: true))
+        ContagionTransmissionUtility.CollectReachablePathDistances(
+            map,
+            corpse.Position,
+            vector.maxRange,
+            PathDistanceByCell,
+            PathOpenCells);
+
+        foreach (KeyValuePair<int, float> pathEntry in PathDistanceByCell)
         {
+            IntVec3 cell = CellIndicesUtility.IndexToCell(pathEntry.Key, map.Size.x);
             if (!ShouldDrawCell(map, cell))
             {
                 continue;
             }
 
-            float distance = ContagionTransmissionUtility.GetHorizontalDistance(corpse.Position, cell);
-            float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(distance, vector.distanceFalloffRate);
+            float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(pathEntry.Value, vector.distanceFalloffRate);
             float chance = Mathf.Clamp01(vector.baseChancePerCheck * potency * distanceFactor);
             if (chance < MinVisibleNominalChance)
             {
                 continue;
             }
 
-            int cellIndex = map.cellIndices.CellToIndex(cell);
-            chanceByCell[cellIndex] = chance;
+            chanceByCell[pathEntry.Key] = chance;
             strongestChance = Mathf.Max(strongestChance, chance);
         }
 
@@ -583,6 +635,7 @@ public static class ContagionDeveloperOverlayDrawer
         return vectorKind switch
         {
             ContagionDebugVectorKind.Airborne => TraceAirborneColor,
+            ContagionDebugVectorKind.AirborneRoom => TraceAirborneColor,
             ContagionDebugVectorKind.Proximity => TraceProximityColor,
             ContagionDebugVectorKind.Social => TraceSocialColor,
             ContagionDebugVectorKind.Foodborne => TraceFoodborneColor,

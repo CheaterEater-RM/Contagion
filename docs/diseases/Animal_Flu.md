@@ -45,15 +45,18 @@ Storyteller fires `Disease_AnimalFlu` → pending event created with a 15-day wi
 
 ### Vector_Airborne
 
-Animals spread flu to each other through shared airspace. The same LOS + roofing rules apply: indoor barn air concentrates spread; outdoor pastures disperse it.
+Animals spread flu to each other through direct respiratory plumes and shared barn air. Direct plume exposure requires line of sight; weaker same-room aerosol exposure can reach nearby animals around corners in the same enclosed room.
 
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerCheck | 0.03 | |
-| maxRange | 15 | |
+| maxRange | 10 | Direct plume range, in cells |
 | distanceFalloffRate | 0.25 | |
 | outdoorFactor | 0.15 | Outdoor pastures dramatically reduce risk |
-| obstructedFactor | 0.0 | Walls block |
+| obstructedFactor | 0.0 | Walls block the direct plume |
+| roomAirBaseChanceFactor | 0.25 | Same-room aerosol base chance is 25% of direct plume |
+| roomAirMaxRange | 10 | Same-room aerosol does not affect animals farther than 10 cells apart |
+| roomAirMaxCells | 100 | Larger barns are too ventilated/dilute for this component |
 | maskTargetEffectiveness | 0.0 (default) | Animals don't wear masks |
 | maskSourceEffectiveness | 0.0 (default) | |
 | airwayImmunityFactor | 1.0 (default) | |

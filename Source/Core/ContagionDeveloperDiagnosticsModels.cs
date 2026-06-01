@@ -7,6 +7,7 @@ namespace Contagion;
 public enum ContagionDebugVectorKind
 {
     Airborne,
+    AirborneRoom,
     Proximity,
     Social,
     Foodborne,

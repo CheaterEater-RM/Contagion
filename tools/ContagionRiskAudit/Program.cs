@@ -18,9 +18,13 @@ internal static class Program
         XDocument recipes = XDocument.Load(Path.Combine(Root, "1.6", "Patches", "Contagion_RecipeExtensions.xml"));
 
         XElement plague = Profile(profiles, "Plague");
+        XElement flu = Profile(profiles, "Flu");
+        XElement animalFlu = Profile(profiles, "Animal_Flu");
         XElement gut = Profile(profiles, "GutWorms");
         XElement muscle = Profile(profiles, "MuscleParasites");
 
+        XElement fluAirborne = Vector(flu, "Contagion.Vector_Airborne");
+        XElement animalFluAirborne = Vector(animalFlu, "Contagion.Vector_Airborne");
         XElement plagueFlea = Vector(plague, "Contagion.Vector_CorpseFlea");
         XElement plagueFluid = Vector(plague, "Contagion.Vector_CorpseFluid");
         XElement plagueFood = Vector(plague, "Contagion.Vector_Foodborne");
@@ -73,6 +77,14 @@ internal static class Program
             Check.Close("plague cooking exposure", Field(plagueCooking, "baseChancePerRecipe") * cookExposureFactor, 0.005f, 0.0005f),
             Check.Close("gut worms cooking exposure", Field(gutCooking, "baseChancePerRecipe") * cookExposureFactor, 0.00375f, 0.0005f),
             Check.Close("muscle parasites cooking exposure", Field(muscleCooking, "baseChancePerRecipe") * cookExposureFactor, 0.005f, 0.0005f),
+            Check.Close("flu direct plume range", Field(fluAirborne, "maxRange"), 10f, 0.001f),
+            Check.Close("flu room-air strength", Field(fluAirborne, "roomAirBaseChanceFactor"), 0.25f, 0.001f),
+            Check.Close("flu room-air range", Field(fluAirborne, "roomAirMaxRange"), 10f, 0.001f),
+            Check.Close("flu room-air max cells", Field(fluAirborne, "roomAirMaxCells"), 100f, 0.001f),
+            Check.Close("animal flu direct plume range", Field(animalFluAirborne, "maxRange"), 10f, 0.001f),
+            Check.Close("animal flu room-air strength", Field(animalFluAirborne, "roomAirBaseChanceFactor"), 0.25f, 0.001f),
+            Check.Close("animal flu room-air range", Field(animalFluAirborne, "roomAirMaxRange"), 10f, 0.001f),
+            Check.Close("animal flu room-air max cells", Field(animalFluAirborne, "roomAirMaxCells"), 100f, 0.001f),
             Check.Bool("survival meal stays safer than ordinary", survivalMealFactor < ordinaryMealFactor, true),
             Check.Bool("pemmican stays risky", pemmicanFactor > ordinaryMealFactor, true),
         };
@@ -86,6 +98,12 @@ internal static class Program
         // the foodborne meal — raw ingestion is the highest-contact corpse interaction.
         checks.Add(Check.Bool("corpse ingestion rolls fluid contact", corpseUtility.Contains("TryApplyFluidExposure"), true));
         checks.Add(Check.Bool("corpse ingestion rolls flea contact", corpseUtility.Contains("TryApplyFleaExposure"), true));
+        string transmissionUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionTransmissionUtility.cs"));
+        string corpseExposureProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionCorpseExposureProcessor.cs"));
+        string pawnTransmissionProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionPawnTransmissionProcessor.cs"));
+        checks.Add(Check.Bool("shared path-walk helper exists", transmissionUtility.Contains("CollectReachablePathDistances"), true));
+        checks.Add(Check.Bool("corpse fleas use path-walk distances", corpseExposureProcessor.Contains("CollectReachablePathDistances"), true));
+        checks.Add(Check.Bool("live proximity uses path-walk distances", pawnTransmissionProcessor.Contains("CollectReachablePathDistances"), true));
 
         int failures = 0;
         foreach (Check check in checks)

@@ -428,6 +428,137 @@ public static class ContagionTransmissionUtility
         return Mathf.Exp(-Mathf.Max(0.01f, distanceFalloffRate) * distance);
     }
 
+    public static bool TryGetRoomAirFactor(
+        Map map,
+        IntVec3 source,
+        IntVec3 target,
+        Vector_Airborne vector,
+        out float effectiveRoomDistance,
+        out float roomAirFactor)
+    {
+        effectiveRoomDistance = 0f;
+        roomAirFactor = 0f;
+        if (map == null
+            || vector == null
+            || vector.roomAirBaseChanceFactor <= 0f
+            || vector.roomAirMaxRange <= 0
+            || vector.roomAirMaxCells <= 0
+            || !source.InBounds(map)
+            || !target.InBounds(map)
+            || !source.InHorDistOf(target, vector.roomAirMaxRange))
+        {
+            return false;
+        }
+
+        Room sourceRoom = source.GetRoom(map);
+        Room targetRoom = target.GetRoom(map);
+        if (sourceRoom == null
+            || sourceRoom != targetRoom
+            || IsOutdoors(sourceRoom)
+            || sourceRoom.CellCount > vector.roomAirMaxCells)
+        {
+            return false;
+        }
+
+        effectiveRoomDistance = Mathf.Sqrt(Mathf.Max(1f, sourceRoom.CellCount));
+        roomAirFactor = GetDistanceFactor(effectiveRoomDistance, vector.distanceFalloffRate);
+        return roomAirFactor > 0f;
+    }
+
+    public static void CollectReachablePathDistances(
+        Map map,
+        IntVec3 origin,
+        float maxDistance,
+        Dictionary<int, float> distanceByCell,
+        Queue<IntVec3> openCells)
+    {
+        distanceByCell?.Clear();
+        openCells?.Clear();
+        if (map == null || distanceByCell == null || openCells == null || maxDistance < 0f || !origin.InBounds(map))
+        {
+            return;
+        }
+
+        int originIndex = map.cellIndices.CellToIndex(origin);
+        distanceByCell[originIndex] = 0f;
+        openCells.Enqueue(origin);
+
+        while (openCells.Count > 0)
+        {
+            IntVec3 current = openCells.Dequeue();
+            float currentDistance = distanceByCell[map.cellIndices.CellToIndex(current)];
+
+            for (int i = 0; i < GenAdj.AdjacentCells.Length; i++)
+            {
+                IntVec3 offset = GenAdj.AdjacentCells[i];
+                IntVec3 next = current + offset;
+                if (!next.InBounds(map) || !CanPhysicalSpreadPassThrough(map, next))
+                {
+                    continue;
+                }
+
+                bool diagonal = offset.x != 0 && offset.z != 0;
+                if (diagonal)
+                {
+                    IntVec3 sideA = new IntVec3(current.x + offset.x, 0, current.z);
+                    IntVec3 sideB = new IntVec3(current.x, 0, current.z + offset.z);
+                    if (!CanPhysicalSpreadPassThrough(map, sideA) || !CanPhysicalSpreadPassThrough(map, sideB))
+                    {
+                        continue;
+                    }
+                }
+
+                float stepDistance = diagonal ? 1.41421356f : 1f;
+                float nextDistance = currentDistance + stepDistance;
+                if (nextDistance > maxDistance)
+                {
+                    continue;
+                }
+
+                int nextIndex = map.cellIndices.CellToIndex(next);
+                if (!distanceByCell.TryGetValue(nextIndex, out float existingDistance)
+                    || nextDistance + 0.0001f < existingDistance)
+                {
+                    distanceByCell[nextIndex] = nextDistance;
+                    openCells.Enqueue(next);
+                }
+            }
+        }
+    }
+
+    private static bool CanPhysicalSpreadPassThrough(Map map, IntVec3 cell)
+    {
+        if (map == null || !cell.InBounds(map))
+        {
+            return false;
+        }
+
+        TerrainDef terrain = map.terrainGrid.TerrainAt(cell);
+        if (terrain == null || terrain.passability == Traversability.Impassable)
+        {
+            return false;
+        }
+
+        List<Thing> things = map.thingGrid.ThingsListAtFast(cell);
+        for (int i = 0; i < things.Count; i++)
+        {
+            Thing thing = things[i];
+            if (thing?.def?.passability != Traversability.Impassable)
+            {
+                continue;
+            }
+
+            if (thing is Building_Door door && door.Open)
+            {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
     public static bool IsOutdoors(Room room)
     {
         return room == null || room.PsychologicallyOutdoors;

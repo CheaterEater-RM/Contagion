@@ -46,15 +46,18 @@ Storyteller fires `Disease_Flu` → pending event created with a 15-day window.
 
 ### Vector_Airborne (primary)
 
-Flu is primarily airborne. Shared indoor air is the main risk.
+Flu is primarily airborne. It has two airborne components: a direct cough/sneeze plume that requires line of sight, and weaker shared-room aerosol exposure that can affect nearby pawns around corners in the same enclosed room.
 
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerCheck | 0.03 | Per 250-tick pass |
-| maxRange | 15 | Cells |
+| maxRange | 10 | Direct plume range, in cells |
 | distanceFalloffRate | 0.25 | Exponential; moderate falloff |
 | outdoorFactor | 0.15 | Outdoor dispersal sharply cuts risk |
-| obstructedFactor | 0.0 | Walls and closed doors fully block |
+| obstructedFactor | 0.0 | Walls and closed doors fully block the direct plume |
+| roomAirBaseChanceFactor | 0.25 | Same-room aerosol base chance is 25% of direct plume |
+| roomAirMaxRange | 10 | Same-room aerosol does not affect pawns farther than 10 cells apart |
+| roomAirMaxCells | 100 | Larger rooms are too ventilated/dilute for this component |
 | maskTargetEffectiveness | 0.7 | 70% of mask ToxicResist applied to inhale side |
 | maskSourceEffectiveness | 0.5 | 50% applied to emit side |
 | airwayImmunityFactor | 1.0 (default) | Breathless gene and airway barriers fully apply |
@@ -141,7 +144,7 @@ Sickly pawns catch flu more often (vanilla `randomDiseaseMtbDays`) but shed at h
 ## Counterplay
 
 - **Masks** significantly reduce airborne and social transmission (breathless gene also helps).
-- **Hospital isolation** — walls and closed doors block airborne LOS; keeping sick pawns out of shared spaces matters.
+- **Hospital isolation** — walls and closed doors block direct airborne LOS and split room-air exposure; keeping sick pawns out of shared spaces matters.
 - **Social work priority** — cancelling social recreation for sick pawns eliminates the social vector.
 - **Cleaning** — removing vomit filth quickly cuts the fomite escalation path.
 - **Penoxycyline** — `DiseaseContractChanceFactor` reduces contract chance; a `Factor_Hediff` entry in the profile would make it explicit if added.

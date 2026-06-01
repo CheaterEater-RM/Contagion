@@ -233,6 +233,12 @@ public sealed class Vector_Airborne : RespiratoryVector
     public float distanceFalloffRate = 0.25f;
 
     public float obstructedFactor;
+
+    public float roomAirBaseChanceFactor = 0.25f;
+
+    public int roomAirMaxRange = 10;
+
+    public int roomAirMaxCells = 100;
 }
 
 public sealed class Vector_Social : RespiratoryVector

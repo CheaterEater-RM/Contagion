@@ -56,9 +56,12 @@
           <li Class="Contagion.Vector_Airborne">
             <baseChancePerCheck>0.03</baseChancePerCheck>
             <outdoorFactor>0.15</outdoorFactor>
-            <maxRange>15</maxRange>
+            <maxRange>10</maxRange>
             <distanceFalloffRate>0.25</distanceFalloffRate>
             <obstructedFactor>0.0</obstructedFactor>
+            <roomAirBaseChanceFactor>0.25</roomAirBaseChanceFactor>
+            <roomAirMaxRange>10</roomAirMaxRange>
+            <roomAirMaxCells>100</roomAirMaxCells>
             <maskTargetEffectiveness>0.7</maskTargetEffectiveness>
             <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
           </li>
@@ -142,9 +145,12 @@
           <li Class="Contagion.Vector_Airborne">
             <baseChancePerCheck>0.03</baseChancePerCheck>
             <outdoorFactor>0.15</outdoorFactor>
-            <maxRange>15</maxRange>
+            <maxRange>10</maxRange>
             <distanceFalloffRate>0.25</distanceFalloffRate>
             <obstructedFactor>0.0</obstructedFactor>
+            <roomAirBaseChanceFactor>0.25</roomAirBaseChanceFactor>
+            <roomAirMaxRange>10</roomAirMaxRange>
+            <roomAirMaxCells>100</roomAirMaxCells>
           </li>
           <li Class="Contagion.Vector_Fomite">
             <contaminatesVomit>true</contaminatesVomit>
@@ -273,6 +279,9 @@
             <lowSkillFactor>2.0</lowSkillFactor>
             <highSkillFactor>0.5</highSkillFactor>
           </li>
+          <!-- Live-host flea transfer. This uses the generic proximity mechanics type, but for
+               plague it represents fleas/contact moving through reachable space, not airborne
+               spread or arbitrary distance-based infection. -->
           <li Class="Contagion.Vector_Proximity">
             <baseChancePerCheck>0.025</baseChancePerCheck>
             <maxRange>6</maxRange>

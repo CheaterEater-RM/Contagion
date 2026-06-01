@@ -73,9 +73,9 @@ This vector starts low at death, ramps over the first hours as fleas abandon the
 | baseChancePerCheck | 0.006 | Ground corpse aura, per 250-tick pass |
 | carriedBaseChancePerCheck | 0.025 | Close-contact risk to the pawn carrying the corpse |
 | butcherBaseChance | 0.600 | Major close-contact flea roll while cutting the corpse |
-| maxRange | 12 | Fresh corpse flea migration range |
-| carriedRange | 4 | Moving aura around a carried corpse |
-| distanceFalloffRate | 0.25 | Fleas still travel further than normal proximity contact |
+| maxRange | 12 | Fresh corpse flea migration path range |
+| carriedRange | 4 | Moving path range around a carried corpse |
+| distanceFalloffRate | 0.25 | Applied to reachable path distance, not straight-line distance |
 | frozenTemperature | 0 C | At or below this, flea viability is destroyed |
 | frozenViabilityLossPerDay | 4.0 | About 6 in-game hours to kill a full flea load |
 
@@ -135,13 +135,13 @@ Finished meal contamination is reduced by recipe factor and Cooking skill using 
 
 ### Vector_Proximity
 
-Plague spreads by contact and flea transfer. Not airborne. Airway barriers (breathless gene, gas masks' airway component) have no effect on transmission.
+Plague's live-host `Vector_Proximity` is flea/contact transfer from an infected carrier. It uses the generic proximity mechanics type, but biologically this is not random near-person spread and not airborne. Airway barriers (breathless gene, gas masks' airway component) have no effect on transmission.
 
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerCheck | 0.025 | Per 250-tick pass |
-| maxRange | 6 | Short range — requires close contact |
-| distanceFalloffRate | 0.35 | Steeper falloff than airborne; matters a lot inside 3 cells |
+| maxRange | 6 | Short reachable path range; requires close contact |
+| distanceFalloffRate | 0.35 | Steeper falloff than airborne; matters a lot inside 3 path cells |
 | cleanlinessImpact | 1.0 | Filthy areas increase transmission — fleas thrive in debris |
 | outdoorFactor | 0.75 | Outdoor spread is still significant (fleas outdoors) |
 | outdoorFilthRadius | 4 | Outdoor filth within 4 cells increases transmission |
@@ -153,9 +153,9 @@ Plague spreads by contact and flea transfer. Not airborne. Airway barriers (brea
 
 | Parameter | Value | Notes |
 |---|---|---|
-| crossSpeciesTransmissionFactor | 0.5 | Human↔animal proximity spread at 50% of same-species rate |
+| crossSpeciesTransmissionFactor | 0.5 | Human-animal live flea transfer at 50% of same-species rate |
 
-An infected animal within 6 cells of a human rolls at 50% of the base chance (flea transfer still happens, just less efficiently than flea-to-flea). An infected human within range of livestock similarly spreads at 50%.
+An infected animal within 6 reachable path cells of a human rolls at 50% of the base chance (flea transfer still happens, just less efficiently than flea-to-flea). An infected human within reachable path range of livestock similarly spreads at 50%.
 
 ---
 
@@ -255,10 +255,10 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 
 ## Counterplay
 
-- **Handler isolation** — keeping plague-infected animals away from human colonists (separate barn or pasture zone) cuts proximity transmission. The 6-cell maxRange means a wall between pens is enough.
-- **Area restrictions** — sick colonists in a dedicated medical area prevent proximity spread to healthy colonists.
-- **Cleaning** — filthy areas amplify proximity transmission (`cleanlinessImpact 1.0`). Clean floors reduce outbreak spread meaningfully.
-- **Freezing corpses** — rapidly kills the corpse-flea vector. Frozen plague bodies are still unpleasant to handle, but they stop shedding migrating fleas.
+- **Handler isolation** — keeping plague-infected animals away from human colonists (separate barn or pasture zone) cuts live flea transfer. Walls and closed doors block the 6-cell path range; open doors allow spread while open.
+- **Area restrictions** — sick colonists in a dedicated medical area prevent live flea transfer to healthy colonists.
+- **Cleaning** — filthy areas amplify live flea transfer (`cleanlinessImpact 1.0`). Clean floors reduce outbreak spread meaningfully.
+- **Freezing corpses** — rapidly kills the corpse-flea vector. Frozen plague bodies are still unpleasant to handle, but they stop shedding migrating fleas. Walls and closed doors block corpse-flea path spread; open doors allow it while open.
 - **Penoxycyline** — reduces contract chance via vanilla `DiseaseContractChanceFactor`.
 - **Vets** — diagnosed animals go into active disease at low severity (0.1) and can be treated early. A skilled vet with the 48 h window can save most animals.
 - **Job filter** — disabling `AllowInfectedCorpses` on the butcher bill (default) prevents infected corpses from entering the meat chain entirely.
