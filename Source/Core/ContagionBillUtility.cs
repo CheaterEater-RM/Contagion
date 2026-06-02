@@ -19,35 +19,4 @@ public static class ContagionBillUtility
             bill.ingredientFilter.SetAllow(ContagionDefOf.AllowInfectedCorpses, false);
         }
     }
-
-    public static int DisallowInfectedCorpsesOnButcherBills()
-    {
-        int changed = 0;
-        foreach (IBillGiver billGiver in BillUtility.GlobalBillGivers())
-        {
-            BillStack billStack = billGiver?.BillStack;
-            if (billStack == null)
-            {
-                continue;
-            }
-
-            foreach (Bill bill in billStack.Bills)
-            {
-                if (bill?.recipe?.defName != ButcherCorpseRecipeDefName || bill.ingredientFilter == null)
-                {
-                    continue;
-                }
-
-                bool wasAllowed = ContagionDefOf.AllowInfectedCorpses != null
-                    && bill.ingredientFilter.Allows(ContagionDefOf.AllowInfectedCorpses);
-                ApplyButcherBillDefaults(bill);
-                if (wasAllowed)
-                {
-                    changed++;
-                }
-            }
-        }
-
-        return changed;
-    }
 }

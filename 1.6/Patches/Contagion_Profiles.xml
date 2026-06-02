@@ -201,6 +201,8 @@
              plague lesions are apparent on a corpse even without prior symptoms. -->
         <posthumousSymptomChance>0.1</posthumousSymptomChance>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
+        <!-- Plague is dangerous: weight active cases above average so the Mode 2 director backs off while it's present. -->
+        <dangerWeight>1.5</dangerWeight>
         <sourceInfectivityFactors>
           <li Class="Contagion.SourceFactor_Trait">
             <!-- "Immunity" degree -1 = vanilla Sickly trait (not the Robust/Tough trait). -->
@@ -360,6 +362,8 @@
           </points>
         </activeInfectivityCurve>
           <spreadSuppressionScale>0</spreadSuppressionScale>
+        <!-- Gut worms is unpleasant but rarely lethal: weight its cases below average. -->
+        <dangerWeight>0.75</dangerWeight>
         <outbreakNotification>FirstCase</outbreakNotification>
         <vectors>
           <!-- Primary human exposure: contaminated food (from infected cook or infected meat). -->
@@ -642,6 +646,8 @@
         <outbreakNotification>FirstCase</outbreakNotification>
         <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
         <spreadSuppressionScale>0</spreadSuppressionScale>
+        <!-- Dangerous environmental disease: weight active cases above average for the Mode 2 director. -->
+        <dangerWeight>1.5</dangerWeight>
         <useScaledActiveCaseCap>false</useScaledActiveCaseCap>
         <seasonalInfectivity>
           <spring>0.8</spring>
@@ -696,6 +702,8 @@
         <outbreakNotification>FirstCase</outbreakNotification>
         <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
         <spreadSuppressionScale>0</spreadSuppressionScale>
+        <!-- Dangerous environmental disease: weight active cases above average for the Mode 2 director. -->
+        <dangerWeight>1.5</dangerWeight>
         <useScaledActiveCaseCap>false</useScaledActiveCaseCap>
         <seasonalInfectivity>
           <spring>0.9</spring>

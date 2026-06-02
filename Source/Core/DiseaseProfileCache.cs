@@ -48,20 +48,26 @@ public static class DiseaseProfileCache
 {
     private static Dictionary<HediffDef, ResolvedTransmissionProfile> _profilesByDisease;
 
+    // Distinct profile objects (variant defs share a profile instance, so the dictionary has more
+    // entries than profiles). Built once in BuildCache; callers iterate it every environmental
+    // pass / arrival, so recomputing Distinct() per access was needless allocation.
+    private static List<ResolvedTransmissionProfile> _distinctProfiles;
+
     private static bool _initialized;
 
-    public static IEnumerable<ResolvedTransmissionProfile> AllProfiles
+    public static IReadOnlyList<ResolvedTransmissionProfile> AllProfiles
     {
         get
         {
             EnsureInitialized();
-            return _profilesByDisease.Values.Distinct();
+            return _distinctProfiles;
         }
     }
 
     public static void Reset()
     {
         _profilesByDisease = null;
+        _distinctProfiles = null;
         _initialized = false;
     }
 
@@ -149,9 +155,11 @@ public static class DiseaseProfileCache
             }
         }
 
+        _distinctProfiles = _profilesByDisease.Values.Distinct().ToList();
+
         if (Prefs.DevMode)
         {
-            Log.Message($"[Contagion] Cached {_profilesByDisease.Count} transmission profiles.");
+            Log.Message($"[Contagion] Cached {_distinctProfiles.Count} transmission profiles.");
         }
     }
 

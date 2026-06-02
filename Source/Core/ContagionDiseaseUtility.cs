@@ -55,6 +55,7 @@ public static class ContagionDiseaseUtility
         List<BodyPartDef> resolvedParts = ResolvePartsForPawn(pawn, resolvedProfile, partsToAffect);
         incubation.Configure(targetDiseaseDef, resolvedParts, activationTick, seedSource);
         pawn.health.AddHediff(incubation);
+        ContagionTransmissionUtility.NotifyCaseAdded();
         ContagionDiagnostics.RecordApplicationResult(origin, seeded: true, immunityCause: null);
         ContagionDiagnostics.Trace($"Incubation seeded ({origin}): {targetDiseaseDef.defName} on {pawn.LabelShortCap}.");
         return true;

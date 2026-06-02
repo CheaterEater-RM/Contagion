@@ -7,11 +7,37 @@ namespace Contagion;
 
 internal sealed class ContagionMapSeedingState : IExposable
 {
-    private List<HediffDef> _seederCooldownDiseases = new List<HediffDef>();
+    // One seeder cooldown record. Replaces three parallel lists (disease/key/tick) whose indices
+    // had to stay in lockstep — a single Deep-scribed entry can never desync, and a dropped entry
+    // (e.g. its HediffDef was removed by a mod update) takes its key and tick with it.
+    private sealed class SeederCooldownEntry : IExposable
+    {
+        public HediffDef diseaseDef;
 
-    private List<string> _seederCooldownKeys = new List<string>();
+        public string seederKey;
 
-    private List<int> _seederCooldownTicks = new List<int>();
+        public int firedTick;
+
+        public SeederCooldownEntry()
+        {
+        }
+
+        public SeederCooldownEntry(HediffDef diseaseDef, string seederKey, int firedTick)
+        {
+            this.diseaseDef = diseaseDef;
+            this.seederKey = seederKey;
+            this.firedTick = firedTick;
+        }
+
+        public void ExposeData()
+        {
+            Scribe_Defs.Look(ref diseaseDef, "diseaseDef");
+            Scribe_Values.Look(ref seederKey, "seederKey");
+            Scribe_Values.Look(ref firedTick, "firedTick");
+        }
+    }
+
+    private List<SeederCooldownEntry> _seederCooldowns = new List<SeederCooldownEntry>();
 
     private List<PendingDiseaseEvent> _pendingEvents = new List<PendingDiseaseEvent>();
 
@@ -23,17 +49,15 @@ internal sealed class ContagionMapSeedingState : IExposable
 
     public void ExposeData()
     {
-        Scribe_Collections.Look(ref _seederCooldownDiseases, "seederCooldownDiseases", LookMode.Def);
-        Scribe_Collections.Look(ref _seederCooldownKeys, "seederCooldownKeys", LookMode.Value);
-        Scribe_Collections.Look(ref _seederCooldownTicks, "seederCooldownTicks", LookMode.Value);
+        Scribe_Collections.Look(ref _seederCooldowns, "seederCooldowns", LookMode.Deep);
         Scribe_Collections.Look(ref _pendingEvents, "pendingEvents", LookMode.Deep);
         Scribe_Deep.Look(ref _diseaseDirector, "diseaseDirector");
 
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
-            _seederCooldownDiseases ??= new List<HediffDef>();
-            _seederCooldownKeys ??= new List<string>();
-            _seederCooldownTicks ??= new List<int>();
+            _seederCooldowns ??= new List<SeederCooldownEntry>();
+            // Drop entries whose disease def no longer resolves (mod update / removed disease).
+            _seederCooldowns.RemoveAll(entry => entry == null || entry.diseaseDef == null);
             _pendingEvents ??= new List<PendingDiseaseEvent>();
             _diseaseDirector ??= new ContagionDiseaseDirector();
         }
@@ -69,11 +93,12 @@ internal sealed class ContagionMapSeedingState : IExposable
         string key = GetSeederCooldownKey(seeder);
         int cooldownTicks = Mathf.RoundToInt(seeder.cooldownDays * 60000f);
         int currentTick = Find.TickManager.TicksGame;
-        for (int i = 0; i < _seederCooldownDiseases.Count; i++)
+        for (int i = 0; i < _seederCooldowns.Count; i++)
         {
-            if (_seederCooldownDiseases[i] == resolvedProfile.DiseaseDef && _seederCooldownKeys[i] == key)
+            SeederCooldownEntry entry = _seederCooldowns[i];
+            if (entry.diseaseDef == resolvedProfile.DiseaseDef && entry.seederKey == key)
             {
-                return currentTick - _seederCooldownTicks[i] >= cooldownTicks;
+                return currentTick - entry.firedTick >= cooldownTicks;
             }
         }
 
@@ -127,18 +152,17 @@ internal sealed class ContagionMapSeedingState : IExposable
 
         string key = GetSeederCooldownKey(seeder);
         int currentTick = Find.TickManager.TicksGame;
-        for (int i = 0; i < _seederCooldownDiseases.Count; i++)
+        for (int i = 0; i < _seederCooldowns.Count; i++)
         {
-            if (_seederCooldownDiseases[i] == resolvedProfile.DiseaseDef && _seederCooldownKeys[i] == key)
+            SeederCooldownEntry entry = _seederCooldowns[i];
+            if (entry.diseaseDef == resolvedProfile.DiseaseDef && entry.seederKey == key)
             {
-                _seederCooldownTicks[i] = currentTick;
+                entry.firedTick = currentTick;
                 return;
             }
         }
 
-        _seederCooldownDiseases.Add(resolvedProfile.DiseaseDef);
-        _seederCooldownKeys.Add(key);
-        _seederCooldownTicks.Add(currentTick);
+        _seederCooldowns.Add(new SeederCooldownEntry(resolvedProfile.DiseaseDef, key, currentTick));
     }
 
     public void DailyTick(Map map)

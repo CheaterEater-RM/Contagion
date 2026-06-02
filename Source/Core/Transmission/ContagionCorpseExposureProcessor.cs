@@ -51,6 +51,15 @@ internal sealed class ContagionCorpseExposureProcessor
             }
 
             ContagionCorpseExposureUtility.UpdateCorpseFleas(corpse, resolvedProfile, vector, deltaTicks);
+
+            // Skip the path flood-fill for corpses with no living target within range — common for
+            // corpse piles away from pawns. Path distance >= euclidean, so an euclidean pre-filter
+            // never drops a reachable target.
+            if (!AnyExposableWithin(corpse.Position, vector.maxRange, spawnedPawns))
+            {
+                continue;
+            }
+
             ContagionTransmissionUtility.CollectReachablePathDistances(
                 _map,
                 corpse.Position,
@@ -149,5 +158,19 @@ internal sealed class ContagionCorpseExposureProcessor
     private bool CanExpose(Pawn pawn)
     {
         return pawn != null && !pawn.Dead && pawn.Spawned && pawn.Map == _map;
+    }
+
+    private bool AnyExposableWithin(IntVec3 origin, float range, IReadOnlyList<Pawn> spawnedPawns)
+    {
+        for (int i = 0; i < spawnedPawns.Count; i++)
+        {
+            Pawn pawn = spawnedPawns[i];
+            if (CanExpose(pawn) && origin.InHorDistOf(pawn.Position, range))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -320,19 +320,6 @@ public sealed class ContagionDiseaseDirector : IExposable
 
     private static float GetDiseaseDangerWeight(ResolvedTransmissionProfile resolvedProfile)
     {
-        string defName = resolvedProfile?.DiseaseDef?.defName;
-        if (defName == "GutWorms")
-        {
-            return 0.75f;
-        }
-
-        if (defName == "Plague"
-            || defName == "Malaria"
-            || defName == "SleepingSickness")
-        {
-            return 1.5f;
-        }
-
-        return 1f;
+        return Mathf.Max(0f, resolvedProfile?.Profile?.dangerWeight ?? 1f);
     }
 }

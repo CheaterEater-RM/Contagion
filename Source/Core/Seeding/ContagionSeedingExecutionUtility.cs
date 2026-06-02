@@ -221,6 +221,8 @@ public static class ContagionSeedingExecutionUtility
             return false;
         }
 
+        ContagionTransmissionUtility.NotifyCaseAdded();
+
         for (int i = 0; i < addedHediffs.Count; i++)
         {
             Hediff hediff = addedHediffs[i];

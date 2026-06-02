@@ -448,7 +448,67 @@ public static class ContagionTransmissionUtility
         return Mathf.Lerp(1f, Mathf.Clamp01(floor), drop);
     }
 
+    // ── Per-tick count memoization ───────────────────────────────────────────────────────────
+    // CountActiveCases (O(pawns × hediffs)) and CountAffectablePlayerPawns (O(pawns)) are called
+    // once per (source × in-range target × vector) in the transmission pass and twice per social
+    // interaction, so recomputing them every call dominates CPU during an outbreak. We memoize
+    // per (map, disease, track) for the duration of a game tick.
+    //
+    // Population depends only on faction/species, so per-tick caching is exact. Active-case counts
+    // change when a case is added mid-tick — SeedIncubationToPawns seeds a whole storyteller batch
+    // in one tick and re-checks capacity per pawn — so any case add invalidates the active-case
+    // cache via NotifyCaseAdded to keep capacity gating correct. Case removals (death/cure) only
+    // make the cached count too high, which is the safe direction (more suppression, never
+    // over-seeding) and self-corrects on the next tick.
+    private static int _countCacheTick = -1;
+
+    private static readonly Dictionary<(int map, HediffDef disease, ContagionCaseTrack track), int> _activeCaseCountCache =
+        new Dictionary<(int, HediffDef, ContagionCaseTrack), int>();
+
+    private static readonly Dictionary<(int map, HediffDef disease, ContagionCaseTrack track), int> _affectablePopulationCache =
+        new Dictionary<(int, HediffDef, ContagionCaseTrack), int>();
+
+    private static void EnsureCountCacheFresh()
+    {
+        int tick = Find.TickManager.TicksGame;
+        if (tick == _countCacheTick)
+        {
+            return;
+        }
+
+        _countCacheTick = tick;
+        _activeCaseCountCache.Clear();
+        _affectablePopulationCache.Clear();
+    }
+
+    // Invalidates the active-case count cache when a new case (incubation or active disease) is
+    // added, so capacity checks later in the same tick observe it. Population is unaffected and is
+    // intentionally left cached. Called from the seeding choke points.
+    public static void NotifyCaseAdded()
+    {
+        _activeCaseCountCache.Clear();
+    }
+
     private static int CountAffectablePlayerPawns(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
+    {
+        if (map == null || resolvedProfile?.DiseaseDef == null)
+        {
+            return 0;
+        }
+
+        EnsureCountCacheFresh();
+        (int, HediffDef, ContagionCaseTrack) key = (map.uniqueID, resolvedProfile.DiseaseDef, track);
+        if (_affectablePopulationCache.TryGetValue(key, out int cached))
+        {
+            return cached;
+        }
+
+        int count = CountAffectablePlayerPawnsUncached(map, resolvedProfile, track);
+        _affectablePopulationCache[key] = count;
+        return count;
+    }
+
+    private static int CountAffectablePlayerPawnsUncached(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
     {
         IReadOnlyList<Pawn> pawns = map?.mapPawns?.AllPawnsSpawned;
         if (pawns == null || resolvedProfile?.Profile == null)
@@ -482,6 +542,25 @@ public static class ContagionTransmissionUtility
     }
 
     public static int CountActiveCases(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
+    {
+        if (map == null || resolvedProfile?.DiseaseDef == null)
+        {
+            return 0;
+        }
+
+        EnsureCountCacheFresh();
+        (int, HediffDef, ContagionCaseTrack) key = (map.uniqueID, resolvedProfile.DiseaseDef, track);
+        if (_activeCaseCountCache.TryGetValue(key, out int cached))
+        {
+            return cached;
+        }
+
+        int count = CountActiveCasesUncached(map, resolvedProfile, track);
+        _activeCaseCountCache[key] = count;
+        return count;
+    }
+
+    private static int CountActiveCasesUncached(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
     {
         IReadOnlyList<Pawn> pawns = map?.mapPawns?.AllPawnsSpawned;
         if (pawns == null || resolvedProfile?.DiseaseDef == null)

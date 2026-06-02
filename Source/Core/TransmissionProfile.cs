@@ -78,6 +78,12 @@ public sealed class TransmissionProfile : DefModExtension
     // person-to-person spread), >1 = suppresses faster than other diseases.
     public float spreadSuppressionScale = 1f;
 
+    // How much an active/incubating case of this disease weighs toward the Mode 2 director's
+    // colony "disease burden". Higher = the director backs off seeding harder while this disease
+    // is present (dangerous diseases buy more breathing room); lower = mild diseases suppress less.
+    // 1 = normal. Replaces a hardcoded per-disease table so modders can tune it from XML.
+    public float dangerWeight = 1f;
+
     public OutbreakNotificationMode outbreakNotification = OutbreakNotificationMode.FirstCase;
 
     // How long (in days) after the most recent case before an outbreak is considered over and

@@ -4,15 +4,8 @@ using Verse;
 
 namespace Contagion;
 
-public enum ContagionDiagnosticsMode
-{
-    Off,
-    Summary,
-    Verbose,
-    Developer
-}
-
-// Order is persisted by Scribe as ordinal values. Never reorder; append new values only.
+// Persisted via Scribe_Values, which serializes enums by name (ToString/Parse) — reordering is
+// safe, but never rename or remove a member (that breaks old saves). Append new values freely.
 public enum ContagionDifficulty
 {
     Easy,
@@ -20,6 +13,8 @@ public enum ContagionDifficulty
     Hard
 }
 
+// Persisted via Scribe_Values, which serializes enums by name (ToString/Parse) — reordering is
+// safe, but never rename or remove a member (that breaks old saves). Append new values freely.
 public enum ContagionSuppressionMode
 {
     Strong,
@@ -28,7 +23,8 @@ public enum ContagionSuppressionMode
     LetErRip
 }
 
-// Order is persisted by Scribe as ordinal values. Never reorder; append new values only.
+// Persisted via Scribe_Values, which serializes enums by name (ToString/Parse) — reordering is
+// safe, but never rename or remove a member (that breaks old saves). Append new values freely.
 public enum ContagionSeedingMode
 {
     Storyteller,

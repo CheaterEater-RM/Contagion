@@ -30,15 +30,17 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     // Per-disease outbreak tracking (human track and animal track are separate so an animal
     // case never suppresses the human first-case letter and vice versa).
     // lastCaseTick: tick of the most recent disease activation for an active outbreak.
-    // clusterLetter: the current undismissed yellow cluster letter (null = no active letter).
+    // clusterLetterId: Letter.ID of the current undismissed cluster letter (absent = no active
+    // letter). We persist the ID, not the Letter reference: a dismissed-and-culled letter would
+    // throw an unresolved-reference error on load, whereas an ID simply resolves to nothing.
     // An outbreak is considered over when TicksGame - lastCaseTick > profile.OutbreakEndTicks.
     private Dictionary<HediffDef, int> _humanOutbreakLastCaseTick = new();
 
-    private Dictionary<HediffDef, Letter> _humanOutbreakClusterLetter = new();
+    private Dictionary<HediffDef, int> _humanOutbreakClusterLetterId = new();
 
     private Dictionary<HediffDef, int> _animalOutbreakLastCaseTick = new();
 
-    private Dictionary<HediffDef, Letter> _animalOutbreakClusterLetter = new();
+    private Dictionary<HediffDef, int> _animalOutbreakClusterLetterId = new();
 
     public Contagion_MapTransmissionComponent(Map map)
         : base(map)
@@ -65,6 +67,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         Scribe_Deep.Look(ref _seedingState, "seedingState");
         Scribe_Collections.Look(ref _humanOutbreakLastCaseTick, "humanOutbreakLastCaseTick", LookMode.Def, LookMode.Value);
         Scribe_Collections.Look(ref _animalOutbreakLastCaseTick, "animalOutbreakLastCaseTick", LookMode.Def, LookMode.Value);
+        Scribe_Collections.Look(ref _humanOutbreakClusterLetterId, "humanOutbreakClusterLetterId", LookMode.Def, LookMode.Value);
+        Scribe_Collections.Look(ref _animalOutbreakClusterLetterId, "animalOutbreakClusterLetterId", LookMode.Def, LookMode.Value);
 
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
@@ -72,9 +76,9 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             _fecalOralTracker ??= new ContagionFecalOralTracker();
             _seedingState ??= new ContagionMapSeedingState();
             _humanOutbreakLastCaseTick ??= new Dictionary<HediffDef, int>();
-            _humanOutbreakClusterLetter ??= new Dictionary<HediffDef, Letter>();
+            _humanOutbreakClusterLetterId ??= new Dictionary<HediffDef, int>();
             _animalOutbreakLastCaseTick ??= new Dictionary<HediffDef, int>();
-            _animalOutbreakClusterLetter ??= new Dictionary<HediffDef, Letter>();
+            _animalOutbreakClusterLetterId ??= new Dictionary<HediffDef, int>();
             _vomitFomiteTracker.Cleanup(map);
             _fecalOralTracker.Cleanup(map);
         }
@@ -205,16 +209,16 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         => RecordOutbreakCaseIn(_animalOutbreakLastCaseTick, resolvedProfile);
 
     public Letter GetHumanClusterLetter(ResolvedTransmissionProfile resolvedProfile)
-        => GetClusterLetterFrom(_humanOutbreakClusterLetter, resolvedProfile);
+        => GetClusterLetterFrom(_humanOutbreakClusterLetterId, resolvedProfile);
 
     public Letter GetAnimalClusterLetter(ResolvedTransmissionProfile resolvedProfile)
-        => GetClusterLetterFrom(_animalOutbreakClusterLetter, resolvedProfile);
+        => GetClusterLetterFrom(_animalOutbreakClusterLetterId, resolvedProfile);
 
     public void SetHumanClusterLetter(ResolvedTransmissionProfile resolvedProfile, Letter letter)
-        => SetClusterLetterIn(_humanOutbreakClusterLetter, resolvedProfile, letter);
+        => SetClusterLetterIn(_humanOutbreakClusterLetterId, resolvedProfile, letter);
 
     public void SetAnimalClusterLetter(ResolvedTransmissionProfile resolvedProfile, Letter letter)
-        => SetClusterLetterIn(_animalOutbreakClusterLetter, resolvedProfile, letter);
+        => SetClusterLetterIn(_animalOutbreakClusterLetterId, resolvedProfile, letter);
 
     private static bool IsOutbreakActiveIn(Dictionary<HediffDef, int> dict, ResolvedTransmissionProfile resolvedProfile)
     {
@@ -239,18 +243,29 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
     }
 
-    private static Letter GetClusterLetterFrom(Dictionary<HediffDef, Letter> dict, ResolvedTransmissionProfile resolvedProfile)
+    // Resolves the stored cluster-letter ID against the live letter stack. Returns null if the
+    // outbreak has no recorded letter or the letter has since been dismissed/culled — both of which
+    // the notifier already treats as "no active cluster letter", so it falls back to a fresh letter.
+    private static Letter GetClusterLetterFrom(Dictionary<HediffDef, int> dict, ResolvedTransmissionProfile resolvedProfile)
     {
-        if (resolvedProfile?.DiseaseDef == null)
+        if (resolvedProfile?.DiseaseDef == null || !dict.TryGetValue(resolvedProfile.DiseaseDef, out int letterId))
         {
             return null;
         }
 
-        dict.TryGetValue(resolvedProfile.DiseaseDef, out Letter letter);
-        return letter;
+        List<Letter> letters = Find.LetterStack.LettersListForReading;
+        for (int i = 0; i < letters.Count; i++)
+        {
+            if (letters[i].ID == letterId)
+            {
+                return letters[i];
+            }
+        }
+
+        return null;
     }
 
-    private static void SetClusterLetterIn(Dictionary<HediffDef, Letter> dict, ResolvedTransmissionProfile resolvedProfile, Letter letter)
+    private static void SetClusterLetterIn(Dictionary<HediffDef, int> dict, ResolvedTransmissionProfile resolvedProfile, Letter letter)
     {
         if (resolvedProfile?.DiseaseDef == null)
         {
@@ -263,7 +278,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
         else
         {
-            dict[resolvedProfile.DiseaseDef] = letter;
+            dict[resolvedProfile.DiseaseDef] = letter.ID;
         }
     }
 
@@ -276,11 +291,11 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     // across a long save. Called every EnvironmentalCheckInterval ticks.
     private void PruneStaleOutbreaks()
     {
-        PruneStaleEntriesFrom(_humanOutbreakLastCaseTick, _humanOutbreakClusterLetter);
-        PruneStaleEntriesFrom(_animalOutbreakLastCaseTick, _animalOutbreakClusterLetter);
+        PruneStaleEntriesFrom(_humanOutbreakLastCaseTick, _humanOutbreakClusterLetterId);
+        PruneStaleEntriesFrom(_animalOutbreakLastCaseTick, _animalOutbreakClusterLetterId);
     }
 
-    private static void PruneStaleEntriesFrom(Dictionary<HediffDef, int> tickDict, Dictionary<HediffDef, Letter> letterDict)
+    private static void PruneStaleEntriesFrom(Dictionary<HediffDef, int> tickDict, Dictionary<HediffDef, int> letterDict)
     {
         if (tickDict.Count == 0)
         {

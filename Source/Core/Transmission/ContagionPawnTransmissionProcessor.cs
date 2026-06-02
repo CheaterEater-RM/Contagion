@@ -340,27 +340,7 @@ internal sealed class ContagionPawnTransmissionProcessor
             return false;
         }
 
-        bool passed = Rand.Chance(Mathf.Clamp01(breakdown.FinalChance));
-        bool seeded = false;
-        if (passed)
-        {
-            seeded = ContagionDiseaseUtility.TrySeedIncubation(
-                targetPawn,
-                source.ResolvedProfile.ResolveHediffForPawn(targetPawn),
-                source.ResolvedProfile.PartsToAffect,
-                source.Pawn,
-                ContagionDiagnosticOrigin.Spread,
-                ContagionSeedSource.Contact,
-                out HediffDef _);
-            if (seeded)
-            {
-                ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneSeeded);
-                _developerDiagnosticsController.RecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Airborne);
-            }
-        }
-
-        ContagionDiagnostics.LogRoll(source.Pawn, targetPawn, breakdown, seeded);
-        return seeded;
+        return RollSeedAndLog(source, targetPawn, breakdown, ContagionDiagnosticCounter.AirborneSeeded, ContagionDebugVectorKind.Airborne);
     }
 
     private bool TryTransmitAirborneRoom(
@@ -399,27 +379,7 @@ internal sealed class ContagionPawnTransmissionProcessor
             return false;
         }
 
-        bool passed = Rand.Chance(Mathf.Clamp01(breakdown.FinalChance));
-        bool seeded = false;
-        if (passed)
-        {
-            seeded = ContagionDiseaseUtility.TrySeedIncubation(
-                targetPawn,
-                source.ResolvedProfile.ResolveHediffForPawn(targetPawn),
-                source.ResolvedProfile.PartsToAffect,
-                source.Pawn,
-                ContagionDiagnosticOrigin.Spread,
-                ContagionSeedSource.Contact,
-                out HediffDef _);
-            if (seeded)
-            {
-                ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneSeeded);
-                _developerDiagnosticsController.RecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.AirborneRoom);
-            }
-        }
-
-        ContagionDiagnostics.LogRoll(source.Pawn, targetPawn, breakdown, seeded);
-        return seeded;
+        return RollSeedAndLog(source, targetPawn, breakdown, ContagionDiagnosticCounter.AirborneSeeded, ContagionDebugVectorKind.AirborneRoom);
     }
 
     private bool TryTransmitProximity(
@@ -464,9 +424,21 @@ internal sealed class ContagionPawnTransmissionProcessor
             return false;
         }
 
-        bool passed = Rand.Chance(Mathf.Clamp01(breakdown.FinalChance));
+        return RollSeedAndLog(source, targetPawn, breakdown, ContagionDiagnosticCounter.ProximitySeeded, ContagionDebugVectorKind.Proximity);
+    }
+
+    // Shared tail for the three pawn-to-pawn vectors (airborne direct, airborne room, proximity):
+    // roll the breakdown's final chance, seed incubation on success, record the per-vector counter
+    // and developer trace, and always log the roll. Keeps the seed protocol in one place.
+    private bool RollSeedAndLog(
+        TransmissionSource source,
+        Pawn targetPawn,
+        ContagionSpreadBreakdown breakdown,
+        ContagionDiagnosticCounter seededCounter,
+        ContagionDebugVectorKind traceKind)
+    {
         bool seeded = false;
-        if (passed)
+        if (Rand.Chance(Mathf.Clamp01(breakdown.FinalChance)))
         {
             seeded = ContagionDiseaseUtility.TrySeedIncubation(
                 targetPawn,
@@ -478,8 +450,8 @@ internal sealed class ContagionPawnTransmissionProcessor
                 out HediffDef _);
             if (seeded)
             {
-                ContagionDiagnostics.Record(ContagionDiagnosticCounter.ProximitySeeded);
-                _developerDiagnosticsController.RecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Proximity);
+                ContagionDiagnostics.Record(seededCounter);
+                _developerDiagnosticsController.RecordTransmissionTrace(source.Pawn, targetPawn, source.ResolvedProfile.DiseaseDef, traceKind);
             }
         }
 
