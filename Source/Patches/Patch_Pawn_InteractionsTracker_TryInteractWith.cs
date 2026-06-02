@@ -54,12 +54,7 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
 
     private static void TryDetectAnimalDisease(Pawn handler, Pawn animal)
     {
-        if (handler == null || animal == null || animal.Dead || !animal.Spawned)
-        {
-            return;
-        }
-
-        if (animal.health.hediffSet.HasHediff(ContagionDefOf.Contagion_AnimalSick))
+        if (handler == null || !ContagionAnimalDiseaseUtility.CanShowAnimalSickSignal(animal))
         {
             return;
         }
@@ -94,12 +89,7 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
     // the colonist's Animals skill determines how readily they pick up on the distress.
     private static void TryDetectAnimalDiseaseFromNuzzle(Pawn colonist, Pawn animal)
     {
-        if (colonist == null || animal == null || animal.Dead || !animal.Spawned)
-        {
-            return;
-        }
-
-        if (animal.health.hediffSet.HasHediff(ContagionDefOf.Contagion_AnimalSick))
+        if (colonist == null || !ContagionAnimalDiseaseUtility.CanShowAnimalSickSignal(animal))
         {
             return;
         }

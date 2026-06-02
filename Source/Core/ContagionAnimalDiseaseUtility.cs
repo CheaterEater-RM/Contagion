@@ -89,6 +89,20 @@ public static class ContagionAnimalDiseaseUtility
         return GetSickSignalProfile(animal) != null;
     }
 
+    public static bool CanShowAnimalSickSignal(Pawn animal)
+    {
+        if (animal?.health?.hediffSet == null
+            || animal.RaceProps?.Animal != true
+            || animal.Dead
+            || !animal.Spawned)
+        {
+            return false;
+        }
+
+        return !animal.health.hediffSet.HasHediff(ContagionDefOf.Contagion_AnimalSick)
+            && !ContagionAnimalDiagnosisUtility.HasDiagnosisCooldown(animal);
+    }
+
     public static ResolvedTransmissionProfile GetSickSignalProfile(Pawn animal)
     {
         if (animal?.health?.hediffSet == null || animal.RaceProps?.Animal != true)

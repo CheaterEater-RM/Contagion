@@ -236,12 +236,7 @@ public static class ContagionSeedingCoordinator
         for (int i = 0; i < spawnedPawns.Count; i++)
         {
             Pawn pawn = spawnedPawns[i];
-            if (pawn == null || pawn.Dead || pawn.RaceProps?.Animal != true || !pawn.Spawned)
-            {
-                continue;
-            }
-
-            if (pawn.health.hediffSet.HasHediff(ContagionDefOf.Contagion_AnimalSick))
+            if (!ContagionAnimalDiseaseUtility.CanShowAnimalSickSignal(pawn))
             {
                 continue;
             }

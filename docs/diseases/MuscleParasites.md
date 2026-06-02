@@ -171,7 +171,7 @@ Infected animal carcasses spawn fresh and are marked by `Comp_InfectedCorpse`. B
 
 ### Sick signal (`showsSickSignal true`)
 
-Same detection/diagnosis chain as gut worms and plague: `AnimalChat` interaction → Animals skill roll → `Contagion_AnimalSick` → vet diagnosis. Detecting an infected animal before slaughter and either treating it or safely disposing of it is the entire counterplay loop.
+Same detection/diagnosis chain as gut worms and plague: `AnimalChat` interaction -> Animals skill roll -> `Contagion_AnimalSick` -> vet diagnosis. The sick signal self-clears untreated by day 5 at latest, and any diagnosis attempt starts the diagnosis cooldown before the animal can present sick again. Detecting an infected animal before slaughter and either treating it or safely disposing of it is the entire counterplay loop.
 
 ### No vomiting
 

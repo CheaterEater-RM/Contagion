@@ -56,8 +56,10 @@
     <tendable>true</tendable>
     <scenarioCanAdd>false</scenarioCanAdd>
     <comps>
-      <li Class="HediffCompProperties_Disappears">
-        <disappearsAfterTicks>420000~600000</disappearsAfterTicks>
+      <li Class="Contagion.HediffCompProperties_AnimalSickNaturalRecovery">
+        <firstDayChance>0.20</firstDayChance>
+        <chanceIncreasePerDay>0.10</chanceIncreasePerDay>
+        <maxDays>5</maxDays>
       </li>
     </comps>
   </HediffDef>  <!-- Per-animal cooldown applied after any examination (tending-path or proactive job).

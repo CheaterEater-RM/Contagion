@@ -245,9 +245,9 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 | 0.6 | 3% |
 | 1.0 | 5% |
 
-**Diagnosis:** When a doctor tends `Contagion_AnimalSick`, the unified diagnostic roll applies (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: false`). Medical primary; Animals at 0.60× (diminishing returns vs Medical); Sight-scaled; Medical Specialist 1.5× bonus.
+**Diagnosis:** When a doctor tends `Contagion_AnimalSick`, the unified diagnostic roll applies (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: false`). Medical primary; Animals at 0.60× (diminishing returns vs Medical); Sight-scaled; Medical Specialist 1.5× bonus. Any diagnosis attempt clears the sick signal and starts the diagnosis cooldown before the animal can present sick again.
 - True positive, roll passes: incubation collapses to mild active disease (severity 0.1). Player sees the disease.
-- True positive, roll fails: sick signal cleared, disease stays hidden. Animal can be re-detected on next handler interaction or next passive roll.
+- True positive, roll fails: sick signal cleared, disease stays hidden. Animal can be re-detected by handler interaction or passive presentation after the diagnosis cooldown expires.
 - False positive (3% rate on healthy animals): sick signal cleared, "nothing concerning" message.
 
 **Auto-slaughter exclusion:** Animals with `Contagion_AnimalSick` are excluded from auto-slaughter queues until the signal is resolved.

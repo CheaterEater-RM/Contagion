@@ -74,7 +74,7 @@ public sealed class Hediff_ContagionAnimalHiddenDisease : HediffWithComps
             return;
         }
 
-        if (pawn.health.hediffSet.HasHediff(ContagionDefOf.Contagion_AnimalSick))
+        if (!ContagionAnimalDiseaseUtility.CanShowAnimalSickSignal(pawn))
         {
             return;
         }

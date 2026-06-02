@@ -456,10 +456,10 @@ Because `crossSpeciesTransmissionFactor 0.0` blocks the pawn-to-pawn vectors, th
 Infected animals do not immediately reveal their condition. Detection is handler-driven:
 
 - **Detection:** When a colonist performs an `AnimalChat` interaction with an infected animal (training, tending, feeding), they roll `Animals skill / 20` as a detection chance. On success, the `Contagion_AnimalSick` hediff is applied — a visible, tendable signal that appears in the animal's health bar. A 3% false-positive rate applies to uninfected animals, so not every sick signal indicates real disease.
-- **Sick signal behavior:** `Contagion_AnimalSick` is static (no severity progression) and self-clears in 7–10 days if untreated. It blocks the animal from the auto-slaughter queue while present.
+- **Sick signal behavior:** `Contagion_AnimalSick` is static (no severity progression) and self-clears if untreated by rolling once per day: 20%, then +10 percentage points per day, with a forced clear on day 5. It blocks the animal from the auto-slaughter queue while present.
 - **Diagnosis:** When a doctor tends `Contagion_AnimalSick`, a unified diagnostic roll (`ContagionDiagnosticSkillUtility`) determines the outcome:
   - **True positive, roll passes:** Incubation collapses to mild active disease (severity 0.1). A letter fires. The player now sees the disease in the health tab.
-  - **True positive, roll fails (false negative):** Sick signal cleared, disease stays hidden. The animal can get "sick" again on the next handler interaction.
+  - **True positive, roll fails (false negative):** Sick signal cleared, disease stays hidden. A diagnosis cooldown prevents immediate re-presentation; the animal can get "sick" again after that cooldown expires.
   - **False positive (no underlying disease):** Sick signal cleared. "Nothing concerning found" message.
 
   The diagnostic roll uses Medical as the primary skill (sigmoid: ~75% at score 10, ~95% at score 15). Animals skill supplements at 0.60× weight with diminishing returns as Medical rises (capped at 14 raw support), reflecting a rancher's practical eye. Sight scales the whole result (30% floor, 140% cap). The Medical Specialist Ideology role gives a 1.5× Medical bonus. A skilled handler without a dedicated medic can still diagnose reliably; a mixed colony with a doctor is faster.
