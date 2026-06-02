@@ -39,8 +39,6 @@ public sealed class Contagion_Settings : ModSettings
 
     private const ContagionSeedingMode DefaultSeedingMode = ContagionSeedingMode.Storyteller;
 
-    private const bool DefaultMaskProtection = true;
-
     private const bool DefaultEnableLogging = false;
 
     private const bool DefaultDeveloperMode = false;
@@ -54,8 +52,6 @@ public sealed class Contagion_Settings : ModSettings
     public ContagionSuppressionMode suppressionMode = DefaultSuppressionMode;
 
     public ContagionSeedingMode seedingMode = DefaultSeedingMode;
-
-    public bool maskProtection = DefaultMaskProtection;
 
     public bool enableLogging = DefaultEnableLogging;
 
@@ -84,7 +80,6 @@ public sealed class Contagion_Settings : ModSettings
         difficulty = DefaultDifficulty;
         suppressionMode = DefaultSuppressionMode;
         seedingMode = DefaultSeedingMode;
-        maskProtection = DefaultMaskProtection;
         enableLogging = DefaultEnableLogging;
         developerMode = DefaultDeveloperMode;
         suppressLowProbabilityLogs = DefaultSuppressLowProbabilityLogs;
@@ -97,7 +92,6 @@ public sealed class Contagion_Settings : ModSettings
         Scribe_Values.Look(ref difficulty, "difficulty", DefaultDifficulty);
         Scribe_Values.Look(ref suppressionMode, "suppressionMode", DefaultSuppressionMode);
         Scribe_Values.Look(ref seedingMode, "seedingMode", DefaultSeedingMode);
-        Scribe_Values.Look(ref maskProtection, "maskProtection", DefaultMaskProtection);
         Scribe_Values.Look(ref enableLogging, "enableLogging", DefaultEnableLogging);
         Scribe_Values.Look(ref developerMode, "developerMode", DefaultDeveloperMode);
         Scribe_Values.Look(ref suppressLowProbabilityLogs, "suppressLowProbabilityLogs", DefaultSuppressLowProbabilityLogs);
@@ -207,11 +201,6 @@ public sealed class Contagion_Mod : Mod
         }
 
         listing.Gap(6f);
-        listing.CheckboxLabeled(
-            "Contagion_SettingMaskProtection".Translate().Resolve(),
-            ref settings.maskProtection,
-            "Contagion_SettingMaskProtectionTooltip".Translate().Resolve());
-
         listing.CheckboxLabeled(
             "Contagion_SettingSuppressAnimalClusterNotifications".Translate().Resolve(),
             ref settings.suppressAnimalClusterNotifications,

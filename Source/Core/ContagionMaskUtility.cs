@@ -85,10 +85,10 @@ public static class ContagionMaskUtility
     }
 
     // Combined reduction factor from respiratory protection worn/carried by the source and target.
-    // Returns 1 when protection is disabled or neither side blocks anything.
+    // Returns 1 when neither side blocks anything.
     public static float GetRespiratoryMaskFactor(Pawn source, Pawn target, RespiratoryVector vector)
     {
-        if (vector == null || !(Contagion_Mod.Settings?.maskProtection ?? true))
+        if (vector == null)
         {
             return 1f;
         }

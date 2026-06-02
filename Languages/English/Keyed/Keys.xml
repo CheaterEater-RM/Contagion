@@ -23,8 +23,6 @@
   <Contagion_SeedingModeStorytellerTooltip>Vanilla storyteller disease picks are intercepted and converted into Contagion start requests that resolve through arrivals, animal contact, environmental windows, or an acausal fallback.</Contagion_SeedingModeStorytellerTooltip>
   <Contagion_SeedingModeContagion>Contagion-driven</Contagion_SeedingModeContagion>
   <Contagion_SeedingModeContagionTooltip>Contagion owns disease pacing directly. Storyteller disease incidents for profiled diseases are cancelled and continuous start chances are tuned by the disease director.</Contagion_SeedingModeContagionTooltip>
-  <Contagion_SettingMaskProtection>Masks and lungs reduce airborne spread</Contagion_SettingMaskProtection>
-  <Contagion_SettingMaskProtectionTooltip>When enabled, worn masks (e.g. gas masks) and air-filtering body parts (detoxifier/fleshmass lungs) reduce airborne, social, and close-contact transmission for the wearer and those nearby, based on their Toxic Environment Resistance. Genes are ignored by default; specific genes (like breathless) can grant airway immunity via the Contagion_RespiratoryImmunity def.</Contagion_SettingMaskProtectionTooltip>
   <Contagion_SettingSuppressAnimalClusterNotifications>Suppress subsequent animal illness notifications</Contagion_SettingSuppressAnimalClusterNotifications>
   <Contagion_SettingSuppressAnimalClusterNotificationsTooltip>When on, only the first infected animal per outbreak produces a letter. Subsequent animal cases will not produce yellow notifications — only floating messages. Human, slave, and prisoner notifications are unaffected.</Contagion_SettingSuppressAnimalClusterNotificationsTooltip>
   <Contagion_SettingsDiagnosticsHeader>Diagnostics</Contagion_SettingsDiagnosticsHeader>
