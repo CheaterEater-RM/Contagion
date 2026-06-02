@@ -33,6 +33,11 @@ public static class ContagionTransmissionUtility
                 continue;
             }
 
+            if (IsFullyImmuneActiveDisease(hediff))
+            {
+                return 0f;
+            }
+
             SimpleCurve curve = vector?.activeInfectivityCurveOverride
                 ?? resolvedProfile.Profile.activeInfectivityCurve
                 ?? DefaultActiveInfectivityCurve;
@@ -374,6 +379,12 @@ public static class ContagionTransmissionUtility
 
         immunityCause = bestFactor > 0f ? null : bestImmunityCause;
         return Mathf.Max(0f, bestFactor);
+    }
+
+    private static bool IsFullyImmuneActiveDisease(Hediff hediff)
+    {
+        return hediff is HediffWithComps hediffWithComps
+            && hediffWithComps.GetComp<HediffComp_Immunizable>()?.FullyImmune == true;
     }
 
     private static float GetSusceptibilityFactorProduct(Pawn target, TransmissionProfile profile)
