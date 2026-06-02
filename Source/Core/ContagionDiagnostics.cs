@@ -59,6 +59,12 @@ public enum ContagionDiagnosticCounter
     VomitFilthContaminated,
     FomiteAttempted,
     FomiteSeeded,
+    FecalOralEatingHotspotCreated,
+    FecalOralEatingAttempted,
+    FecalOralEatingSeeded,
+    FecalOralLivingFilthContaminated,
+    FecalOralLivingAttempted,
+    FecalOralLivingSeeded,
     CorpseFleaAttempted,
     CorpseFleaSeeded,
     CorpseFluidAttempted,
@@ -122,6 +128,12 @@ public static class ContagionDiagnostics
         ContagionDiagnosticCounter.VomitFilthContaminated,
         ContagionDiagnosticCounter.FomiteAttempted,
         ContagionDiagnosticCounter.FomiteSeeded,
+        ContagionDiagnosticCounter.FecalOralEatingHotspotCreated,
+        ContagionDiagnosticCounter.FecalOralEatingAttempted,
+        ContagionDiagnosticCounter.FecalOralEatingSeeded,
+        ContagionDiagnosticCounter.FecalOralLivingFilthContaminated,
+        ContagionDiagnosticCounter.FecalOralLivingAttempted,
+        ContagionDiagnosticCounter.FecalOralLivingSeeded,
         ContagionDiagnosticCounter.CorpseFleaAttempted,
         ContagionDiagnosticCounter.CorpseFleaSeeded,
         ContagionDiagnosticCounter.CorpseFluidAttempted,
@@ -367,6 +379,12 @@ public static class ContagionDiagnostics
         stringBuilder.Append("Contagion_DiagnosticsSpreadContamination".Translate(
             GetCounter(ContagionDiagnosticCounter.MealsContaminated),
             GetCounter(ContagionDiagnosticCounter.VomitFilthContaminated)).Resolve());
+        stringBuilder.AppendLine();
+        stringBuilder.Append("Contagion_DiagnosticsSpreadFecalOral".Translate(
+            FormatSuccessAttempts(ContagionDiagnosticCounter.FecalOralEatingSeeded, ContagionDiagnosticCounter.FecalOralEatingAttempted),
+            FormatSuccessAttempts(ContagionDiagnosticCounter.FecalOralLivingSeeded, ContagionDiagnosticCounter.FecalOralLivingAttempted),
+            GetCounter(ContagionDiagnosticCounter.FecalOralEatingHotspotCreated),
+            GetCounter(ContagionDiagnosticCounter.FecalOralLivingFilthContaminated)).Resolve());
         return stringBuilder.ToString();
     }
 

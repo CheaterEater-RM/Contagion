@@ -15,6 +15,8 @@ public enum ContagionDebugVectorKind
     CorpseFluid,
     Cooking,
     Fomite,
+    FecalOralEating,
+    FecalOralLiving,
     Environmental,
     Developer,
     OffMap
@@ -27,6 +29,7 @@ public enum ContagionTraceNodeKind
     Corpse,
     Bench,
     Item,
+    Filth,
     Cell
 }
 
@@ -118,6 +121,8 @@ public sealed class ContagionTraceNode
                     return ContagionTraceNodeKind.Pawn;
                 case Building:
                     return ContagionTraceNodeKind.Bench;
+                case RimWorld.Filth:
+                    return ContagionTraceNodeKind.Filth;
                 default:
                     return ContagionTraceNodeKind.Item;
             }

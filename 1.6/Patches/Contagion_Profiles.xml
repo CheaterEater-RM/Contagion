@@ -404,6 +404,37 @@
               </points>
             </activeInfectivityCurveOverride>
           </li>
+          <!-- Animal-only fecal-oral living route: infected barn animals contaminate vanilla
+               animal filth. Other animals sharing that dirty room can slowly pick up infection
+               even without eating from the same stack. Colonists are excluded in code. -->
+          <li Class="Contagion.Vector_FecalOralLiving">
+            <baseChancePerCheck>0.0014</baseChancePerCheck>
+            <filthContaminationChance>1.0</filthContaminationChance>
+            <maxFilthPerDisease>48</maxFilthPerDisease>
+            <potencyDecayPerDay>0.14</potencyDecayPerDay>
+            <thicknessFactor>0.25</thicknessFactor>
+            <roomCleanlinessImpact>0.6</roomCleanlinessImpact>
+          </li>
+          <!-- Animal-only fecal-oral eating route: infected outdoor animals create hidden pasture
+               hotspots. Grazing live plants is highest risk; raw ground food is lower; kibble/hay
+               on the ground is lower still; stored or indoor feed is near-zero. -->
+          <li Class="Contagion.Vector_FecalOralEating">
+            <baseChancePerIngestion>0.007</baseChancePerIngestion>
+            <hotspotShedChancePerCheck>0.018</hotspotShedChancePerCheck>
+            <hotspotRadius>8</hotspotRadius>
+            <hotspotMergeRadius>4</hotspotMergeRadius>
+            <maxHotspotsPerDisease>24</maxHotspotsPerDisease>
+            <hotspotDurationDays>7</hotspotDurationDays>
+            <hotspotDecayPerDay>0.40</hotspotDecayPerDay>
+            <distanceFalloffRate>0.25</distanceFalloffRate>
+            <rainPotencyFactor>0.35</rainPotencyFactor>
+            <freezingPotencyFactor>0.35</freezingPotencyFactor>
+            <freezingTemperature>0</freezingTemperature>
+            <grazingFactor>1.0</grazingFactor>
+            <rawOutdoorGroundFoodFactor>0.55</rawOutdoorGroundFoodFactor>
+            <preparedOutdoorGroundFoodFactor>0.25</preparedOutdoorGroundFoodFactor>
+            <storedOrIndoorFoodFactor>0.03</storedOrIndoorFoodFactor>
+          </li>
           <!-- Environmental acquisition: contaminated water. Worm eggs require above-freezing water to
                remain viable — minTemperature 0 reflects that frozen/icy water suppresses transmission.
                Peak in moderate warmth. Outdoor animals are fully exposed; indoor ones are not.
@@ -519,6 +550,37 @@
             <baseChancePerRecipe>0.004</baseChancePerRecipe>
             <lowSkillFactor>2.0</lowSkillFactor>
             <highSkillFactor>0.5</highSkillFactor>
+          </li>
+          <!-- Animal-only fecal-oral living route: infected barn animals contaminate vanilla
+               animal filth. Muscle parasite material persists better in bedding/dirty barns than
+               gut worm eggs, but ambient pickup is still slow. Colonists are excluded in code. -->
+          <li Class="Contagion.Vector_FecalOralLiving">
+            <baseChancePerCheck>0.0010</baseChancePerCheck>
+            <filthContaminationChance>1.0</filthContaminationChance>
+            <maxFilthPerDisease>48</maxFilthPerDisease>
+            <potencyDecayPerDay>0.09</potencyDecayPerDay>
+            <thicknessFactor>0.25</thicknessFactor>
+            <roomCleanlinessImpact>0.5</roomCleanlinessImpact>
+          </li>
+          <!-- Animal-only fecal-oral eating route: pasture contamination from infected animals.
+               Muscle parasites linger longer in outdoor soil but shed a little less aggressively
+               than gut worms. Stored or indoor animal feed remains near-zero risk. -->
+          <li Class="Contagion.Vector_FecalOralEating">
+            <baseChancePerIngestion>0.006</baseChancePerIngestion>
+            <hotspotShedChancePerCheck>0.014</hotspotShedChancePerCheck>
+            <hotspotRadius>8</hotspotRadius>
+            <hotspotMergeRadius>4</hotspotMergeRadius>
+            <maxHotspotsPerDisease>24</maxHotspotsPerDisease>
+            <hotspotDurationDays>12</hotspotDurationDays>
+            <hotspotDecayPerDay>0.25</hotspotDecayPerDay>
+            <distanceFalloffRate>0.22</distanceFalloffRate>
+            <rainPotencyFactor>0.45</rainPotencyFactor>
+            <freezingPotencyFactor>0.55</freezingPotencyFactor>
+            <freezingTemperature>-5</freezingTemperature>
+            <grazingFactor>1.0</grazingFactor>
+            <rawOutdoorGroundFoodFactor>0.55</rawOutdoorGroundFoodFactor>
+            <preparedOutdoorGroundFoodFactor>0.25</preparedOutdoorGroundFoodFactor>
+            <storedOrIndoorFoodFactor>0.03</storedOrIndoorFoodFactor>
           </li>
           <!-- Environmental acquisition: outdoor soil contamination from parasite eggs in faeces.
                Lower water dependency than gut worms. Eggs tolerate mild cold but die in

@@ -34,6 +34,16 @@ internal static class ContagionTrace
         Controller(target.MapHeld)?.RecordSourceTrace(sourceCell, target, disease, vector);
     }
 
+    public static void TransmissionToCell(Thing source, IntVec3 targetCell, HediffDef disease, ContagionDebugVectorKind vector)
+    {
+        if (source == null)
+        {
+            return;
+        }
+
+        Controller(source.MapHeld)?.RecordTransmissionToCell(source, targetCell, disease, vector);
+    }
+
     public static void SourceAtNearestMapEdge(Pawn target, HediffDef disease, ContagionDebugVectorKind vector)
     {
         if (target?.MapHeld == null)

@@ -31,6 +31,10 @@ public static class ContagionDeveloperOverlayDrawer
 
     private static readonly Color TraceFomiteColor = new Color(0.95f, 0.40f, 0.74f, 0.72f);
 
+    private static readonly Color TraceFecalOralEatingColor = new Color(0.62f, 0.86f, 0.30f, 0.72f);
+
+    private static readonly Color TraceFecalOralLivingColor = new Color(0.58f, 0.42f, 0.22f, 0.72f);
+
     private static readonly Color TraceEnvironmentalColor = new Color(0.30f, 0.78f, 0.78f, 0.72f);
 
     private static readonly Color TraceDeveloperColor = new Color(1f, 0.45f, 0.18f, 0.72f);
@@ -45,6 +49,8 @@ public static class ContagionDeveloperOverlayDrawer
     private static readonly Color NodeBenchColor = new Color(1f, 0.62f, 0.16f, 0.85f);
 
     private static readonly Color NodeItemColor = new Color(0.98f, 0.90f, 0.30f, 0.85f);
+
+    private static readonly Color NodeFilthColor = new Color(0.58f, 0.42f, 0.22f, 0.82f);
 
     private static readonly Color NodeGhostColor = new Color(0.70f, 0.70f, 0.74f, 0.65f);
 
@@ -164,6 +170,10 @@ public static class ContagionDeveloperOverlayDrawer
                 break;
             case ContagionTraceNodeKind.Item:
                 DrawMarker(position, NodeItemColor, 0.16f, 0.02f);
+                break;
+            case ContagionTraceNodeKind.Filth:
+                DrawMarker(position, NodeFilthColor, 0.16f, 0.02f);
+                DrawRing(position, 0.24f, NodeFilthColor);
                 break;
             default:
                 DrawRing(position, 0.22f, NodeGhostColor);
@@ -656,6 +666,8 @@ public static class ContagionDeveloperOverlayDrawer
             ContagionDebugVectorKind.CorpseFluid => TraceCorpseFluidColor,
             ContagionDebugVectorKind.Cooking => TraceCookingColor,
             ContagionDebugVectorKind.Fomite => TraceFomiteColor,
+            ContagionDebugVectorKind.FecalOralEating => TraceFecalOralEatingColor,
+            ContagionDebugVectorKind.FecalOralLiving => TraceFecalOralLivingColor,
             ContagionDebugVectorKind.Environmental => TraceEnvironmentalColor,
             ContagionDebugVectorKind.Developer => TraceDeveloperColor,
             ContagionDebugVectorKind.OffMap => TraceOffMapColor,

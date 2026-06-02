@@ -307,6 +307,54 @@ public sealed class Vector_Foodborne : TransmissionVector
     public float contaminationExpiryDays = 30f;
 }
 
+public sealed class Vector_FecalOralEating : TransmissionVector
+{
+    public float baseChancePerIngestion = 0.006f;
+
+    public float hotspotShedChancePerCheck = 0.015f;
+
+    public int hotspotRadius = 8;
+
+    public int hotspotMergeRadius = 4;
+
+    public int maxHotspotsPerDisease = 24;
+
+    public float hotspotDurationDays = 8f;
+
+    public float hotspotDecayPerDay = 0.35f;
+
+    public float distanceFalloffRate = 0.25f;
+
+    public float rainPotencyFactor = 0.35f;
+
+    public float freezingPotencyFactor = 0.35f;
+
+    public float freezingTemperature = 0f;
+
+    public float grazingFactor = 1f;
+
+    public float rawOutdoorGroundFoodFactor = 0.55f;
+
+    public float preparedOutdoorGroundFoodFactor = 0.25f;
+
+    public float storedOrIndoorFoodFactor = 0.05f;
+}
+
+public sealed class Vector_FecalOralLiving : TransmissionVector
+{
+    public float baseChancePerCheck = 0.0012f;
+
+    public float filthContaminationChance = 1f;
+
+    public int maxFilthPerDisease = 48;
+
+    public float potencyDecayPerDay = 0.12f;
+
+    public float thicknessFactor = 0.25f;
+
+    public float roomCleanlinessImpact = 0.5f;
+}
+
 public sealed class Vector_CookingExposure : TransmissionVector
 {
     public float baseChancePerRecipe = 0.004f;

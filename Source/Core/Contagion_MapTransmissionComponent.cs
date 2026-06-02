@@ -23,6 +23,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private ContagionVomitFomiteTracker _vomitFomiteTracker = new();
 
+    private ContagionFecalOralTracker _fecalOralTracker = new();
+
     private ContagionMapSeedingState _seedingState = new();
 
     // Per-disease outbreak tracking (human track and animal track are separate so an animal
@@ -59,6 +61,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     {
         base.ExposeData();
         Scribe_Deep.Look(ref _vomitFomiteTracker, "vomitFomiteTracker");
+        Scribe_Deep.Look(ref _fecalOralTracker, "fecalOralTracker");
         Scribe_Deep.Look(ref _seedingState, "seedingState");
         Scribe_Collections.Look(ref _humanOutbreakLastCaseTick, "humanOutbreakLastCaseTick", LookMode.Def, LookMode.Value);
         Scribe_Collections.Look(ref _animalOutbreakLastCaseTick, "animalOutbreakLastCaseTick", LookMode.Def, LookMode.Value);
@@ -66,12 +69,14 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
             _vomitFomiteTracker ??= new ContagionVomitFomiteTracker();
+            _fecalOralTracker ??= new ContagionFecalOralTracker();
             _seedingState ??= new ContagionMapSeedingState();
             _humanOutbreakLastCaseTick ??= new Dictionary<HediffDef, int>();
             _humanOutbreakClusterLetter ??= new Dictionary<HediffDef, Letter>();
             _animalOutbreakLastCaseTick ??= new Dictionary<HediffDef, int>();
             _animalOutbreakClusterLetter ??= new Dictionary<HediffDef, Letter>();
             _vomitFomiteTracker.Cleanup(map);
+            _fecalOralTracker.Cleanup(map);
         }
     }
 
@@ -142,11 +147,13 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
 
         _vomitFomiteTracker.Cleanup(map);
+        _fecalOralTracker.Cleanup(map);
 
         if (runEnvironmental)
         {
             RunGeneralSeederPass(spawnedPawns);
             _environmentalExposureProcessor.RunEnvironmentalExposurePass(spawnedPawns);
+            _fecalOralTracker.RunFecalOralEatingSheddingPass(spawnedPawns, map);
             ContagionSeedingCoordinator.RunSpontaneousFalsePositives(spawnedPawns, EnvironmentalCheckInterval);
             PruneStaleOutbreaks();
         }
@@ -157,6 +164,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         }
 
         _vomitFomiteTracker.RunFomiteExposurePass(spawnedPawns, map);
+        _fecalOralTracker.RunFecalOralLivingExposurePass(spawnedPawns, map);
         _corpseExposureProcessor.RunCorpseExposurePass(spawnedPawns, TransmissionCheckInterval);
 
         if (spawnedPawns.Count >= 2)
@@ -168,6 +176,16 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     public void NotifyVomitFilthCreated(Filth filth, Pawn sourcePawn)
     {
         _vomitFomiteTracker.NotifyVomitFilthCreated(filth, sourcePawn, map);
+    }
+
+    internal void NotifyAnimalFilthCreated(Filth filth, Pawn sourcePawn)
+    {
+        _fecalOralTracker.NotifyAnimalFilthCreated(filth, sourcePawn, map);
+    }
+
+    internal void NotifyAnimalIngested(Pawn ingester, ContagionIngestionContext context)
+    {
+        _fecalOralTracker.NotifyAnimalIngested(ingester, context);
     }
 
     // ── Outbreak tracking ──────────────────────────────────────────────────────────────────────

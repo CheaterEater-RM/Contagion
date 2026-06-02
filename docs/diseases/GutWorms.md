@@ -108,6 +108,26 @@ Cooking contaminated meat can expose the cook through raw ingredient handling. O
 | lowSkillFactor | 2.0 | Cooking 0 doubles exposure risk |
 | highSkillFactor | 0.5 | Cooking 20 halves exposure risk |
 
+### Vector_FecalOralLiving (animal-only barn exposure)
+
+Infected animals can contaminate vanilla `Filth_AnimalFilth` in roofed or enclosed barns. Other animals sharing that dirty room roll low ambient exposure; colonists are excluded from this route. Cleaning the filth removes the hazard.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| baseChancePerCheck | 0.0014 | Per 250-tick transmission pass |
+| potencyDecayPerDay | 0.14 | Barn contamination fades slowly unless refreshed |
+| roomCleanlinessImpact | 0.6 | Dirty rooms amplify exposure |
+
+### Vector_FecalOralEating (animal-only grazing exposure)
+
+Infected outdoor animals create hidden pasture hotspots. Animals eating in those hotspots can pick up gut worms, with context weighting: grazing live plants is highest risk, raw outdoor ground food is lower, kibble/hay on the ground is lower still, and stored or indoor feed is near-zero risk.
+
+| Parameter | Value | Notes |
+|---|---|---|
+| baseChancePerIngestion | 0.007 | Rolled when an animal eats near a hotspot |
+| hotspotShedChancePerCheck | 0.018 | Per 2500-tick environmental pass from infected outdoor animals |
+| hotspotDurationDays | 7 | Shorter-lived than muscle parasite pasture contamination |
+
 ### Vector_Environmental (direct outdoor exposure)
 
 This vector can infect humans and animals directly from contaminated outdoor water: drinking from unsafe sources, working at waterside cells, or tracking viable eggs back through outdoor movement. The meat chain is still important, but it is not the only route into humans.

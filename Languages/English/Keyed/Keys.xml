@@ -82,6 +82,7 @@
   <Contagion_DiagnosticsSpreadApplications>Spread application: {0} seeded, {1} blocked, {2} immunity-blocked.</Contagion_DiagnosticsSpreadApplications>
   <Contagion_DiagnosticsSpreadVectors>Spread success/attempts: airborne {0}, proximity {1}, social {2}, foodborne {3}, fomite {4}.</Contagion_DiagnosticsSpreadVectors>
   <Contagion_DiagnosticsSpreadContamination>Contamination: meals tagged {0}, vomit tagged {1}.</Contagion_DiagnosticsSpreadContamination>
+  <Contagion_DiagnosticsSpreadFecalOral>Fecal-oral: eating {0}, living {1}, pasture hotspots {2}, barn filth tagged {3}.</Contagion_DiagnosticsSpreadFecalOral>
   <Contagion_DiagnosticsSummaryDirector>Director: debt human {0}, animal {1}; burden human {2}, animal {3}; recent {4}; mult {5}.</Contagion_DiagnosticsSummaryDirector>
   <Contagion_ContaminatedFoodInspect>Contaminated (dev): {0} (factor {1})</Contagion_ContaminatedFoodInspect>
   <Contagion_CorpseInfectivityHeader>Corpse infectivity: {0}</Contagion_CorpseInfectivityHeader>
