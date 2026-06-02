@@ -62,6 +62,7 @@ public static class ContagionSeedingExecutionUtility
                 pawn,
                 resolvedProfile.ResolveHediffForPawn(pawn),
                 resolvedProfile.PartsToAffect,
+                null,
                 ContagionDiagnosticOrigin.Incidence,
                 ContagionSeedSource.Storyteller,
                 out HediffDef seedImmunityCause))
@@ -152,6 +153,7 @@ public static class ContagionSeedingExecutionUtility
             pawn,
             resolvedProfile.ResolveHediffForPawn(pawn),
             resolvedProfile.PartsToAffect,
+            null,
             origin,
             seedSource,
             out immunityCause);

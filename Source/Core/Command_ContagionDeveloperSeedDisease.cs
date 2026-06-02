@@ -66,6 +66,7 @@ public sealed class Command_ContagionDeveloperSeedDisease : Command_Action
             _pawn,
             resolvedProfile.DiseaseDef,
             resolvedProfile.PartsToAffect,
+            null,
             ContagionDiagnosticOrigin.Unknown,
             ContagionSeedSource.Developer,
             out HediffDef _))

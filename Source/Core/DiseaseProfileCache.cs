@@ -183,21 +183,6 @@ public static class DiseaseProfileCache
 
     private static void WarnIfReservedFieldsAreSet(HediffDef diseaseDef, TransmissionProfile profile)
     {
-        if (profile.carrierChance != 0f)
-        {
-            Log.Warning($"[Contagion] TransmissionProfile on {diseaseDef.defName} sets reserved field carrierChance; it is not implemented yet.");
-        }
-
-        if (profile.carrierHediffDef != null)
-        {
-            Log.Warning($"[Contagion] TransmissionProfile on {diseaseDef.defName} sets reserved field carrierHediffDef; it is not implemented yet.");
-        }
-
-        if (profile.spreadsDuringCaravan)
-        {
-            Log.Warning($"[Contagion] TransmissionProfile on {diseaseDef.defName} sets reserved field spreadsDuringCaravan; it is not implemented yet.");
-        }
-
         if (profile.corpseInfectivityDecayPerDay != 0.5f)
         {
             Log.Warning($"[Contagion] TransmissionProfile on {diseaseDef.defName} sets reserved field corpseInfectivityDecayPerDay; it is not implemented yet.");

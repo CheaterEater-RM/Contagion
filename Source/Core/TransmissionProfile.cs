@@ -108,12 +108,6 @@ public sealed class TransmissionProfile : DefModExtension
     // subtle systemic ones. 0 = never, 1 = always. Default 10%.
     public float posthumousSymptomChance = 0.1f;
 
-    public float carrierChance;
-
-    public HediffDef carrierHediffDef;
-
-    public bool spreadsDuringCaravan;
-
     public bool UsesPartTargeting => !targetBodyParts.NullOrEmpty();
 
     public bool HasVectors => !vectors.NullOrEmpty();

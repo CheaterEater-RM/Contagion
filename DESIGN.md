@@ -77,7 +77,7 @@ Every contagious disease follows the same five-phase model. Phases 2–4 wrap th
 2. **Incubating** — the pawn carries a hidden incubation hediff (`Hediff_ContagionIncubation`). No symptoms. May be contagious per the profile's incubation curve. On completion it removes itself and applies the real vanilla disease hediff.
 3. **Active** — the real vanilla disease hediff progresses normally: symptoms, treatment, immunity race.
 4. **Recovering** — vanilla handles the tail end as immunity wins and severity declines.
-5. **Temporarily immune** — a hidden immunity source (`Hediff_ContagionTemporaryImmunity`, or a profile-specified custom hediff) prevents immediate re-seeding for `immunityDurationDays`.
+5. **Temporarily immune** — a hidden immunity source (`Contagion_TemporaryImmunity`, backed by `Hediff_ContagionExpiry`, or a profile-specified custom hediff) prevents immediate re-seeding for `immunityDurationDays`.
 
 The key rule: Contagion adds only phase 1 (incubation wrapper) and phase 5 (immunity tracking). It does not create a parallel disease simulation once symptoms begin.
 
@@ -91,7 +91,7 @@ The mod owns short-term reinfection protection because vanilla `HediffComp_Immun
 
 **Interaction with vanilla immunity.** Vanilla stores per-disease immunity in `Pawn.health.immunity` as an `ImmunityRecord` that rises while sick and decays at `immunityPerDayNotSick` once recovered. `ImmunityHandler.DiseaseContractChanceFactor` returns 0 (fully immune) while the record is at or above 0.6, then linearly ramps the contract chance back to 100% as it decays to 0. For vanilla Flu (-0.06/day) that gives roughly a 7-day fully-safe window after recovery before reinfection becomes possible at all, hitting full susceptibility around day 17. Plague/Malaria/SleepingSickness decay much slower (-0.02 to -0.03/day) so vanilla already provides 30-50 days of meaningful protection. There is **no normal player-facing UI** for this lingering record — it only appears in a dev-mode "Table: Immunities" debug action ([HealthCardUtility](../Rimworld_References/Rimworld%201.6%20Decompiled%20Source/RimWorld/HealthCardUtility.cs)). The active disease's immunity-vs-severity bar disappears with the hediff.
 
-`CanContractDiseaseNow` consults both layers: it short-circuits on the mod's `Hediff_ContagionTemporaryImmunity` (hard yes/no), then falls back to `pawn.health.immunity.DiseaseContractChanceFactor(...) > 0` (vanilla's soft factor). So for diseases that set `immunityDurationDays 0`, vanilla's decay is the only gate — reinfection during the same outbreak is possible once vanilla immunity drops below 0.6.
+`CanContractDiseaseNow` consults both layers: it short-circuits on the mod's `Contagion_TemporaryImmunity` hediff (hard yes/no), then falls back to `pawn.health.immunity.DiseaseContractChanceFactor(...) > 0` (vanilla's soft factor). So for diseases that set `immunityDurationDays 0`, vanilla's decay is the only gate — reinfection during the same outbreak is possible once vanilla immunity drops below 0.6.
 
 ---
 
@@ -181,7 +181,7 @@ This path calls `IncidentWorker_Disease.ApplyToPawns` directly, bypassing `TryEx
 
 **Compensating mechanics ship with the trait.** Rather than carve a special "this incubation doesn't spread" case (which would break the mod's core contract that any active profiled disease can transmit), Contagion adds three things:
 
-- A **per-pawn cooldown** (`Hediff_ContagionTraitSeedCooldown`, 10 days) applied after any successful trait-driven seed. While active, further trait-driven seeds on that pawn are skipped, preventing back-to-back random illnesses.
+- A **per-pawn cooldown** (`Contagion_TraitSeedCooldown`, backed by `Hediff_ContagionExpiry`, 10 days) applied after any successful trait-driven seed. While active, further trait-driven seeds on that pawn are skipped, preventing back-to-back random illnesses.
 - A **reduced outward-shedding factor** for Sickly pawns — every shipped human-contagious profile (Flu, Plague, GutWorms) carries a `SourceFactor_Trait` entry that halves Sickly's source infectivity. Sickly catches more, but spreads less; the trait identity becomes "more random misfortune, less of a spreader." Justified in fiction by the trait's boosted Medical skill (hygiene awareness).
 - A **vanilla-style "feels unwell" letter** when a trait-driven seed succeeds. The storyteller path stays silent on success (incubation is meant to be a hidden window), but the trait path preserves the vanilla "Sickly Bob caught something" notification — vague about *what* they have, so the player still has the discovery moment, but visible enough to act on with a quarantine.
 
@@ -219,9 +219,6 @@ The entire modder-facing contract, attached to any `HediffDef` to make it contag
 | `corpseContagious` | bool | false | When true, animal and humanlike corpses are marked with `Comp_InfectedCorpse` at death. The corpse remains fresh, is visibly/inspectably infected, can be filtered in storage/bills, can expose eaters, and can still enter the butchery contamination chain if a bill explicitly allows it. |
 | `showsSickSignal` | bool | false | When true, handlers who interact with an infected animal may notice a "sick" signal hediff that prompts a vet visit. Enables the animal disease chain — see [Animal Disease Chain](#animal-disease-chain). |
 | `corpseInfectivityDecayPerDay` | float | 0.5 | *Reserved:* per-day infectivity decay of a contagious corpse as a proximity/fomite source. Not yet implemented. |
-| `carrierChance` | float | 0.0 | *Reserved:* probability of becoming an asymptomatic carrier on recovery |
-| `carrierHediffDef` | HediffDef | null | *Reserved:* hediff applied to carriers |
-| `spreadsDuringCaravan` | bool | false | *Reserved* for future caravan support |
 
 Fields marked *Reserved* are present in the schema (so modders can plan) but have no engine implementation in v1. See [Reserved & Future Work](#reserved--future-work).
 
@@ -694,7 +691,7 @@ Consumed/destroyed food (`Item`) nodes splice out of the chain (predecessor → 
 
 ## Scope Boundary For First Implementation
 
-The first implementation is **map-scoped:** colony maps are fully supported; visitors and other spawned pawns are valid sources/targets; caravans keep vanilla disease behavior. Vanilla storyteller disease still targets caravans, and the map-only transmission engine deliberately does not extend there. Caravan contagion is deferred, not accidentally half-supported (`spreadsDuringCaravan` is reserved).
+The first implementation is **map-scoped:** colony maps are fully supported; visitors and other spawned pawns are valid sources/targets; caravans keep vanilla disease behavior. Vanilla storyteller disease still targets caravans, and the map-only transmission engine deliberately does not extend there. Caravan contagion is deferred until a world/caravan transmission model exists.
 
 ---
 
@@ -757,15 +754,15 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 **Pending — tuning pass.** Starting numbers for pending windows, director parameters, group arrival exposure policies, plague `crossSpeciesTransmissionFactor`, and the new environmental/butchering disease parameters are first-pass guesses. Play-testing and adjustment are needed before v1 ships.
 
-**Reserved — see below.** Carrier state, caravan spread, and `Vector_Lovin` are intentionally schema-only with no engine implementation in v1. `corpseInfectivityDecayPerDay` (corpses as active proximity/fomite sources with decay) is also reserved — `corpseContagious` currently marks corpses for filtering, butchery, visuals, and ingestion exposure, not passive proximity/fomite emission.
+**Reserved — see below.** `Vector_Lovin` is intentionally schema-only with no engine implementation in v1. `corpseInfectivityDecayPerDay` (corpses as active proximity/fomite sources with decay) is also reserved — `corpseContagious` currently marks corpses for filtering, butchery, visuals, and ingestion exposure, not passive proximity/fomite emission.
 
 ---
 
 ## Reserved & Future Work
 
 - **Corpse as active contagion source** (`corpseInfectivityDecayPerDay`) — `corpseContagious` already marks animal and humanlike corpses with `Comp_InfectedCorpse` for filters, visuals, butchery, and ingestion exposure. The next step — corpses acting as proximity/fomite sources while they decay — is still reserved. This would extend the existing corpse comp with decay-aware passive emission and cleanup hooks for cremation/burial.
-- **Carrier state** (`carrierChance`, `carrierHediffDef`) — Typhoid-Mary dynamics: a chance on recovery to become an asymptomatic contagious carrier with its own (flat, low) infectivity curve.
-- **Caravan spread** (`spreadsDuringCaravan`) — requires a world/caravan transmission model, deliberately deferred.
+- **Carrier state** — Typhoid-Mary dynamics: a chance on recovery to become an asymptomatic contagious carrier with its own (flat, low) infectivity curve. Removed from the profile schema until it has an engine implementation.
+- **Caravan spread** — requires a world/caravan transmission model, deliberately deferred. Removed from the profile schema until that model exists.
 - **`Vector_Lovin`** — STD-style transmission; needs a `JobDriver_Lovin` completion hook.
 - *(Unified plague — completed. `Plague` now owns both species via `animalVariantDef Animal_Plague`. Cross-species transmission factor 0.5. Corpse contagious. Sick signal enabled.)*
 - **Future vector types** (need their own design pass): `Vector_Combat`/`Vector_MeleeDamage` (bites/melee — rage viruses, scaria, zombies) and `Vector_Pregnancy` (mother-to-child, Biotech).

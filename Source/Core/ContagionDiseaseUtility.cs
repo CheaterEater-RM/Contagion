@@ -11,44 +11,7 @@ public static class ContagionDiseaseUtility
 
     public static bool TrySeedIncubation(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, out HediffDef immunityCause)
     {
-        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, ContagionDiagnosticOrigin.Unknown, ContagionSeedSource.Unknown, out immunityCause);
-    }
-
-    public static bool TrySeedIncubation(
-        Pawn pawn,
-        HediffDef diseaseDef,
-        List<BodyPartDef> partsToAffect,
-        ContagionDiagnosticOrigin origin,
-        out HediffDef immunityCause)
-    {
-        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, null, origin, ContagionSeedSource.Unknown, out immunityCause);
-    }
-
-    public static bool TrySeedIncubation(
-        Pawn pawn,
-        HediffDef diseaseDef,
-        List<BodyPartDef> partsToAffect,
-        ContagionDiagnosticOrigin origin,
-        ContagionSeedSource seedSource,
-        out HediffDef immunityCause)
-    {
-        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, null, origin, seedSource, out immunityCause);
-    }
-
-    public static bool TrySeedIncubation(Pawn pawn, HediffDef diseaseDef, List<BodyPartDef> partsToAffect, Pawn sourcePawn, out HediffDef immunityCause)
-    {
-        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, sourcePawn, ContagionDiagnosticOrigin.Unknown, ContagionSeedSource.Unknown, out immunityCause);
-    }
-
-    public static bool TrySeedIncubation(
-        Pawn pawn,
-        HediffDef diseaseDef,
-        List<BodyPartDef> partsToAffect,
-        Pawn sourcePawn,
-        ContagionDiagnosticOrigin origin,
-        out HediffDef immunityCause)
-    {
-        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, sourcePawn, origin, ContagionSeedSource.Unknown, out immunityCause);
+        return TrySeedIncubation(pawn, diseaseDef, partsToAffect, null, ContagionDiagnosticOrigin.Unknown, ContagionSeedSource.Unknown, out immunityCause);
     }
 
     public static bool TrySeedIncubation(
@@ -232,10 +195,10 @@ public static class ContagionDiseaseUtility
             return;
         }
 
-        Hediff_ContagionTemporaryImmunity immunity = FindTemporaryImmunity(pawn, diseaseDef);
+        Hediff_ContagionExpiry immunity = FindTemporaryImmunity(pawn, diseaseDef);
         if (immunity == null)
         {
-            immunity = HediffMaker.MakeHediff(ContagionDefOf.Contagion_TemporaryImmunity, pawn) as Hediff_ContagionTemporaryImmunity;
+            immunity = HediffMaker.MakeHediff(ContagionDefOf.Contagion_TemporaryImmunity, pawn) as Hediff_ContagionExpiry;
             if (immunity == null)
             {
                 Log.Error($"[Contagion] Failed to create temporary immunity hediff for {diseaseDef.defName}.");
@@ -245,7 +208,7 @@ public static class ContagionDiseaseUtility
             pawn.health.AddHediff(immunity);
         }
 
-        immunity.Configure(diseaseDef, Find.TickManager.TicksGame + durationTicks);
+        immunity.Configure(Find.TickManager.TicksGame + durationTicks, diseaseDef);
     }
 
     public static void GiveCustomImmunity(Pawn pawn, HediffDef immunityHediffDef)
@@ -334,10 +297,10 @@ public static class ContagionDiseaseUtility
             return;
         }
 
-        Hediff_ContagionTraitSeedCooldown cooldown = FindTraitSeedCooldown(pawn);
+        Hediff_ContagionExpiry cooldown = FindTraitSeedCooldown(pawn);
         if (cooldown == null)
         {
-            cooldown = HediffMaker.MakeHediff(ContagionDefOf.Contagion_TraitSeedCooldown, pawn) as Hediff_ContagionTraitSeedCooldown;
+            cooldown = HediffMaker.MakeHediff(ContagionDefOf.Contagion_TraitSeedCooldown, pawn) as Hediff_ContagionExpiry;
             if (cooldown == null)
             {
                 Log.Error("[Contagion] Failed to create trait-seed cooldown hediff.");
@@ -350,7 +313,7 @@ public static class ContagionDiseaseUtility
         cooldown.Configure(Find.TickManager.TicksGame + durationTicks);
     }
 
-    public static Hediff_ContagionTraitSeedCooldown FindTraitSeedCooldown(Pawn pawn)
+    public static Hediff_ContagionExpiry FindTraitSeedCooldown(Pawn pawn)
     {
         if (pawn?.health?.hediffSet == null)
         {
@@ -360,7 +323,7 @@ public static class ContagionDiseaseUtility
         List<Hediff> hediffs = pawn.health.hediffSet.hediffs;
         for (int i = 0; i < hediffs.Count; i++)
         {
-            if (hediffs[i] is Hediff_ContagionTraitSeedCooldown cooldown)
+            if (hediffs[i] is Hediff_ContagionExpiry cooldown && cooldown.def == ContagionDefOf.Contagion_TraitSeedCooldown)
             {
                 return cooldown;
             }
@@ -369,7 +332,7 @@ public static class ContagionDiseaseUtility
         return null;
     }
 
-    public static Hediff_ContagionTemporaryImmunity FindTemporaryImmunity(Pawn pawn, HediffDef diseaseDef)
+    public static Hediff_ContagionExpiry FindTemporaryImmunity(Pawn pawn, HediffDef diseaseDef)
     {
         if (pawn?.health?.hediffSet == null || diseaseDef == null)
         {
@@ -379,7 +342,9 @@ public static class ContagionDiseaseUtility
         List<Hediff> hediffs = pawn.health.hediffSet.hediffs;
         for (int i = 0; i < hediffs.Count; i++)
         {
-            if (hediffs[i] is Hediff_ContagionTemporaryImmunity immunity && immunity.ProtectedDiseaseDef == diseaseDef)
+            if (hediffs[i] is Hediff_ContagionExpiry immunity
+                && immunity.def == ContagionDefOf.Contagion_TemporaryImmunity
+                && immunity.AssociatedDef == diseaseDef)
             {
                 return immunity;
             }

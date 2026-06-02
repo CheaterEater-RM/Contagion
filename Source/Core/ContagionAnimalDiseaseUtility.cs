@@ -26,7 +26,44 @@ public static class ContagionAnimalDiseaseUtility
     // included. Display paths pass false so hidden diseases are never leaked without a roll.
     public static HediffDef GetHumanCorpseContagiousDisease(Pawn innerPawn, bool includeHidden)
     {
-        if (innerPawn?.health?.hediffSet == null || innerPawn.RaceProps?.Humanlike != true)
+        if (innerPawn?.RaceProps?.Humanlike != true)
+        {
+            return null;
+        }
+
+        return GetCorpseContagiousDisease(innerPawn, includeHidden);
+    }
+
+    public static HediffDef GetAnimalCorpseContagiousDisease(Pawn innerPawn)
+    {
+        return GetAnimalCorpseContagiousDisease(innerPawn, includeHidden: false);
+    }
+
+    public static HediffDef GetAnimalCorpseContagiousDisease(Pawn innerPawn, bool includeHidden)
+    {
+        if (innerPawn?.RaceProps?.Animal != true)
+        {
+            return null;
+        }
+
+        return GetCorpseContagiousDisease(innerPawn, includeHidden);
+    }
+
+    public static HediffDef GetCorpseContagiousDisease(Pawn innerPawn)
+    {
+        return GetCorpseContagiousDisease(innerPawn, includeHidden: false);
+    }
+
+    public static HediffDef GetCorpseContagiousDisease(Pawn innerPawn, bool includeHidden)
+    {
+        if (innerPawn?.health?.hediffSet == null)
+        {
+            return null;
+        }
+
+        bool isAnimal = innerPawn.RaceProps?.Animal == true;
+        bool isHuman = innerPawn.RaceProps?.Humanlike == true;
+        if (!isAnimal && !isHuman)
         {
             return null;
         }
@@ -42,38 +79,7 @@ public static class ContagionAnimalDiseaseUtility
 
             if (DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile)
                 && resolvedProfile.Profile.corpseContagious
-                && resolvedProfile.Profile.affectsHumans)
-            {
-                return resolvedProfile.DiseaseDef;
-            }
-        }
-
-        return null;
-    }
-
-    public static HediffDef GetAnimalCorpseContagiousDisease(Pawn innerPawn)
-    {
-        return GetAnimalCorpseContagiousDisease(innerPawn, includeHidden: false);
-    }
-
-    public static HediffDef GetAnimalCorpseContagiousDisease(Pawn innerPawn, bool includeHidden)
-    {
-        if (innerPawn?.health?.hediffSet == null || innerPawn.RaceProps?.Animal != true)
-        {
-            return null;
-        }
-
-        List<Hediff> hediffs = innerPawn.health.hediffSet.hediffs;
-        for (int i = 0; i < hediffs.Count; i++)
-        {
-            HediffDef diseaseDef = GetDiseaseDef(hediffs[i], includeHidden);
-            if (diseaseDef == null)
-            {
-                continue;
-            }
-
-            if (DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile)
-                && resolvedProfile.Profile.corpseContagious)
+                && (!isHuman || resolvedProfile.Profile.affectsHumans))
             {
                 // Return the primary def so downstream callers (meat contamination, food
                 // exposure) always work with the human-variant hediff, not the animal variant.

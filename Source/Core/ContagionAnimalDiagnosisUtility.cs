@@ -44,7 +44,7 @@ internal static class ContagionAnimalDiagnosisUtility
             animal.health.RemoveHediff(existing);
         }
 
-        var cooldown = (Hediff_ContagionTraitSeedCooldown)HediffMaker.MakeHediff(
+        var cooldown = (Hediff_ContagionExpiry)HediffMaker.MakeHediff(
             ContagionDefOf.Contagion_AnimalDiagnosisCooldown, animal);
         cooldown.Configure(Find.TickManager.TicksGame + DiagnosisCooldownTicks);
         animal.health.AddHediff(cooldown);

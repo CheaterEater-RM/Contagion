@@ -5,6 +5,17 @@ using Verse;
 
 namespace Contagion;
 
+public enum ContagionArrivalGroupKind
+{
+    Neutral,
+    WandererJoin,
+    QuestGuest,
+    QuestJoiner,
+    HostileRaid,
+    TribalRaid,
+    FarmAnimals
+}
+
 internal enum SeedingFulfillmentKind
 {
     None,

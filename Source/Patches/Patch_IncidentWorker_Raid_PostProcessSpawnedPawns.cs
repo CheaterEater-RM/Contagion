@@ -34,7 +34,7 @@ internal static class Patch_IncidentWorker_Raid_PostProcessSpawnedPawns
             return;
         }
 
-        ContagionArrivalUtility.SeedArrivalGroup(
+        ContagionSeedingCoordinator.HandleArrivalGroup(
             livePawns,
             parms.faction.def.techLevel <= TechLevel.Neolithic
                 ? ContagionArrivalGroupKind.TribalRaid

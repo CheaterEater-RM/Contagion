@@ -271,6 +271,7 @@ public static class ContagionCorpseExposureUtility
                 target,
                 resolvedProfile.DiseaseDef,
                 resolvedProfile.PartsToAffect,
+                null,
                 ContagionDiagnosticOrigin.Spread,
                 ContagionSeedSource.Corpse,
                 out HediffDef _);

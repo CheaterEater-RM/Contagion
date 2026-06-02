@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -13,63 +14,137 @@ public enum ContagionDiagnosticOrigin
     Spread
 }
 
+internal enum ContagionDiagnosticCounterCategory
+{
+    None,
+    Incidence,
+    Spread
+}
+
+[AttributeUsage(AttributeTargets.Field)]
+internal sealed class DiagnosticCounterCategoryAttribute : Attribute
+{
+    public DiagnosticCounterCategoryAttribute(ContagionDiagnosticCounterCategory category)
+    {
+        Category = category;
+    }
+
+    public ContagionDiagnosticCounterCategory Category { get; }
+}
+
 public enum ContagionDiagnosticCounter
 {
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     IncidenceApplicationSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     IncidenceApplicationBlocked,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     IncidenceApplicationBlockedByImmunity,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     SpreadApplicationSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     SpreadApplicationBlocked,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     SpreadApplicationBlockedByImmunity,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     StorytellerAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     StorytellerSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     StorytellerCancelled,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ArrivalGroupChecked,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ArrivalGroupSkippedEmpty,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ArrivalNoDiseaseCandidates,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ArrivalNoEligibleCarriers,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ArrivalExposureSucceeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ArrivalSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ArrivalCarrierSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ArrivalCarrierLatent,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ArrivalCarrierMildVisible,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     EnvironmentalAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     EnvironmentalSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ContinuousSeederAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ContinuousSeederSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     ContinuousSeederNoEligiblePawn,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     PendingQueued,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     PendingDroppedAtCap,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     PendingDroppedDuplicate,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     PendingResolvedArrival,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     PendingResolvedAnimal,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     PendingExpiredToAcausal,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     EnvironmentalWindowOpened,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     EnvironmentalWindowClosedBudget,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     EnvironmentalWindowClosedExpiry,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     AirborneAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     AirborneSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     ProximityAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     ProximitySeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     SocialAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     SocialSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     MealsContaminated,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FoodborneAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FoodborneSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     VomitFilthContaminated,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FomiteAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FomiteSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FecalOralEatingHotspotCreated,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FecalOralEatingAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FecalOralEatingSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FecalOralLivingFilthContaminated,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FecalOralLivingAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     FecalOralLivingSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     CorpseFleaAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     CorpseFleaSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     CorpseFluidAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     CorpseFluidSeeded,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     CookingExposureAttempted,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     CookingExposureSeeded,
     Count
 }
@@ -78,69 +153,9 @@ public static class ContagionDiagnostics
 {
     private static readonly long[] Counters = new long[(int)ContagionDiagnosticCounter.Count];
 
-    private static readonly ContagionDiagnosticCounter[] IncidenceCounters =
-    {
-        ContagionDiagnosticCounter.IncidenceApplicationSeeded,
-        ContagionDiagnosticCounter.IncidenceApplicationBlocked,
-        ContagionDiagnosticCounter.IncidenceApplicationBlockedByImmunity,
-        ContagionDiagnosticCounter.StorytellerAttempted,
-        ContagionDiagnosticCounter.StorytellerSeeded,
-        ContagionDiagnosticCounter.StorytellerCancelled,
-        ContagionDiagnosticCounter.ArrivalGroupChecked,
-        ContagionDiagnosticCounter.ArrivalGroupSkippedEmpty,
-        ContagionDiagnosticCounter.ArrivalNoDiseaseCandidates,
-        ContagionDiagnosticCounter.ArrivalNoEligibleCarriers,
-        ContagionDiagnosticCounter.ArrivalExposureSucceeded,
-        ContagionDiagnosticCounter.ArrivalSeeded,
-        ContagionDiagnosticCounter.ArrivalCarrierSeeded,
-        ContagionDiagnosticCounter.ArrivalCarrierLatent,
-        ContagionDiagnosticCounter.ArrivalCarrierMildVisible,
-        ContagionDiagnosticCounter.EnvironmentalAttempted,
-        ContagionDiagnosticCounter.EnvironmentalSeeded,
-        ContagionDiagnosticCounter.ContinuousSeederAttempted,
-        ContagionDiagnosticCounter.ContinuousSeederSeeded,
-        ContagionDiagnosticCounter.ContinuousSeederNoEligiblePawn,
-        ContagionDiagnosticCounter.PendingQueued,
-        ContagionDiagnosticCounter.PendingDroppedAtCap,
-        ContagionDiagnosticCounter.PendingDroppedDuplicate,
-        ContagionDiagnosticCounter.PendingResolvedArrival,
-        ContagionDiagnosticCounter.PendingResolvedAnimal,
-        ContagionDiagnosticCounter.PendingExpiredToAcausal,
-        ContagionDiagnosticCounter.EnvironmentalWindowOpened,
-        ContagionDiagnosticCounter.EnvironmentalWindowClosedBudget,
-        ContagionDiagnosticCounter.EnvironmentalWindowClosedExpiry
-    };
+    private static readonly ContagionDiagnosticCounter[] IncidenceCounters = GetCounters(ContagionDiagnosticCounterCategory.Incidence);
 
-    private static readonly ContagionDiagnosticCounter[] SpreadCounters =
-    {
-        ContagionDiagnosticCounter.SpreadApplicationSeeded,
-        ContagionDiagnosticCounter.SpreadApplicationBlocked,
-        ContagionDiagnosticCounter.SpreadApplicationBlockedByImmunity,
-        ContagionDiagnosticCounter.AirborneAttempted,
-        ContagionDiagnosticCounter.AirborneSeeded,
-        ContagionDiagnosticCounter.ProximityAttempted,
-        ContagionDiagnosticCounter.ProximitySeeded,
-        ContagionDiagnosticCounter.SocialAttempted,
-        ContagionDiagnosticCounter.SocialSeeded,
-        ContagionDiagnosticCounter.MealsContaminated,
-        ContagionDiagnosticCounter.FoodborneAttempted,
-        ContagionDiagnosticCounter.FoodborneSeeded,
-        ContagionDiagnosticCounter.VomitFilthContaminated,
-        ContagionDiagnosticCounter.FomiteAttempted,
-        ContagionDiagnosticCounter.FomiteSeeded,
-        ContagionDiagnosticCounter.FecalOralEatingHotspotCreated,
-        ContagionDiagnosticCounter.FecalOralEatingAttempted,
-        ContagionDiagnosticCounter.FecalOralEatingSeeded,
-        ContagionDiagnosticCounter.FecalOralLivingFilthContaminated,
-        ContagionDiagnosticCounter.FecalOralLivingAttempted,
-        ContagionDiagnosticCounter.FecalOralLivingSeeded,
-        ContagionDiagnosticCounter.CorpseFleaAttempted,
-        ContagionDiagnosticCounter.CorpseFleaSeeded,
-        ContagionDiagnosticCounter.CorpseFluidAttempted,
-        ContagionDiagnosticCounter.CorpseFluidSeeded,
-        ContagionDiagnosticCounter.CookingExposureAttempted,
-        ContagionDiagnosticCounter.CookingExposureSeeded
-    };
+    private static readonly ContagionDiagnosticCounter[] SpreadCounters = GetCounters(ContagionDiagnosticCounterCategory.Spread);
 
     private static bool HasDirectorSummary;
 
@@ -386,6 +401,32 @@ public static class ContagionDiagnostics
             GetCounter(ContagionDiagnosticCounter.FecalOralEatingHotspotCreated),
             GetCounter(ContagionDiagnosticCounter.FecalOralLivingFilthContaminated)).Resolve());
         return stringBuilder.ToString();
+    }
+
+    private static ContagionDiagnosticCounter[] GetCounters(ContagionDiagnosticCounterCategory category)
+    {
+        Array values = Enum.GetValues(typeof(ContagionDiagnosticCounter));
+        List<ContagionDiagnosticCounter> counters = new List<ContagionDiagnosticCounter>();
+        for (int i = 0; i < values.Length; i++)
+        {
+            ContagionDiagnosticCounter counter = (ContagionDiagnosticCounter)values.GetValue(i);
+            if (GetCounterCategory(counter) == category)
+            {
+                counters.Add(counter);
+            }
+        }
+
+        return counters.ToArray();
+    }
+
+    private static ContagionDiagnosticCounterCategory GetCounterCategory(ContagionDiagnosticCounter counter)
+    {
+        object[] attributes = typeof(ContagionDiagnosticCounter)
+            .GetField(counter.ToString())
+            ?.GetCustomAttributes(typeof(DiagnosticCounterCategoryAttribute), inherit: false);
+        return attributes != null && attributes.Length > 0
+            ? ((DiagnosticCounterCategoryAttribute)attributes[0]).Category
+            : ContagionDiagnosticCounterCategory.None;
     }
 
     private static long GetCounter(ContagionDiagnosticCounter counter)

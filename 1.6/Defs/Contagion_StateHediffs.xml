@@ -13,7 +13,7 @@
 
   <HediffDef>
     <defName>Contagion_TemporaryImmunity</defName>
-    <hediffClass>Contagion.Hediff_ContagionTemporaryImmunity</hediffClass>
+    <hediffClass>Contagion.Hediff_ContagionExpiry</hediffClass>
     <label>temporary immunity</label>
     <description>Hidden temporary immunity state used by Contagion to prevent immediate reinfection.</description>
     <initialSeverity>1.0</initialSeverity>
@@ -24,7 +24,7 @@
 
   <HediffDef>
     <defName>Contagion_TraitSeedCooldown</defName>
-    <hediffClass>Contagion.Hediff_ContagionTraitSeedCooldown</hediffClass>
+    <hediffClass>Contagion.Hediff_ContagionExpiry</hediffClass>
     <label>recovering</label>
     <description>Hidden per-pawn cooldown applied after a trait-driven disease seed (e.g. Sickly) to prevent back-to-back random illnesses on the same pawn.</description>
     <initialSeverity>1.0</initialSeverity>
@@ -68,7 +68,7 @@
        trait-seed cooldown but is scoped to animal diagnosis. -->
   <HediffDef>
     <defName>Contagion_AnimalDiagnosisCooldown</defName>
-    <hediffClass>Contagion.Hediff_ContagionTraitSeedCooldown</hediffClass>
+    <hediffClass>Contagion.Hediff_ContagionExpiry</hediffClass>
     <label>examined recently</label>
     <description>This animal was recently examined by a veterinarian. Another examination can be requested once the cooldown expires (one week).</description>
     <initialSeverity>1.0</initialSeverity>

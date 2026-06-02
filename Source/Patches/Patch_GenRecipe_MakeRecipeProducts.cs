@@ -197,6 +197,7 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
                 cook,
                 worstProfile.DiseaseDef,
                 worstProfile.PartsToAffect,
+                null,
                 ContagionDiagnosticOrigin.Spread,
                 ContagionSeedSource.Cooking,
                 out HediffDef _);

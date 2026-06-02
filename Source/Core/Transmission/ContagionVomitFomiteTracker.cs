@@ -11,32 +11,12 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
 
     private const float MinFomitePotency = 0.05f;
 
-    private List<Filth> _contaminatedVomitFilth = new List<Filth>();
-
-    private List<HediffDef> _contaminatedVomitDiseases = new List<HediffDef>();
-
-    private List<int> _contaminatedVomitTicks = new List<int>();
-
-    private List<float> _contaminatedVomitInitialPotencies = new List<float>();
-
-    private List<ThingDef> _contaminatedVomitSourceDefs = new List<ThingDef>();
+    private ContagionFilthStore _contaminatedVomit = new ContagionFilthStore();
 
     public void ExposeData()
     {
-        Scribe_Collections.Look(ref _contaminatedVomitFilth, "contaminatedVomitFilth", LookMode.Reference);
-        Scribe_Collections.Look(ref _contaminatedVomitDiseases, "contaminatedVomitDiseases", LookMode.Def);
-        Scribe_Collections.Look(ref _contaminatedVomitTicks, "contaminatedVomitTicks", LookMode.Value);
-        Scribe_Collections.Look(ref _contaminatedVomitInitialPotencies, "contaminatedVomitInitialPotencies", LookMode.Value);
-        Scribe_Collections.Look(ref _contaminatedVomitSourceDefs, "contaminatedVomitSourceDefs", LookMode.Def);
-
-        if (Scribe.mode == LoadSaveMode.PostLoadInit)
-        {
-            _contaminatedVomitFilth ??= new List<Filth>();
-            _contaminatedVomitDiseases ??= new List<HediffDef>();
-            _contaminatedVomitTicks ??= new List<int>();
-            _contaminatedVomitInitialPotencies ??= new List<float>();
-            _contaminatedVomitSourceDefs ??= new List<ThingDef>();
-        }
+        _contaminatedVomit ??= new ContagionFilthStore();
+        _contaminatedVomit.ExposeData("contaminatedVomit");
     }
 
     public void NotifyVomitFilthCreated(Filth filth, Pawn sourcePawn, Map map)
@@ -59,22 +39,7 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
                 continue;
             }
 
-            int index = _contaminatedVomitFilth.IndexOf(filth);
-            if (index >= 0)
-            {
-                _contaminatedVomitDiseases[index] = resolvedProfile.DiseaseDef;
-                _contaminatedVomitTicks[index] = Find.TickManager.TicksGame;
-                SetListValue(_contaminatedVomitInitialPotencies, index, initialPotency, 1f);
-                SetListValue(_contaminatedVomitSourceDefs, index, sourcePawn.def, null);
-            }
-            else
-            {
-                _contaminatedVomitFilth.Add(filth);
-                _contaminatedVomitDiseases.Add(resolvedProfile.DiseaseDef);
-                _contaminatedVomitTicks.Add(Find.TickManager.TicksGame);
-                _contaminatedVomitInitialPotencies.Add(initialPotency);
-                _contaminatedVomitSourceDefs.Add(sourcePawn.def);
-            }
+            _contaminatedVomit.AddOrUpdate(filth, resolvedProfile.DiseaseDef, sourcePawn.def, initialPotency);
 
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.VomitFilthContaminated);
             ContagionDiagnostics.Trace($"Vomit contaminated: {resolvedProfile.DiseaseDef.defName} from {sourcePawn.LabelShortCap} at potency {initialPotency:0.###}.");
@@ -84,38 +49,16 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
 
     public void Cleanup(Map map)
     {
-        for (int i = _contaminatedVomitFilth.Count - 1; i >= 0; i--)
-        {
-            Filth filth = _contaminatedVomitFilth[i];
-            HediffDef diseaseDef = i < _contaminatedVomitDiseases.Count ? _contaminatedVomitDiseases[i] : null;
-            int contaminationTick = i < _contaminatedVomitTicks.Count ? _contaminatedVomitTicks[i] : 0;
-            bool remove = filth == null || filth.Destroyed || !filth.Spawned || filth.Map != map || diseaseDef == null;
-
-            if (!remove
-                && (!DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile)
-                    || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Fomite fomiteVector)
-                    || GetFomitePotencyFactor(contaminationTick, fomiteVector.potencyDecayPerHour) <= MinFomitePotency))
-            {
-                remove = true;
-            }
-
-            if (!remove)
-            {
-                continue;
-            }
-
-            _contaminatedVomitFilth.RemoveAt(i);
-
-            RemoveListValue(_contaminatedVomitDiseases, i);
-            RemoveListValue(_contaminatedVomitTicks, i);
-            RemoveListValue(_contaminatedVomitInitialPotencies, i);
-            RemoveListValue(_contaminatedVomitSourceDefs, i);
-        }
+        _contaminatedVomit.Cleanup(
+            map,
+            entry => !DiseaseProfileCache.TryGetResolvedProfile(entry.DiseaseDef, out ResolvedTransmissionProfile resolvedProfile)
+                || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Fomite fomiteVector)
+                || GetFomitePotencyFactor(entry.Tick, fomiteVector.potencyDecayPerHour) <= MinFomitePotency);
     }
 
     public void RunFomiteExposurePass(IReadOnlyList<Pawn> spawnedPawns, Map map)
     {
-        if (_contaminatedVomitFilth.Count == 0)
+        if (_contaminatedVomit.Count == 0)
         {
             return;
         }
@@ -129,29 +72,29 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
                 continue;
             }
 
-            for (int contaminationIndex = 0; contaminationIndex < _contaminatedVomitFilth.Count; contaminationIndex++)
+            for (int contaminationIndex = 0; contaminationIndex < _contaminatedVomit.Count; contaminationIndex++)
             {
-                Filth filth = _contaminatedVomitFilth[contaminationIndex];
+                ContagionFilthEntry entry = _contaminatedVomit.Get(contaminationIndex);
+                Filth filth = entry.Filth;
                 if (filth == null || filth.Position != pawn.Position)
                 {
                     continue;
                 }
 
-                if (!DiseaseProfileCache.TryGetResolvedProfile(_contaminatedVomitDiseases[contaminationIndex], out ResolvedTransmissionProfile resolvedProfile)
+                if (!DiseaseProfileCache.TryGetResolvedProfile(entry.DiseaseDef, out ResolvedTransmissionProfile resolvedProfile)
                     || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Fomite fomiteVector))
                 {
                     continue;
                 }
 
-                ThingDef sourceDef = contaminationIndex < _contaminatedVomitSourceDefs.Count ? _contaminatedVomitSourceDefs[contaminationIndex] : null;
-                float sourceSpeciesFactor = GetFomiteSourceSpeciesFactor(sourceDef, pawn, resolvedProfile.Profile);
+                float sourceSpeciesFactor = GetFomiteSourceSpeciesFactor(entry.SourceDef, pawn, resolvedProfile.Profile);
                 if (sourceSpeciesFactor <= 0f)
                 {
                     continue;
                 }
 
-                float potencyFactor = GetFomiteInitialPotency(contaminationIndex)
-                    * GetFomitePotencyFactor(_contaminatedVomitTicks[contaminationIndex], fomiteVector.potencyDecayPerHour);
+                float potencyFactor = Mathf.Max(0f, entry.Potency)
+                    * GetFomitePotencyFactor(entry.Tick, fomiteVector.potencyDecayPerHour);
                 if (potencyFactor <= MinFomitePotency)
                 {
                     continue;
@@ -176,6 +119,7 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
                         pawn,
                         resolvedProfile.DiseaseDef,
                         resolvedProfile.PartsToAffect,
+                        null,
                         ContagionDiagnosticOrigin.Spread,
                         ContagionSeedSource.Contact,
                         out HediffDef _);
@@ -202,13 +146,6 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
         return Mathf.Exp(-Mathf.Max(0f, potencyDecayPerHour) * elapsedHours);
     }
 
-    private float GetFomiteInitialPotency(int index)
-    {
-        return index < _contaminatedVomitInitialPotencies.Count
-            ? Mathf.Max(0f, _contaminatedVomitInitialPotencies[index])
-            : 1f;
-    }
-
     private static float GetFomiteSourceSpeciesFactor(ThingDef sourcePawnDef, Pawn target, TransmissionProfile profile)
     {
         RaceProperties sourceRace = sourcePawnDef?.race;
@@ -231,21 +168,4 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
         return 1f;
     }
 
-    private static void SetListValue<T>(List<T> list, int index, T value, T defaultValue)
-    {
-        while (list.Count <= index)
-        {
-            list.Add(defaultValue);
-        }
-
-        list[index] = value;
-    }
-
-    private static void RemoveListValue<T>(List<T> list, int index)
-    {
-        if (index < list.Count)
-        {
-            list.RemoveAt(index);
-        }
-    }
 }

@@ -58,14 +58,7 @@ public static class ContagionCorpseUtility
             return false;
         }
 
-        if (innerPawn.RaceProps?.Animal == true)
-        {
-            diseaseDef = ContagionAnimalDiseaseUtility.GetAnimalCorpseContagiousDisease(innerPawn);
-        }
-        else if (innerPawn.RaceProps?.Humanlike == true)
-        {
-            diseaseDef = ContagionAnimalDiseaseUtility.GetHumanCorpseContagiousDisease(innerPawn);
-        }
+        diseaseDef = ContagionAnimalDiseaseUtility.GetCorpseContagiousDisease(innerPawn);
 
         return diseaseDef != null;
     }
@@ -95,14 +88,7 @@ public static class ContagionCorpseUtility
             return false;
         }
 
-        if (innerPawn.RaceProps?.Animal == true)
-        {
-            diseaseDef = ContagionAnimalDiseaseUtility.GetAnimalCorpseContagiousDisease(innerPawn, includeHidden: true);
-        }
-        else if (innerPawn.RaceProps?.Humanlike == true)
-        {
-            diseaseDef = ContagionAnimalDiseaseUtility.GetHumanCorpseContagiousDisease(innerPawn, includeHidden: true);
-        }
+        diseaseDef = ContagionAnimalDiseaseUtility.GetCorpseContagiousDisease(innerPawn, includeHidden: true);
 
         return diseaseDef != null;
     }
@@ -201,6 +187,7 @@ public static class ContagionCorpseUtility
                     ingester,
                     resolvedProfile.DiseaseDef,
                     resolvedProfile.PartsToAffect,
+                    null,
                     ContagionDiagnosticOrigin.Spread,
                     ContagionSeedSource.CorpseIngestion,
                     out HediffDef _);

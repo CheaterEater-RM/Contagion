@@ -28,32 +28,10 @@ internal static class ContagionDiagnosticSkillUtility
 
     internal static float ComputeDiagnosticChance(Pawn observer, bool isAnimalSubject, bool isButchery)
     {
-        if (observer?.skills == null || observer.health?.capacities == null)
-            return 0f;
-
-        float medical = observer.skills.GetSkill(SkillDefOf.Medicine).Level;
-
-        if (ModsConfig.IdeologyActive && observer.Ideo != null)
-        {
-            Precept_Role role = observer.Ideo.GetRole(observer);
-            if (role?.def.roleTags?.Contains("MedicalSpecialist") == true)
-                medical *= 1.5f;
-        }
-
-        float gap = Mathf.Max(0f, 1f - medical / 20f);
-
-        float support = 0f;
-        if (isAnimalSubject)
-            support += observer.skills.GetSkill(SkillDefOf.Animals).Level * (isButchery ? 0.25f : 0.60f);
-        if (isButchery)
-            support += observer.skills.GetSkill(SkillDefOf.Cooking).Level * 0.60f;
-        support = Mathf.Min(support, 14f);
-
-        float sight = Mathf.Clamp(observer.health.capacities.GetLevel(PawnCapacityDefOf.Sight), 0.3f, 1.4f);
-        float score = (medical + support * gap) * sight;
-
-        float sigmoid = 1f / (1f + Mathf.Exp(-SigmoidK * (score - SigmoidX0)));
-        return Mathf.Min(sigmoid, MaxChance);
+        float animalsWeight = isButchery ? 0.25f : 0.60f;
+        float cookingWeight = isButchery ? 0.60f : 0f;
+        float score = ComputeSkillScore(observer, isAnimalSubject, animalsWeight, cookingWeight, useMedicalGap: true);
+        return SigmoidChance(score, SigmoidK, SigmoidX0, MaxChance);
     }
 
     // Dedicated post-mortem inspection at a butchery table — more powerful than the
@@ -69,27 +47,47 @@ internal static class ContagionDiagnosticSkillUtility
 
     internal static float ComputeInspectionChance(Pawn observer, bool isAnimalSubject)
     {
+        float score = ComputeSkillScore(observer, isAnimalSubject, animalsWeight: 0.60f, cookingWeight: 0f, useMedicalGap: false);
+        return SigmoidChance(score, InspectionSigmoidK, InspectionSigmoidX0, InspectionMaxChance);
+    }
+
+    private static float ComputeSkillScore(Pawn observer, bool isAnimalSubject, float animalsWeight, float cookingWeight, bool useMedicalGap)
+    {
         if (observer?.skills == null || observer.health?.capacities == null)
+        {
             return 0f;
+        }
 
         float medical = observer.skills.GetSkill(SkillDefOf.Medicine).Level;
-
         if (ModsConfig.IdeologyActive && observer.Ideo != null)
         {
             Precept_Role role = observer.Ideo.GetRole(observer);
             if (role?.def.roleTags?.Contains("MedicalSpecialist") == true)
+            {
                 medical *= 1.5f;
+            }
         }
 
         float support = 0f;
         if (isAnimalSubject)
-            support += observer.skills.GetSkill(SkillDefOf.Animals).Level * 0.60f;
+        {
+            support += observer.skills.GetSkill(SkillDefOf.Animals).Level * animalsWeight;
+        }
+
+        if (cookingWeight > 0f)
+        {
+            support += observer.skills.GetSkill(SkillDefOf.Cooking).Level * cookingWeight;
+        }
+
         support = Mathf.Min(support, 14f);
-
+        float supportFactor = useMedicalGap ? Mathf.Max(0f, 1f - medical / 20f) : 1f;
         float sight = Mathf.Clamp(observer.health.capacities.GetLevel(PawnCapacityDefOf.Sight), 0.3f, 1.4f);
-        float score = (medical + support) * sight;
+        return (medical + support * supportFactor) * sight;
+    }
 
-        float sigmoid = 1f / (1f + Mathf.Exp(-InspectionSigmoidK * (score - InspectionSigmoidX0)));
-        return Mathf.Min(sigmoid, InspectionMaxChance);
+    private static float SigmoidChance(float score, float k, float x0, float maxChance)
+    {
+        float sigmoid = 1f / (1f + Mathf.Exp(-k * (score - x0)));
+        return Mathf.Min(sigmoid, maxChance);
     }
 }

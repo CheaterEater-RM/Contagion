@@ -42,7 +42,7 @@ internal static class Patch_IncidentWorker_WandererJoin_TryExecuteWorker
 
         if (arrivals.Count > 0)
         {
-            ContagionArrivalUtility.SeedArrivalGroup(arrivals, ContagionArrivalGroupKind.WandererJoin);
+            ContagionSeedingCoordinator.HandleArrivalGroup(arrivals, ContagionArrivalGroupKind.WandererJoin);
         }
     }
 

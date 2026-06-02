@@ -275,6 +275,7 @@ public sealed class Comp_ContaminatedFood : ThingComp
                 ingester,
                 resolvedProfile.DiseaseDef,
                 resolvedProfile.PartsToAffect,
+                null,
                 ContagionDiagnosticOrigin.Spread,
                 ContagionSeedSource.Foodborne,
                 out HediffDef _);
