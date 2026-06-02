@@ -84,7 +84,7 @@ The `permanentSummer 1.1` multiplier (above the 1.0 summer multiplier) reflects 
 
 | Field | Value | Notes |
 |---|---|---|
-| maxActiveCases | 0 (none) | No cap |
+| useScaledActiveCaseCap | **false** | No active case cap — environmental exposure continues regardless |
 | spreadSuppressionScale | **0** | Disabled — environmental source |
 | outbreakNotification | **None** | Silent |
 

@@ -328,8 +328,7 @@ public static class ContagionSeedingCoordinator
             return false;
         }
 
-        chanceMultiplier = (Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f)
-            * component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile);
+        chanceMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile);
         return true;
     }
 
@@ -515,7 +514,6 @@ public static class ContagionSeedingCoordinator
         }
 
         GroupSeedingPolicy policy = GetGroupPolicy(groupKind);
-        float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
         List<GroupExposureCandidate> exposureCandidates = new List<GroupExposureCandidate>();
         float exposureFailureChance = 1f;
         bool sawRunnableDiseaseCandidate = false;
@@ -547,7 +545,6 @@ public static class ContagionSeedingCoordinator
             float exposureChance = component.DiseaseDirector.ClampChance(
                 arrivalCandidate.Seeder.arrivalChance
                 * policy.ExposureMultiplier
-                * outbreakMultiplier
                 * directorMultiplier
                 * ContagionTransmissionUtility.GetSeasonalMultiplier(map, arrivalCandidate.ResolvedProfile.Profile));
             if (exposureChance <= 0f)
@@ -745,6 +742,11 @@ public static class ContagionSeedingCoordinator
         for (int i = 0; i < pawns.Count; i++)
         {
             Pawn pawn = pawns[i];
+            if (ContagionTransmissionUtility.IsAtActiveCaseCapacity(map, resolvedProfile, pawn))
+            {
+                continue;
+            }
+
             float weight = ContagionTransmissionUtility.BuildSeederChance(
                 1f,
                 pawn,
@@ -805,6 +807,11 @@ public static class ContagionSeedingCoordinator
             int selectedIndex = SelectCarrierCandidateIndex(remainingCandidates);
             CarrierCandidate selectedCandidate = remainingCandidates[selectedIndex];
             remainingCandidates.RemoveAt(selectedIndex);
+
+            if (ContagionTransmissionUtility.IsAtActiveCaseCapacity(selectedCandidate.Pawn.Map, resolvedProfile, selectedCandidate.Pawn))
+            {
+                continue;
+            }
 
             if (ContagionSeedingExecutionUtility.TrySeedArrivalCarrier(
                 selectedCandidate.Pawn,
@@ -903,14 +910,7 @@ public static class ContagionSeedingCoordinator
         ResolvedTransmissionProfile resolvedProfile,
         TransmissionSeeder seeder)
     {
-        int activeCaseLimit = seeder?.maxActiveCases > 0 ? seeder.maxActiveCases : resolvedProfile.Profile.maxActiveCases;
-        if (activeCaseLimit <= 0)
-        {
-            return int.MaxValue;
-        }
-
-        int activeCases = ContagionTransmissionUtility.CountActiveCases(component.Map, resolvedProfile);
-        return Mathf.Max(0, activeCaseLimit - activeCases);
+        return ContagionTransmissionUtility.GetRemainingActiveCaseCapacity(component.Map, resolvedProfile);
     }
 
     private static GroupSeedingPolicy GetGroupPolicy(ContagionArrivalGroupKind groupKind)
@@ -1181,7 +1181,6 @@ public static class ContagionSeedingCoordinator
 
     private static void RunContinuousSeeders(Contagion_MapTransmissionComponent component, IReadOnlyList<Pawn> spawnedPawns)
     {
-        float outbreakMultiplier = Contagion_Mod.Settings?.outbreakFrequencyMultiplier ?? 1f;
         foreach (ResolvedTransmissionProfile resolvedProfile in DiseaseProfileCache.AllProfiles)
         {
             if (resolvedProfile.Profile.seeders == null)
@@ -1202,7 +1201,6 @@ public static class ContagionSeedingCoordinator
                             animalLinked,
                             animalLinked.mtbDays / Mathf.Max(0.01f, animalLinked.handlerBias),
                             spawnedPawns,
-                            outbreakMultiplier,
                             pawn => GetAnimalLinkedWeight(pawn, animalLinked));
                     }
                 }
@@ -1216,7 +1214,6 @@ public static class ContagionSeedingCoordinator
         TransmissionSeeder seeder,
         float mtbDays,
         IReadOnlyList<Pawn> spawnedPawns,
-        float outbreakMultiplier,
         System.Func<Pawn, float> weightSelector)
     {
         if (!component.CanRunSeeder(resolvedProfile, seeder))
@@ -1225,7 +1222,7 @@ public static class ContagionSeedingCoordinator
         }
 
         float directorMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile);
-        float adjustedMtbDays = mtbDays / Mathf.Max(0.01f, outbreakMultiplier * directorMultiplier);
+        float adjustedMtbDays = mtbDays / Mathf.Max(0.01f, directorMultiplier);
         if (!Rand.MTBEventOccurs(adjustedMtbDays, 60000f, 2500f))
         {
             return;

@@ -488,8 +488,7 @@ public static class ContagionDiseaseUtility
 
     private static int GetIncubationDurationTicks(TransmissionProfile profile)
     {
-        float multiplier = Contagion_Mod.Settings?.incubationLengthMultiplier ?? 1f;
-        return Mathf.Max(1, Mathf.RoundToInt(profile.incubationDays * multiplier * TicksPerDay));
+        return Mathf.Max(1, Mathf.RoundToInt(profile.incubationDays * TicksPerDay));
     }
 
     public static List<BodyPartDef> ResolvePartsForPawn(

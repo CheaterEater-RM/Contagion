@@ -35,7 +35,6 @@ internal sealed class ContagionPawnTransmissionProcessor
 
         public ResolvedTransmissionProfile ResolvedProfile { get; }
 
-        public float SuppressionFactor { get; set; } = 1f;
     }
 
     public ContagionPawnTransmissionProcessor(Map map, ContagionMapDeveloperDiagnosticsController developerDiagnosticsController)
@@ -50,20 +49,6 @@ internal sealed class ContagionPawnTransmissionProcessor
         if (sources.Count == 0)
         {
             return;
-        }
-
-        Dictionary<HediffDef, float> suppressionByDisease = new Dictionary<HediffDef, float>();
-        for (int i = 0; i < sources.Count; i++)
-        {
-            TransmissionSource source = sources[i];
-            HediffDef diseaseDef = source.ResolvedProfile.DiseaseDef;
-            if (!suppressionByDisease.TryGetValue(diseaseDef, out float suppression))
-            {
-                suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, source.ResolvedProfile);
-                suppressionByDisease[diseaseDef] = suppression;
-            }
-
-            source.SuppressionFactor = suppression;
         }
 
         _spatialIndex.Build(spawnedPawns);
@@ -336,7 +321,7 @@ internal sealed class ContagionPawnTransmissionProcessor
         float enclosureFactor = sourceRoofed && targetRoofed ? 1f : vector.outdoorFactor;
         float obstructionFactor = hasLineOfSight ? 1f : vector.obstructedFactor;
         float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
-        float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn) ? source.SuppressionFactor : 1f;
+        float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, source.ResolvedProfile, targetPawn);
         if (!ContagionDeveloperDiagnosticsUtility.TryBuildAirborneBreakdown(
             source.Pawn,
             targetPawn,
@@ -397,7 +382,7 @@ internal sealed class ContagionPawnTransmissionProcessor
 
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneAttempted);
         float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
-        float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn) ? source.SuppressionFactor : 1f;
+        float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, source.ResolvedProfile, targetPawn);
         if (!ContagionDeveloperDiagnosticsUtility.TryBuildAirborneRoomBreakdown(
             source.Pawn,
             targetPawn,
@@ -460,7 +445,7 @@ internal sealed class ContagionPawnTransmissionProcessor
         float cleanlinessFactor = ContagionTransmissionUtility.GetLocalCleanlinessFactor(
             targetPawn.Position, targetRoom, _map, vector.cleanlinessImpact, vector.outdoorFilthRadius);
         float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
-        float suppressionFactor = ContagionTransmissionUtility.IsSuppressionTarget(targetPawn) ? source.SuppressionFactor : 1f;
+        float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, source.ResolvedProfile, targetPawn);
         if (!ContagionDeveloperDiagnosticsUtility.TryBuildProximityBreakdown(
             source.Pawn,
             targetPawn,

@@ -131,7 +131,7 @@ The 5-day plague window is deliberately tight. The goal is for the storyteller's
 
 **Unified plague fulfillment.** Human and animal plague incidents are both treated as unified plague scheduler events. Incoming humans and incoming animals are equally valid carriers; the original incident flavor may bias future tuning, but it does not constrain fulfillment.
 
-**Environmental fulfillment.** The storyteller's pick opens a *time-bounded environmental window* on the map: continuous `Vector_Environmental` exposure runs for the window's duration, capped by an event-scoped `infectionBudget` (distinct from the colony-wide `maxActiveCases`). When the budget is spent or the window closes, the event clears. If the window expires with budget remaining and the profile has `Seeder_Acausal`, the remaining storyteller request resolves through the acausal fallback rather than disappearing. This matches vanilla's "some pawns get malaria, then the event ends" feel rather than a permanent biome hazard. Parasite diseases can also have arrival seeders for Mode 2; their Mode 1 storyteller events still resolve through the environmental window.
+**Environmental fulfillment.** The storyteller's pick opens a *time-bounded environmental window* on the map: continuous `Vector_Environmental` exposure runs for the window's duration, capped by an event-scoped `infectionBudget` (distinct from colony-wide scaled active-case caps). When the budget is spent or the window closes, the event clears. If the window expires with budget remaining and the profile has `Seeder_Acausal`, the remaining storyteller request resolves through the acausal fallback rather than disappearing. This matches vanilla's "some pawns get malaria, then the event ends" feel rather than a permanent biome hazard. Parasite diseases can also have arrival seeders for Mode 2; their Mode 1 storyteller events still resolve through the environmental window.
 
 **Acausal fulfillment.** Silent incubation on eligible pawns. Used only as the final Mode 1 expiry fallback when the configured source path fails to spend the storyteller request in time.
 
@@ -185,7 +185,7 @@ This path calls `IncidentWorker_Disease.ApplyToPawns` directly, bypassing `TryEx
 - A **reduced outward-shedding factor** for Sickly pawns — every shipped human-contagious profile (Flu, Plague, GutWorms) carries a `SourceFactor_Trait` entry that halves Sickly's source infectivity. Sickly catches more, but spreads less; the trait identity becomes "more random misfortune, less of a spreader." Justified in fiction by the trait's boosted Medical skill (hygiene awareness).
 - A **vanilla-style "feels unwell" letter** when a trait-driven seed succeeds. The storyteller path stays silent on success (incubation is meant to be a hidden window), but the trait path preserves the vanilla "Sickly Bob caught something" notification — vague about *what* they have, so the player still has the discovery moment, but visible enough to act on with a quarantine.
 
-**Cooldown bucket conflation (known seam).** Trait events currently consume the `Seeder_Storyteller` cooldown and count against the profile's `maxActiveCases` — pragmatic, but it conflates "the storyteller picked this disease for the colony" with "this pawn's trait rolled disease for themselves." If trait-driven events ever need independent tuning (different cooldown, different per-disease frequency), the right move is a new `Seeder_Trait` type rather than special-casing inside the storyteller seeder.
+**Cooldown bucket conflation (known seam).** Trait events currently consume the `Seeder_Storyteller` cooldown and count against the profile's scaled active-case cap — pragmatic, but it conflates "the storyteller picked this disease for the colony" with "this pawn's trait rolled disease for themselves." If trait-driven events ever need independent tuning (different cooldown, different per-disease frequency), the right move is a new `Seeder_Trait` type rather than special-casing inside the storyteller seeder.
 
 ---
 
@@ -211,7 +211,8 @@ The entire modder-facing contract, attached to any `HediffDef` to make it contag
 | `crossSpeciesTransmissionFactor` | float | 0.0 | Multiplier when transmission crosses the human/animal boundary |
 | `vectors` | List\<TransmissionVector\> | required | Spread mechanisms |
 | `seeders` | List\<TransmissionSeeder\> | required | Outbreak-initiation mechanisms |
-| `maxActiveCases` | int | 0 (= no limit) | Suppress all seeding at/above this active+incubating count |
+| `useScaledActiveCaseCap` | bool | true | Enables population-scaled active+incubating caps for seeding and suppression load |
+| `maxActiveCaseChanceOffset` | float | 0 | Per-disease percentage-point offset to the scaled cap chance |
 | `spreadSuppressionScale` | float | 1.0 | Per-disease scaling of colony spread suppression (0 = exempt) |
 | `outbreakNotification` | enum | FirstCase | Player notification mode: `None` / `FirstCase` / `EveryCase` |
 | `outbreakEndDays` | float | 3.0 | Days after the most recent visible case before the outbreak is considered over. The next case resets back to a red first-case letter. |
@@ -283,7 +284,7 @@ A polymorphic list of multipliers applied to the target before the vanilla contr
 
 **Interaction with vanilla:** the engine also multiplies in `ImmunityHandler.DiseaseContractChanceFactor`, which independently handles gene immunity, `makeImmuneTo`, existing-hediff/duplicate checks, mutant immunity, and non-flesh pawns. Susceptibility factors are a Contagion-layer multiplier applied *before* that vanilla gate.
 
-**Seeders respect susceptibility factors** when selecting targets (a Robust pawn is less likely to be patient zero; penoxycyline at 0.0 blocks seeding). `maxActiveCases` is checked *before* factor evaluation — it's a population gate, not a per-pawn check.
+**Seeders respect susceptibility factors** when selecting targets (a Robust pawn is less likely to be patient zero; penoxycyline at 0.0 blocks seeding). Scaled active-case caps are checked before factor evaluation — they are population gates, not per-pawn checks.
 
 ---
 
@@ -424,7 +425,7 @@ Transmission through food — from infected cooks producing contaminated meals, 
 
 The seeder classes describe *how an outbreak event resolves*. In Mode 1 they are fulfillment strategies for a pending storyteller-driven event; in Mode 2 they are continuous source paths. The schema is the same; the framing changes per mode.
 
-Shared base fields: `cooldownDays` (minimum gap between events of this type — primarily a Mode 2 throttle, redundant in Mode 1 where the storyteller paces fires) and an optional per-strategy `maxActiveCases` override (profile-level field is the default). When at/above the active-case limit, strategies for that profile are suppressed.
+Shared base field: `cooldownDays` (minimum gap between events of this type — primarily a Mode 2 throttle, redundant in Mode 1 where the storyteller paces fires). When a target track is at/above the profile's scaled active-case cap, strategies for that track are suppressed.
 
 | Strategy | Mode 1 role | Mode 2 role | Key fields |
 |---|---|---|---|
@@ -505,11 +506,11 @@ Vanilla disease profiles are patched onto their `HediffDef` in `1.6/Patches/Cont
 
 | Disease | Vectors | Seeders | Incubation | Immunity | Species | Notes |
 |---|---|---|---|---|---|---|
-| Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival, Acausal | 1.5 d | none* | Human | Seasonal (winter-peaking); acausal is Mode 1 fallback only; `maxActiveCases` 5 |
+| Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival, Acausal | 1.5 d | none* | Human | Seasonal (winter-peaking); acausal is Mode 1 fallback only; scaled active-case cap offset 0 |
 | Animal_Flu | Airborne, Fomite | Storyteller, Arrival, Acausal | 1.5 d | none* | Animal | Species-isolated; acausal is Mode 1 fallback only; safe to butcher (no `corpseContagious`) |
-| Plague | Proximity (cleanliness) | Storyteller, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; incoming humans and animals can carry it; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; `maxActiveCases` 6 |
-| GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; `maxActiveCases` 3; `spreadSuppressionScale 0` |
-| MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; `maxActiveCases` 4; `spreadSuppressionScale 0` |
+| Plague | Proximity (cleanliness) | Storyteller, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; incoming humans and animals can carry it; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; separate scaled human/animal caps, offset 0 |
+| GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 0` |
+| MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 0` |
 | Malaria | Environmental | Environmental, Acausal | 2.0 d | none* | Human | Mosquito pressure; broad warm/wet source; partial indoor penetration; `spreadSuppressionScale 0`, seasonal |
 | SleepingSickness | Environmental | Environmental, Acausal | 2.5 d | none* | Human | Tsetse habitat pressure; hotter, wetter, rarer, and more strongly blocked by deep indoor shelter; `spreadSuppressionScale 0` |
 
@@ -586,15 +587,26 @@ The mod adds no quarantine mechanics; existing systems produce quarantine behavi
 
 Standard `ModSettings` page.
 
-### Difficulty preset
+### Infectivity difficulty
 
-| Difficulty | Transmission scale | Spread suppression strength |
-|---|---|---|
-| Easier | 0.7× | 3.5 (strong — outbreaks rarely reach the whole colony) |
-| Normal | 1.0× | 2.0 (moderate — a well-run colony can usually contain it) |
-| Harder | 1.35× | 0 (**disabled** — an untreated outbreak can sweep the colony) |
+| Difficulty | Transmission scale |
+|---|---:|
+| Easy | 0.7× |
+| Medium | 1.0× |
+| Hard | 1.35× |
 
-Difficulty *multiplies* the Transmission Rate slider rather than replacing it, so the two layers compose.
+### Spread suppression mode
+
+Suppression uses `load = active_cases / scaled_max_cases` for the target track, then applies a clamped smoothstep curve.
+
+| Mode | Start load | Stop load | Floor | Intent |
+|---|---:|---:|---:|---|
+| Strong | 0.50 | 1.00 | 0.00 | Protective cap for easier play |
+| Medium | 0.90 | 1.10 | 0.05 | Default soft cap with slight overshoot |
+| Weak | 0.98 | 2.00 | 0.15 | Hard-mode warning, not a hard wall |
+| Let 'er rip | disabled | disabled | 1.00 | No suppression |
+
+Scaled max cases are calculated separately for human and animal tracks: `floor(population × clamp(30% + 1% per pawn + maxActiveCaseChanceOffset, 0%, 50%))`, minimum 1 for a non-empty affected track.
 
 ### Toggles and advanced tuning
 
@@ -602,12 +614,9 @@ Difficulty *multiplies* the Transmission Rate slider rather than replacing it, s
 |---|---|---|---|
 | Seeding Mode | Storyteller / Contagion | Storyteller | Storyteller mode (Mode 1) intercepts storyteller picks into pending events; Contagion mode (Mode 2) cancels storyteller disease and runs continuous low-rate seeding with the disease director |
 | Masks reduce spread | on/off | on | Apparel + air-filtering body parts reduce respiratory transmission |
-| Transmission Rate | 0.25×–2.0× | 1.0× | Global multiplier on vector base chances (composed with difficulty) |
-| Outbreak Frequency | 0.25×–2.0× | 1.0× | Multiplier on seeder MTB timers (Mode 2) and pending-event arrival chances (both modes) |
-| Incubation Length | 0.25×–2.0× | 1.0× | Multiplier on incubation durations |
 | Diagnostics | Off/Summary/Verbose/Developer | Off | Summary/Verbose keep the current in-settings counters and traces; Developer adds dev-only runtime helpers (director forcing, pawn seeding gizmos, hover chance readouts) on top |
 
-Per-disease behavior (`spreadSuppressionScale`, per-vector mask effectiveness) and the gene airway-immunity whitelist live in XML for player/modder patching.
+Per-disease behavior (`maxActiveCaseChanceOffset`, `useScaledActiveCaseCap`, `spreadSuppressionScale`, per-vector mask effectiveness) and the gene airway-immunity whitelist live in XML for player/modder patching.
 
 ---
 
@@ -629,7 +638,7 @@ When diagnostics mode is **Developer**, the mod settings window exposes extra ru
 - The settings page can show a runtime-only "force next arrival disease" control when all three conditions are true: Developer diagnostics are active, Seeding Mode is **Contagion** (Mode 2), and `Find.CurrentMap` exists.
 - Outside a live map, the control should be hidden or disabled with a plain reason string. This is a map-scoped test action and should not pretend to work from the main menu or world map.
 - Choosing a disease does **not** seed a pawn directly. It arms a non-persistent map-scoped override: the **next qualifying arrival group** is evaluated as that disease instead of going through normal weighted disease selection.
-- The real arrival pipeline still runs: eligibility filters, `maxActiveCases`, carrier-payload sizing, species gating, and director bookkeeping all remain in place. This is a forced **attempt**, not a guaranteed seed, which makes it suitable for testing actual arrival mechanics.
+- The real arrival pipeline still runs: eligibility filters, scaled active-case caps, carrier-payload sizing, species gating, and director bookkeeping all remain in place. This is a forced **attempt**, not a guaranteed seed, which makes it suitable for testing actual arrival mechanics.
 - The override is consumed after the first qualifying arrival attempt, whether the attempt succeeds or fails. This keeps the tool legible and avoids hidden sticky debug state.
 - The settings action should be paired with a visible "armed override" summary and a clear/cancel button so the tester always knows whether a forced disease is pending.
 
@@ -788,7 +797,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Gut worms and muscle parasites use Seeder_Environmental as primary Mode 1 trigger | Storyteller pick opens a water/soil environmental window rather than seeding a carrier directly. Mode 2 can also seed them through arrivals, especially farm-animal wander-ins. Acausal seeder is retained only as the Mode 1 expiry fallback |
 | Malaria and sleeping sickness keep acausal only as a Mode 1 environmental expiry fallback | Storyteller mode is allowed to say "someone gets sick somehow" if the environmental window fails to spend its budget. Mode 2 still has no acausal backstop, so environmental prevention stands. |
 | Mode 1 arrival fulfillment = next eligible group (deterministic exposure) | Avoids unbounded pending-event growth on low-traffic maps while allowing large groups to carry a capped, sublinear payload |
-| Mode 1 environmental: time-bounded window with infection budget | Event-scoped budget is distinct from colony-wide `maxActiveCases` — matches vanilla's "outbreak happens then ends" feel rather than turning environmental disease into a permanent biome hazard |
+| Mode 1 environmental: time-bounded window with infection budget | Event-scoped budget is distinct from colony-wide scaled active-case caps — matches vanilla's "outbreak happens then ends" feel rather than turning environmental disease into a permanent biome hazard |
 | Mode 2: storyteller incidents cancelled for profiled diseases | Mode 2 owns pacing; letting the storyteller inject extra events would undermine the director cadence the player is learning to read |
 | Mode 2: map-level disease director | Quiet periods raise pressure, active sickness and recent successful seeding suppress new introductions. Good quarantine still buys breathing room because an attempted threat counts even if colonists avoid infection |
 | Group arrival exposure | Per-pawn chance on large groups would saturate arrivals with disease. Exposure is incident-level, carrier count is group-size-aware but capped, and director pressure is spent once per exposed group |

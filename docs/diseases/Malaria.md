@@ -83,7 +83,7 @@ The 0.3 winter multiplier makes malaria possible but uncommon in cold winters. T
 
 | Field | Value | Notes |
 |---|---|---|
-| maxActiveCases | 0 (none) | No active case cap — environmental exposure continues regardless |
+| useScaledActiveCaseCap | **false** | No active case cap — environmental exposure continues regardless |
 | spreadSuppressionScale | **0** | Disabled — source is the map, not infected colonists |
 | outbreakNotification | **None** | Silent. No letter. Discovery via health inspection |
 

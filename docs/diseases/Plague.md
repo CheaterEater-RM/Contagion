@@ -205,7 +205,8 @@ None configured for live-host spread. Corpse flea survival is handled directly f
 
 | Field | Value | Notes |
 |---|---|---|
-| maxActiveCases | 6 | Covers both species combined (Plague + Animal_Plague both counted) |
+| useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected player pawn in that track, floored, max 50% |
 | spreadSuppressionScale | 1.0 | Normal colony-fraction suppression applies |
 | outbreakNotification | FirstCase (default) | |
 
@@ -270,7 +271,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 
 - `crossSpeciesTransmissionFactor 0.5` is a first-pass value. Plague in real life crosses species very readily via flea vectors — 0.5 may be too conservative. Consider 0.6–0.7 after playtesting.
 - Plague no longer uses `Seeder_AnimalLinked`; incoming humans and animals are the primary introduction route. If playtesting shows too little resident animal pressure, add a new explicit animal-reservoir seeder rather than reusing the old handler-biased path.
-- `maxActiveCases 6` was bumped from 4 (human-only) to account for the combined human+animal count. With a colony of 10 pawns and 8 animals, 6 active cases might still clear quickly. May need to go higher (8) or be split into separate human/animal caps in a future profile enhancement.
+- Plague uses separate scaled caps for humans and animals. A colony with 10 colonists and 10 animals has a human plague cap of 4 and an animal plague cap of 4, rather than one shared mixed-species pool.
 - Live-host plague has no seasonal variation. Corpse fleas already have temperature-based suppression through `Vector_CorpseFlea`.
 - Incubation infectivity is set to a flat-ish curve (0.3 → 0.6). If playtesting shows plague outbreaks feel too fast or uncontainable, dial the starting value down toward 0.15–0.2 first; the 2.5-day window amplifies even moderate incubation infectivity.
 - Passive symptom presentation peaks at 5% per half-day at severity 1.0, giving ~25% cumulative over a typical untreated course. If wild animal plague feels too invisible, raise the peak toward 0.08; if messages are too noisy, lower it or raise the severity threshold.

@@ -150,11 +150,12 @@ None configured.
 
 | Field | Value | Notes |
 |---|---|---|
-| maxActiveCases | 4 | |
+| useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected player pawn in that track, floored, max 50% |
 | spreadSuppressionScale | **0** | Disabled — foodborne is not herd spread |
 | outbreakNotification | **FirstCase** | Letter fires on first human case (not animal acquisition) |
 
-Spread suppression is off for the same reason as gut worms: contaminated food can infect any eater regardless of how many are already infected. The colony-fraction model doesn't apply.
+Spread suppression is off for the same reason as gut worms: contaminated food can infect any eater regardless of how many are already infected. The colony-fraction model doesn't apply, though seeding still respects scaled active-case caps.
 
 `outbreakNotification FirstCase` fires when the first human gets muscle parasites — this is the key discovery moment. Animal infection is silent until the sick signal fires.
 

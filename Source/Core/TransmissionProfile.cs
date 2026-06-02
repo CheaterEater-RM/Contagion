@@ -69,7 +69,9 @@ public sealed class TransmissionProfile : DefModExtension
     // generates an incident.
     public float selfScheduleCommonality = 100f;
 
-    public int maxActiveCases;
+    public bool useScaledActiveCaseCap = true;
+
+    public float maxActiveCaseChanceOffset;
 
     // Scales how strongly the global spread-suppression exponent applies to this disease.
     // 1 = normal, 0 = this disease ignores suppression (e.g. environmental diseases with no
@@ -356,8 +358,6 @@ public sealed class Vector_Lovin : TransmissionVector
 public abstract class TransmissionSeeder
 {
     public float cooldownDays;
-
-    public int maxActiveCases;
 }
 
 public sealed class Seeder_Storyteller : TransmissionSeeder

@@ -115,7 +115,8 @@ None configured.
 
 | Field | Value | Notes |
 |---|---|---|
-| maxActiveCases | 5 | |
+| useScaledActiveCaseCap | true (default) | Animal cap scales from player animal count |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per animal, floored, max 50% |
 | spreadSuppressionScale | 1.0 (default) | |
 | outbreakNotification | FirstCase (default) | |
 
@@ -144,5 +145,5 @@ None configured.
 
 - No seasonal variation is currently configured. A mild winter peak or a flat year-round profile may both be defensible (animal flu outbreaks in real farming are year-round), but it is worth making a deliberate choice.
 - The fomite vector intentionally does not use the human flu high-severity override. Animal flu progresses and tends differently, and animals sharing dirty barns should remain a plausible fomite risk.
-- `maxActiveCases 5` means the entire herd could theoretically be infected before seeding suppresses. Since herds vary in size widely, this number may need to be relative or biased by animal count rather than a flat cap.
+- Scaled caps replace the old flat herd cap. A 10-animal herd has an animal-flu cap of 4 active+incubating cases; a 20-animal herd caps at 10.
 - `animalCrossSpeciesFactor 0.10` is a first-pass value. If mixed-species herds are still seeing consistent spillover in testing, lower it toward 0.02–0.04. If cross-species transmission feels too theoretical, leave it as-is.

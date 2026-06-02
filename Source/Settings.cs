@@ -15,9 +15,17 @@ public enum ContagionDiagnosticsMode
 // Order is persisted by Scribe as ordinal values. Never reorder; append new values only.
 public enum ContagionDifficulty
 {
-    Easier,
-    Normal,
-    Harder
+    Easy,
+    Medium,
+    Hard
+}
+
+public enum ContagionSuppressionMode
+{
+    Strong,
+    Medium,
+    Weak,
+    LetErRip
 }
 
 // Order is persisted by Scribe as ordinal values. Never reorder; append new values only.
@@ -29,17 +37,9 @@ public enum ContagionSeedingMode
 
 public sealed class Contagion_Settings : ModSettings
 {
-    public const float MinMultiplier = 0.25f;
+    private const ContagionDifficulty DefaultDifficulty = ContagionDifficulty.Medium;
 
-    public const float MaxMultiplier = 2f;
-
-    private const float DefaultTransmissionRateMultiplier = 1f;
-
-    private const float DefaultOutbreakFrequencyMultiplier = 1f;
-
-    private const float DefaultIncubationLengthMultiplier = 1f;
-
-    private const ContagionDifficulty DefaultDifficulty = ContagionDifficulty.Normal;
+    private const ContagionSuppressionMode DefaultSuppressionMode = ContagionSuppressionMode.Medium;
 
     private const ContagionSeedingMode DefaultSeedingMode = ContagionSeedingMode.Storyteller;
 
@@ -53,13 +53,9 @@ public sealed class Contagion_Settings : ModSettings
 
     private const bool DefaultSuppressAnimalClusterNotifications = true;
 
-    public float transmissionRateMultiplier = DefaultTransmissionRateMultiplier;
-
-    public float outbreakFrequencyMultiplier = DefaultOutbreakFrequencyMultiplier;
-
-    public float incubationLengthMultiplier = DefaultIncubationLengthMultiplier;
-
     public ContagionDifficulty difficulty = DefaultDifficulty;
+
+    public ContagionSuppressionMode suppressionMode = DefaultSuppressionMode;
 
     public ContagionSeedingMode seedingMode = DefaultSeedingMode;
 
@@ -80,32 +76,17 @@ public sealed class Contagion_Settings : ModSettings
     // tracing, infected indicators, seed/force-arrival controls) without further gating.
     public bool DeveloperDiagnosticsEnabled => developerMode;
 
-    // Difficulty scales person-to-person transmission on top of the user slider.
-    public float DifficultyTransmissionScale => difficulty switch
+    public float EffectiveTransmissionMultiplier => difficulty switch
     {
-        ContagionDifficulty.Easier => 0.7f,
-        ContagionDifficulty.Harder => 1.35f,
+        ContagionDifficulty.Easy => 0.7f,
+        ContagionDifficulty.Hard => 1.35f,
         _ => 1f
     };
 
-    // Suppression exponent: chance is multiplied by (1 - infectedColonyFraction)^strength.
-    // Easier slows spread hard as the colony fills up; Harder disables suppression entirely.
-    public float SpreadSuppressionStrength => difficulty switch
-    {
-        ContagionDifficulty.Easier => 3.5f,
-        ContagionDifficulty.Harder => 0f,
-        _ => 2f
-    };
-
-    // Effective multiplier applied at every person-to-person transmission roll.
-    public float EffectiveTransmissionMultiplier => transmissionRateMultiplier * DifficultyTransmissionScale;
-
     public void Reset()
     {
-        transmissionRateMultiplier = DefaultTransmissionRateMultiplier;
-        outbreakFrequencyMultiplier = DefaultOutbreakFrequencyMultiplier;
-        incubationLengthMultiplier = DefaultIncubationLengthMultiplier;
         difficulty = DefaultDifficulty;
+        suppressionMode = DefaultSuppressionMode;
         seedingMode = DefaultSeedingMode;
         maskProtection = DefaultMaskProtection;
         enableLogging = DefaultEnableLogging;
@@ -117,25 +98,14 @@ public sealed class Contagion_Settings : ModSettings
     public override void ExposeData()
     {
         base.ExposeData();
-        Scribe_Values.Look(ref transmissionRateMultiplier, "transmissionRateMultiplier", DefaultTransmissionRateMultiplier);
-        Scribe_Values.Look(ref outbreakFrequencyMultiplier, "outbreakFrequencyMultiplier", DefaultOutbreakFrequencyMultiplier);
-        Scribe_Values.Look(ref incubationLengthMultiplier, "incubationLengthMultiplier", DefaultIncubationLengthMultiplier);
         Scribe_Values.Look(ref difficulty, "difficulty", DefaultDifficulty);
+        Scribe_Values.Look(ref suppressionMode, "suppressionMode", DefaultSuppressionMode);
         Scribe_Values.Look(ref seedingMode, "seedingMode", DefaultSeedingMode);
         Scribe_Values.Look(ref maskProtection, "maskProtection", DefaultMaskProtection);
         Scribe_Values.Look(ref enableLogging, "enableLogging", DefaultEnableLogging);
         Scribe_Values.Look(ref developerMode, "developerMode", DefaultDeveloperMode);
         Scribe_Values.Look(ref suppressLowProbabilityLogs, "suppressLowProbabilityLogs", DefaultSuppressLowProbabilityLogs);
         Scribe_Values.Look(ref suppressAnimalClusterNotifications, "suppressAnimalClusterNotifications", DefaultSuppressAnimalClusterNotifications);
-
-        ClampValues();
-    }
-
-    private void ClampValues()
-    {
-        transmissionRateMultiplier = Mathf.Clamp(transmissionRateMultiplier, MinMultiplier, MaxMultiplier);
-        outbreakFrequencyMultiplier = Mathf.Clamp(outbreakFrequencyMultiplier, MinMultiplier, MaxMultiplier);
-        incubationLengthMultiplier = Mathf.Clamp(incubationLengthMultiplier, MinMultiplier, MaxMultiplier);
     }
 }
 
@@ -165,27 +135,61 @@ public sealed class Contagion_Mod : Mod
 
         listing.Label("Contagion_SettingDifficulty".Translate());
         if (listing.RadioButton(
-            "Contagion_DifficultyEasier".Translate().Resolve(),
-            settings.difficulty == ContagionDifficulty.Easier,
-            tooltip: "Contagion_DifficultyEasierTooltip".Translate().Resolve()))
+            "Contagion_DifficultyEasy".Translate().Resolve(),
+            settings.difficulty == ContagionDifficulty.Easy,
+            tooltip: "Contagion_DifficultyEasyTooltip".Translate().Resolve()))
         {
-            settings.difficulty = ContagionDifficulty.Easier;
+            settings.difficulty = ContagionDifficulty.Easy;
         }
 
         if (listing.RadioButton(
-            "Contagion_DifficultyNormal".Translate().Resolve(),
-            settings.difficulty == ContagionDifficulty.Normal,
-            tooltip: "Contagion_DifficultyNormalTooltip".Translate().Resolve()))
+            "Contagion_DifficultyMedium".Translate().Resolve(),
+            settings.difficulty == ContagionDifficulty.Medium,
+            tooltip: "Contagion_DifficultyMediumTooltip".Translate().Resolve()))
         {
-            settings.difficulty = ContagionDifficulty.Normal;
+            settings.difficulty = ContagionDifficulty.Medium;
         }
 
         if (listing.RadioButton(
-            "Contagion_DifficultyHarder".Translate().Resolve(),
-            settings.difficulty == ContagionDifficulty.Harder,
-            tooltip: "Contagion_DifficultyHarderTooltip".Translate().Resolve()))
+            "Contagion_DifficultyHard".Translate().Resolve(),
+            settings.difficulty == ContagionDifficulty.Hard,
+            tooltip: "Contagion_DifficultyHardTooltip".Translate().Resolve()))
         {
-            settings.difficulty = ContagionDifficulty.Harder;
+            settings.difficulty = ContagionDifficulty.Hard;
+        }
+
+        listing.Gap(6f);
+        listing.Label("Contagion_SettingSuppressionMode".Translate());
+        if (listing.RadioButton(
+            "Contagion_SuppressionStrong".Translate().Resolve(),
+            settings.suppressionMode == ContagionSuppressionMode.Strong,
+            tooltip: "Contagion_SuppressionStrongTooltip".Translate().Resolve()))
+        {
+            settings.suppressionMode = ContagionSuppressionMode.Strong;
+        }
+
+        if (listing.RadioButton(
+            "Contagion_SuppressionMedium".Translate().Resolve(),
+            settings.suppressionMode == ContagionSuppressionMode.Medium,
+            tooltip: "Contagion_SuppressionMediumTooltip".Translate().Resolve()))
+        {
+            settings.suppressionMode = ContagionSuppressionMode.Medium;
+        }
+
+        if (listing.RadioButton(
+            "Contagion_SuppressionWeak".Translate().Resolve(),
+            settings.suppressionMode == ContagionSuppressionMode.Weak,
+            tooltip: "Contagion_SuppressionWeakTooltip".Translate().Resolve()))
+        {
+            settings.suppressionMode = ContagionSuppressionMode.Weak;
+        }
+
+        if (listing.RadioButton(
+            "Contagion_SuppressionLetErRip".Translate().Resolve(),
+            settings.suppressionMode == ContagionSuppressionMode.LetErRip,
+            tooltip: "Contagion_SuppressionLetErRipTooltip".Translate().Resolve()))
+        {
+            settings.suppressionMode = ContagionSuppressionMode.LetErRip;
         }
 
         listing.Gap(6f);
@@ -216,28 +220,6 @@ public sealed class Contagion_Mod : Mod
             "Contagion_SettingSuppressAnimalClusterNotifications".Translate().Resolve(),
             ref settings.suppressAnimalClusterNotifications,
             "Contagion_SettingSuppressAnimalClusterNotificationsTooltip".Translate().Resolve());
-
-        listing.Gap(12f);
-        listing.Label("Contagion_SettingsTuningHeader".Translate());
-        listing.Gap();
-        settings.transmissionRateMultiplier = listing.SliderLabeled(
-            "Contagion_SettingTransmissionRate".Translate(settings.transmissionRateMultiplier.ToString("0.00x")).Resolve(),
-            settings.transmissionRateMultiplier,
-            Contagion_Settings.MinMultiplier,
-            Contagion_Settings.MaxMultiplier,
-            tooltip: "Contagion_SettingTransmissionRateTooltip".Translate().Resolve());
-        settings.outbreakFrequencyMultiplier = listing.SliderLabeled(
-            "Contagion_SettingOutbreakFrequency".Translate(settings.outbreakFrequencyMultiplier.ToString("0.00x")).Resolve(),
-            settings.outbreakFrequencyMultiplier,
-            Contagion_Settings.MinMultiplier,
-            Contagion_Settings.MaxMultiplier,
-            tooltip: "Contagion_SettingOutbreakFrequencyTooltip".Translate().Resolve());
-        settings.incubationLengthMultiplier = listing.SliderLabeled(
-            "Contagion_SettingIncubationLength".Translate(settings.incubationLengthMultiplier.ToString("0.00x")).Resolve(),
-            settings.incubationLengthMultiplier,
-            Contagion_Settings.MinMultiplier,
-            Contagion_Settings.MaxMultiplier,
-            tooltip: "Contagion_SettingIncubationLengthTooltip".Translate().Resolve());
 
         listing.Gap(12f);
         listing.Label("Contagion_SettingsDiagnosticsHeader".Translate());

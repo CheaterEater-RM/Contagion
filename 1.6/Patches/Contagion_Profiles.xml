@@ -99,7 +99,7 @@
             <cooldownDays>10</cooldownDays>
           </li>
         </seeders>
-        <maxActiveCases>5</maxActiveCases>
+          <maxActiveCaseChanceOffset>0</maxActiveCaseChanceOffset>
         <outbreakNotification>FirstCase</outbreakNotification>
       </li>
     </value>
@@ -172,7 +172,7 @@
             <cooldownDays>10</cooldownDays>
           </li>
         </seeders>
-        <maxActiveCases>5</maxActiveCases>
+          <maxActiveCaseChanceOffset>0</maxActiveCaseChanceOffset>
       </li>
     </value>
   </Operation>
@@ -309,7 +309,7 @@
             <cooldownDays>15</cooldownDays>
           </li>
         </seeders>
-        <maxActiveCases>6</maxActiveCases>
+          <maxActiveCaseChanceOffset>0</maxActiveCaseChanceOffset>
       </li>
     </value>
   </Operation>
@@ -359,7 +359,7 @@
             <li>(1.00, 1.0)</li>
           </points>
         </activeInfectivityCurve>
-        <spreadSuppressionScale>0</spreadSuppressionScale>
+          <spreadSuppressionScale>0</spreadSuppressionScale>
         <outbreakNotification>FirstCase</outbreakNotification>
         <vectors>
           <!-- Primary human exposure: contaminated food (from infected cook or infected meat). -->
@@ -442,7 +442,7 @@
             <cooldownDays>20</cooldownDays>
           </li>
         </seeders>
-        <maxActiveCases>3</maxActiveCases>
+          <maxActiveCaseChanceOffset>0</maxActiveCaseChanceOffset>
       </li>
     </value>
   </Operation>
@@ -481,7 +481,7 @@
           </points>
         </passiveSymptomPresentationCurve>
         <posthumousSymptomChance>0.05</posthumousSymptomChance>
-        <spreadSuppressionScale>0</spreadSuppressionScale>
+          <spreadSuppressionScale>0</spreadSuppressionScale>
         <outbreakNotification>FirstCase</outbreakNotification>
         <activeInfectivityCurve>
           <points>
@@ -559,7 +559,7 @@
             <cooldownDays>30</cooldownDays>
           </li>
         </seeders>
-        <maxActiveCases>4</maxActiveCases>
+          <maxActiveCaseChanceOffset>0</maxActiveCaseChanceOffset>
       </li>
     </value>
   </Operation>
@@ -580,6 +580,7 @@
         <outbreakNotification>FirstCase</outbreakNotification>
         <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
         <spreadSuppressionScale>0</spreadSuppressionScale>
+        <useScaledActiveCaseCap>false</useScaledActiveCaseCap>
         <seasonalInfectivity>
           <spring>0.8</spring>
           <summer>1.2</summer>
@@ -633,6 +634,7 @@
         <outbreakNotification>FirstCase</outbreakNotification>
         <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
         <spreadSuppressionScale>0</spreadSuppressionScale>
+        <useScaledActiveCaseCap>false</useScaledActiveCaseCap>
         <seasonalInfectivity>
           <spring>0.9</spring>
           <summer>1.2</summer>

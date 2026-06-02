@@ -156,11 +156,12 @@ None configured.
 
 | Field | Value | Notes |
 |---|---|---|
-| maxActiveCases | 3 | Hard cap — gut worms is low-pressure and chronic |
+| useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected player pawn in that track, floored, max 50% |
 | spreadSuppressionScale | **0** | Colony-fraction suppression **disabled** — gut worms is foodborne, not person-to-person herd spread |
 | outbreakNotification | **None** | Silent — no letter. Discovery via health tab inspection |
 
-Spread suppression is off because the foodborne vector is not herd-transmission. A dirty kitchen or infected cook can give everyone gut worms regardless of how many are already infected. The colony-fraction model does not fit.
+Spread suppression is off because the foodborne vector is not herd-transmission. A dirty kitchen or infected cook can give everyone gut worms regardless of how many are already infected. The colony-fraction model does not fit, though seeding still respects scaled active-case caps.
 
 ---
 
@@ -200,4 +201,4 @@ This mechanic is especially important for gut worms: undetected infected animals
 - `Seeder_Environmental cooldownDays 3` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
 - Fomite `potencyDecayPerHour 0.08` gives gut-worm vomit a ~12 h half-life. This means a single vomit event from a severe case contaminates an area for half a day. If cleaning is poor, this can become a significant secondary spread path. Intentional: it rewards keeping sick pawns isolated and areas clean.
 - The `outbreakNotification None` setting means players have no alert that gut worms are present. Discovery is organic (health tab, handler detection). This is a design choice — it keeps gut worms as background pressure rather than a crisis event.
-- `maxActiveCases 3` may be very tight for a colony with many animals. If 3 animals all get gut worms from the environment simultaneously, this blocks further seeding — but they're still in the food chain until detected.
+- Scaled caps avoid the old problem where a fixed cap of 3 was too tight for large herds. Animals and humans now each use their own population-scaled cap.

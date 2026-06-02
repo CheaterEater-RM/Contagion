@@ -46,8 +46,7 @@ internal sealed class ContagionMapSeedingState : IExposable
             return false;
         }
 
-        int activeCaseLimit = seeder?.maxActiveCases > 0 ? seeder.maxActiveCases : resolvedProfile.Profile.maxActiveCases;
-        return ContagionTransmissionUtility.IsProfileActiveOnMap(map, resolvedProfile, activeCaseLimit);
+        return ContagionTransmissionUtility.GetRemainingActiveCaseCapacity(map, resolvedProfile) <= 0;
     }
 
     public bool CanRunSeeder(Map map, ResolvedTransmissionProfile resolvedProfile, TransmissionSeeder seeder)

@@ -23,6 +23,11 @@ public static class ContagionSeedingExecutionUtility
 
         foreach (Pawn pawn in pawns)
         {
+            if (ContagionTransmissionUtility.IsAtActiveCaseCapacity(map, resolvedProfile, pawn))
+            {
+                continue;
+            }
+
             float chance = ContagionTransmissionUtility.BuildSeederChance(
                 1f,
                 pawn,
@@ -111,7 +116,8 @@ public static class ContagionSeedingExecutionUtility
             return false;
         }
 
-        return ContagionTransmissionUtility.BuildSeederChance(1f, pawn, resolvedProfile, map, 1f, out immunityCause) > 0f;
+        return !ContagionTransmissionUtility.IsAtActiveCaseCapacity(map, resolvedProfile, pawn)
+            && ContagionTransmissionUtility.BuildSeederChance(1f, pawn, resolvedProfile, map, 1f, out immunityCause) > 0f;
     }
 
     public static bool TrySeedExactPawn(Pawn pawn, ResolvedTransmissionProfile resolvedProfile, out HediffDef immunityCause)

@@ -121,7 +121,6 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
         }
 
         float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
-        Dictionary<HediffDef, float> suppressionByDisease = new Dictionary<HediffDef, float>();
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
             Pawn pawn = spawnedPawns[pawnIndex];
@@ -158,15 +157,7 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
                     continue;
                 }
 
-                float suppression = 1f;
-                if (ContagionTransmissionUtility.IsSuppressionTarget(pawn))
-                {
-                    if (!suppressionByDisease.TryGetValue(resolvedProfile.DiseaseDef, out suppression))
-                    {
-                        suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile);
-                        suppressionByDisease[resolvedProfile.DiseaseDef] = suppression;
-                    }
-                }
+                float suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile, pawn);
 
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteAttempted);
                 float chance = ContagionTransmissionUtility.BuildSeederChance(

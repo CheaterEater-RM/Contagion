@@ -135,7 +135,8 @@ Sickly pawns catch flu more often (vanilla `randomDiseaseMtbDays`) but shed at h
 
 | Field | Value | Notes |
 |---|---|---|
-| maxActiveCases | 5 | Seeding suppressed when ≥5 active + incubating |
+| useScaledActiveCaseCap | true (default) | Human cap scales from colonist count |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per colonist, floored, max 50% |
 | spreadSuppressionScale | 1.0 (default) | Normal colony-fraction suppression applies |
 | outbreakNotification | FirstCase | Letter fires on first active case |
 
@@ -155,7 +156,7 @@ Sickly pawns catch flu more often (vanilla `randomDiseaseMtbDays`) but shed at h
 
 - Seasonal multipliers are first-pass. Flu should feel like a winter/fall disease with near-silence in summer. The 0.3 summer multiplier may still be too high for tropical biomes — `permanentSummer 0.4` needs field testing.
 - Incubation infectivity (pre-symptomatic spread) is intentional but capped at 0.5 at full incubation so it hands off smoothly into active flu.
-- `maxActiveCases 5` for a 10-pawn colony means roughly half the colony could theoretically be sick simultaneously before seeding suppresses new incubations. This may be too high; consider 4.
+- Scaled caps mean a 10-colonist colony has a flu cap of 4 active+incubating human cases before new seeding is suppressed. Strong suppression reaches zero direct spread at that cap.
 
 
 https://pubmed.ncbi.nlm.nih.gov/15172341/

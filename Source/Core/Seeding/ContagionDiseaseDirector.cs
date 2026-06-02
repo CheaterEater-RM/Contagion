@@ -209,10 +209,10 @@ public sealed class ContagionDiseaseDirector : IExposable
 
     private static DirectorTuning GetTuning()
     {
-        return (Contagion_Mod.Settings?.difficulty ?? ContagionDifficulty.Normal) switch
+        return (Contagion_Mod.Settings?.difficulty ?? ContagionDifficulty.Medium) switch
         {
-            ContagionDifficulty.Easier => new DirectorTuning(0.02f, 3f, 6f, 0.7f),
-            ContagionDifficulty.Harder => new DirectorTuning(0.045f, 7f, 3f, 1.25f),
+            ContagionDifficulty.Easy => new DirectorTuning(0.02f, 3f, 6f, 0.7f),
+            ContagionDifficulty.Hard => new DirectorTuning(0.045f, 7f, 3f, 1.25f),
             _ => new DirectorTuning(0.03f, 5f, 4f, 1f)
         };
     }

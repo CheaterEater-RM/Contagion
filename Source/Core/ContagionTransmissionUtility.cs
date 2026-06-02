@@ -5,6 +5,13 @@ using Verse;
 
 namespace Contagion;
 
+public enum ContagionCaseTrack
+{
+    None,
+    Human,
+    Animal
+}
+
 public static class ContagionTransmissionUtility
 {
     private static readonly SimpleCurve DefaultActiveInfectivityCurve = CreateDefaultActiveInfectivityCurve();
@@ -233,10 +240,11 @@ public static class ContagionTransmissionUtility
             * Mathf.Max(0f, settingsMultiplier);
     }
 
-    public static bool IsProfileActiveOnMap(Map map, ResolvedTransmissionProfile resolvedProfile, int maxActiveCases)
-    {
-        return maxActiveCases > 0 && CountActiveCases(map, resolvedProfile) >= maxActiveCases;
-    }
+    private const float BaseActiveCaseChance = 0.30f;
+
+    private const float ActiveCaseChancePerPawn = 0.01f;
+
+    private const float MaxActiveCaseChance = 0.50f;
 
     // True for pawns the spread-suppression mechanic treats as part of "the colony". The suppression
     // fraction is measured over player-faction pawns, so it must only be applied when transmitting TO
@@ -247,74 +255,234 @@ public static class ContagionTransmissionUtility
         return pawn != null && pawn.Faction == Faction.OfPlayer;
     }
 
-    // Spread suppression: as a larger share of the colony already carries the disease (active or
-    // incubating), each remaining contagious transmission roll TO a colonist is dampened. This keeps
-    // an outbreak from reliably hitting 100% of the colony and gives the player a window to react.
-    // Factor = (1 - infectedColonyFraction) ^ effectiveStrength, where effectiveStrength comes from
-    // the difficulty setting scaled by the disease's spreadSuppressionScale. A strength of 0
-    // (Harder difficulty, or scale 0) disables suppression entirely.
-    //
-    // Applies to contagious vectors shed by infected colonists into shared space: airborne, social,
-    // proximity, and fomite. It is deliberately NOT applied to foodborne (a contaminated-food source,
-    // not herd transmission) or environmental seeding (sourced by the map, not the colony).
-    public static float GetSpreadSuppressionFactor(Map map, ResolvedTransmissionProfile resolvedProfile)
+    public static ContagionCaseTrack GetCaseTrack(Pawn pawn)
     {
-        if (map == null || resolvedProfile?.Profile == null)
+        if (pawn?.RaceProps?.Animal == true)
         {
-            return 1f;
+            return ContagionCaseTrack.Animal;
         }
 
-        float strength = (Contagion_Mod.Settings?.SpreadSuppressionStrength ?? 2f) * resolvedProfile.Profile.spreadSuppressionScale;
-        if (strength <= 0f)
+        if (pawn?.RaceProps?.Humanlike == true)
         {
-            return 1f;
+            return ContagionCaseTrack.Human;
         }
 
-        GetColonyInfectionCounts(map, resolvedProfile, out int infected, out int affectable);
-        if (affectable <= 0 || infected <= 0)
-        {
-            return 1f;
-        }
-
-        float fraction = Mathf.Clamp01((float)infected / affectable);
-        return Mathf.Pow(1f - fraction, strength);
+        return ContagionCaseTrack.None;
     }
 
-    // Counts player-faction pawns the disease can affect, and how many already carry it. Restricting
-    // to the player faction keeps the "colony fraction" meaningful when raiders or visitors are present.
-    private static void GetColonyInfectionCounts(Map map, ResolvedTransmissionProfile resolvedProfile, out int infected, out int affectable)
+    public static bool IsAtActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile, Pawn targetPawn)
     {
-        infected = 0;
-        affectable = 0;
+        ContagionCaseTrack track = GetCaseTrack(targetPawn);
+        if (track == ContagionCaseTrack.None)
+        {
+            return false;
+        }
+
+        int capacity = GetActiveCaseCapacity(map, resolvedProfile, track);
+        return capacity > 0 && CountActiveCases(map, resolvedProfile, track) >= capacity;
+    }
+
+    public static bool IsAnyTrackAtActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile)
+    {
+        if (resolvedProfile?.Profile == null || !resolvedProfile.Profile.useScaledActiveCaseCap)
+        {
+            return false;
+        }
+
+        bool checkedAny = false;
+        if (resolvedProfile.Profile.affectsHumans)
+        {
+            checkedAny = true;
+            int capacity = GetActiveCaseCapacity(map, resolvedProfile, ContagionCaseTrack.Human);
+            if (capacity > 0 && CountActiveCases(map, resolvedProfile, ContagionCaseTrack.Human) >= capacity)
+            {
+                return true;
+            }
+        }
+
+        if (resolvedProfile.Profile.affectsAnimals)
+        {
+            checkedAny = true;
+            int capacity = GetActiveCaseCapacity(map, resolvedProfile, ContagionCaseTrack.Animal);
+            if (capacity > 0 && CountActiveCases(map, resolvedProfile, ContagionCaseTrack.Animal) >= capacity)
+            {
+                return true;
+            }
+        }
+
+        return checkedAny && GetRemainingActiveCaseCapacity(map, resolvedProfile) <= 0;
+    }
+
+    public static int GetRemainingActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile)
+    {
+        if (resolvedProfile?.Profile == null || !resolvedProfile.Profile.useScaledActiveCaseCap)
+        {
+            return int.MaxValue;
+        }
+
+        int remaining = 0;
+        bool sawPopulation = false;
+        if (resolvedProfile.Profile.affectsHumans)
+        {
+            int capacity = GetActiveCaseCapacity(map, resolvedProfile, ContagionCaseTrack.Human);
+            if (capacity == 0)
+            {
+                return int.MaxValue;
+            }
+
+            if (capacity > 0)
+            {
+                sawPopulation = true;
+                remaining += Mathf.Max(0, capacity - CountActiveCases(map, resolvedProfile, ContagionCaseTrack.Human));
+            }
+        }
+
+        if (resolvedProfile.Profile.affectsAnimals)
+        {
+            int capacity = GetActiveCaseCapacity(map, resolvedProfile, ContagionCaseTrack.Animal);
+            if (capacity == 0)
+            {
+                return int.MaxValue;
+            }
+
+            if (capacity > 0)
+            {
+                sawPopulation = true;
+                remaining += Mathf.Max(0, capacity - CountActiveCases(map, resolvedProfile, ContagionCaseTrack.Animal));
+            }
+        }
+
+        return sawPopulation ? remaining : int.MaxValue;
+    }
+
+    public static int GetRemainingActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
+    {
+        int capacity = GetActiveCaseCapacity(map, resolvedProfile, track);
+        if (capacity == int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        return Mathf.Max(0, capacity - CountActiveCases(map, resolvedProfile, track));
+    }
+
+    public static int GetActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
+    {
+        if (map == null || resolvedProfile?.Profile == null || !resolvedProfile.Profile.useScaledActiveCaseCap)
+        {
+            return int.MaxValue;
+        }
+
+        int population = CountAffectablePlayerPawns(map, resolvedProfile, track);
+        if (population <= 0)
+        {
+            return 0;
+        }
+
+        float chance = Mathf.Clamp(
+            BaseActiveCaseChance + population * ActiveCaseChancePerPawn + resolvedProfile.Profile.maxActiveCaseChanceOffset,
+            0f,
+            MaxActiveCaseChance);
+        return Mathf.Max(1, Mathf.FloorToInt(population * chance));
+    }
+
+    // Spread suppression: as a target track approaches its active-case capacity, contagious
+    // transmission rolls TO that track are dampened by a clamped smoothstep. It applies to
+    // contagious vectors shed into shared space: airborne, social, proximity, and fomite. It is
+    // deliberately NOT applied to foodborne or environmental exposure.
+    public static float GetSpreadSuppressionFactor(Map map, ResolvedTransmissionProfile resolvedProfile, Pawn targetPawn)
+    {
+        if (map == null || resolvedProfile?.Profile == null || !IsSuppressionTarget(targetPawn))
+        {
+            return 1f;
+        }
+
+        if (resolvedProfile.Profile.spreadSuppressionScale <= 0f)
+        {
+            return 1f;
+        }
+
+        ContagionSuppressionMode mode = Contagion_Mod.Settings?.suppressionMode ?? ContagionSuppressionMode.Medium;
+        if (mode == ContagionSuppressionMode.LetErRip)
+        {
+            return 1f;
+        }
+
+        ContagionCaseTrack track = GetCaseTrack(targetPawn);
+        int capacity = GetActiveCaseCapacity(map, resolvedProfile, track);
+        if (capacity <= 0 || capacity == int.MaxValue)
+        {
+            return 1f;
+        }
+
+        int activeCases = CountActiveCases(map, resolvedProfile, track);
+        if (activeCases <= 0)
+        {
+            return 1f;
+        }
+
+        float load = activeCases / (float)capacity;
+        float factor = mode switch
+        {
+            ContagionSuppressionMode.Strong => EvaluateSuppressionSmoothstep(load, 0.50f, 1.00f, 0f),
+            ContagionSuppressionMode.Weak => EvaluateSuppressionSmoothstep(load, 0.98f, 2.00f, 0.15f),
+            _ => EvaluateSuppressionSmoothstep(load, 0.90f, 1.10f, 0.05f)
+        };
+
+        return Mathf.Lerp(1f, factor, Mathf.Clamp01(resolvedProfile.Profile.spreadSuppressionScale));
+    }
+
+    private static float EvaluateSuppressionSmoothstep(float load, float startLoad, float stopLoad, float floor)
+    {
+        if (load <= startLoad)
+        {
+            return 1f;
+        }
+
+        if (load >= stopLoad)
+        {
+            return Mathf.Clamp01(floor);
+        }
+
+        float t = Mathf.InverseLerp(startLoad, stopLoad, load);
+        float drop = t * t * (3f - 2f * t);
+        return Mathf.Lerp(1f, Mathf.Clamp01(floor), drop);
+    }
+
+    private static int CountAffectablePlayerPawns(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
+    {
         IReadOnlyList<Pawn> pawns = map?.mapPawns?.AllPawnsSpawned;
         if (pawns == null || resolvedProfile?.Profile == null)
         {
-            return;
+            return 0;
         }
 
+        int count = 0;
         for (int i = 0; i < pawns.Count; i++)
         {
             Pawn pawn = pawns[i];
-            if (pawn == null || pawn.Dead || pawn.Faction != Faction.OfPlayer || !resolvedProfile.Profile.CanAffect(pawn))
+            if (pawn == null
+                || pawn.Dead
+                || pawn.Faction != Faction.OfPlayer
+                || GetCaseTrack(pawn) != track
+                || !resolvedProfile.Profile.CanAffect(pawn))
             {
                 continue;
             }
 
-            affectable++;
-            if (pawn.health?.hediffSet == null)
-            {
-                continue;
-            }
-
-            if (pawn.health.hediffSet.HasHediff(resolvedProfile.ResolveHediffForPawn(pawn))
-                || ContagionDiseaseUtility.FindIncubation(pawn, resolvedProfile.ResolveHediffForPawn(pawn)) != null)
-            {
-                infected++;
-            }
+            count++;
         }
+
+        return count;
     }
 
     public static int CountActiveCases(Map map, ResolvedTransmissionProfile resolvedProfile)
+    {
+        return CountActiveCases(map, resolvedProfile, ContagionCaseTrack.Human)
+            + CountActiveCases(map, resolvedProfile, ContagionCaseTrack.Animal);
+    }
+
+    public static int CountActiveCases(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
     {
         IReadOnlyList<Pawn> pawns = map?.mapPawns?.AllPawnsSpawned;
         if (pawns == null || resolvedProfile?.DiseaseDef == null)
@@ -326,7 +494,7 @@ public static class ContagionTransmissionUtility
         for (int i = 0; i < pawns.Count; i++)
         {
             Pawn pawn = pawns[i];
-            if (pawn?.health?.hediffSet == null)
+            if (pawn?.health?.hediffSet == null || pawn.Faction != Faction.OfPlayer || GetCaseTrack(pawn) != track)
             {
                 continue;
             }
