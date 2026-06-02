@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using UnityEngine;
 using Verse;
 
@@ -151,7 +152,11 @@ public static class ContagionDiagnostics
 
     public static void Reset()
     {
-        System.Array.Clear(Counters, 0, Counters.Length);
+        for (int i = 0; i < Counters.Length; i++)
+        {
+            Interlocked.Exchange(ref Counters[i], 0);
+        }
+
         HasDirectorSummary = false;
     }
 
@@ -162,7 +167,7 @@ public static class ContagionDiagnostics
             return;
         }
 
-        Counters[(int)counter] += amount;
+        Interlocked.Add(ref Counters[(int)counter], amount);
     }
 
     public static void RecordApplicationResult(ContagionDiagnosticOrigin origin, bool seeded, HediffDef immunityCause)
@@ -367,14 +372,14 @@ public static class ContagionDiagnostics
 
     private static long GetCounter(ContagionDiagnosticCounter counter)
     {
-        return Counters[(int)counter];
+        return Interlocked.Read(ref Counters[(int)counter]);
     }
 
     private static bool HasAnyRecordedCounters(IEnumerable<ContagionDiagnosticCounter> counters)
     {
         foreach (ContagionDiagnosticCounter counter in counters)
         {
-            if (Counters[(int)counter] != 0)
+            if (GetCounter(counter) != 0)
             {
                 return true;
             }

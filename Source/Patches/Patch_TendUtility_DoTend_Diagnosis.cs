@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HarmonyLib;
 using RimWorld;
 using Verse;
@@ -6,7 +7,7 @@ namespace Contagion.Patches;
 
 // Two-class pattern:
 //   1. Patch_TendUtility_DoTend_TrackDoctor — prefix/postfix on DoTend to capture the doctor
-//      in a static field for the duration of the call. Single-threaded; static field is safe.
+//      for the duration of the call.
 //   2. Patch_Hediff_Tended_AnimalDiagnosis — postfix on Hediff.Tended, guarded to
 //      Contagion_AnimalSick only. Fires exclusively when the sick-signal hediff is actually
 //      among the hediffs being tended, which is the correct gate for H3.
@@ -17,16 +18,23 @@ namespace Contagion.Patches;
 [HarmonyPatch(typeof(TendUtility), nameof(TendUtility.DoTend))]
 internal static class Patch_TendUtility_DoTend_TrackDoctor
 {
-    internal static Pawn CurrentDoctor;
+    [System.ThreadStatic]
+    private static Stack<Pawn> _doctorStack;
+
+    internal static Pawn CurrentDoctor => _doctorStack?.Count > 0 ? _doctorStack.Peek() : null;
 
     public static void Prefix(Pawn doctor)
     {
-        CurrentDoctor = doctor;
+        _doctorStack ??= new Stack<Pawn>();
+        _doctorStack.Push(doctor);
     }
 
     public static void Postfix()
     {
-        CurrentDoctor = null;
+        if (_doctorStack?.Count > 0)
+        {
+            _doctorStack.Pop();
+        }
     }
 }
 

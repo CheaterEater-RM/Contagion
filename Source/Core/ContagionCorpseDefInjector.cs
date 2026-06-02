@@ -1,4 +1,4 @@
-using System.Linq;
+using System.Collections.Generic;
 using Verse;
 
 namespace Contagion;
@@ -14,13 +14,27 @@ public static class ContagionCorpseDefInjector
                 continue;
             }
 
-            thingDef.comps ??= new System.Collections.Generic.List<CompProperties>();
-            if (thingDef.comps.Any(comp => comp is CompProperties_InfectedCorpse || comp.compClass == typeof(Comp_InfectedCorpse)))
+            thingDef.comps ??= new List<CompProperties>();
+            if (HasInfectedCorpseComp(thingDef.comps))
             {
                 continue;
             }
 
             thingDef.comps.Add(new CompProperties_InfectedCorpse());
         }
+    }
+
+    private static bool HasInfectedCorpseComp(List<CompProperties> comps)
+    {
+        for (int i = 0; i < comps.Count; i++)
+        {
+            CompProperties comp = comps[i];
+            if (comp is CompProperties_InfectedCorpse || comp?.compClass == typeof(Comp_InfectedCorpse))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

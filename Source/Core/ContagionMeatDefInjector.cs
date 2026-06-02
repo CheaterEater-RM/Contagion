@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using RimWorld;
 using Verse;
 
@@ -44,7 +43,7 @@ public static class ContagionMeatDefInjector
             }
 
             thingDef.comps ??= new List<CompProperties>();
-            if (thingDef.comps.Any(comp => comp is CompProperties_ContaminatedFood || comp.compClass == typeof(Comp_ContaminatedFood)))
+            if (HasContaminatedFoodComp(thingDef.comps))
             {
                 continue;
             }
@@ -54,5 +53,19 @@ public static class ContagionMeatDefInjector
         }
 
         ContagionDiagnostics.Trace($"Food comp injection: added Comp_ContaminatedFood to {injected} food def(s) (meat/meals/kibble).");
+    }
+
+    private static bool HasContaminatedFoodComp(List<CompProperties> comps)
+    {
+        for (int i = 0; i < comps.Count; i++)
+        {
+            CompProperties comp = comps[i];
+            if (comp is CompProperties_ContaminatedFood || comp?.compClass == typeof(Comp_ContaminatedFood))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -104,6 +104,8 @@ public sealed class Hediff_ContagionIncubation : Hediff
             return false;
         }
 
+        // Hediffs may tick in intervals, so activation can land between calls; the next interval
+        // catches up immediately once currentTick has passed the activation tick.
         _nextLazyCheckTick = Mathf.Min(_activationTick, currentTick + LazyActivationCheckInterval);
         return true;
     }
