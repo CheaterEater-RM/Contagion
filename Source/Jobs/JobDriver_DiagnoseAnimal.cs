@@ -16,7 +16,7 @@ namespace Contagion;
 // TargetA = the animal to examine.
 public class JobDriver_DiagnoseAnimal : JobDriver
 {
-    private const int ExamineDurationTicks = 300;
+    private const int ExamineDurationTicks = 100; // milking a cow takes 400 ticks
 
     private Pawn Animal => (Pawn)job.GetTarget(TargetIndex.A).Thing;
 

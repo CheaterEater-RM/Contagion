@@ -7,7 +7,7 @@ namespace Contagion;
 
 public class JobDriver_InspectCorpse : JobDriver
 {
-    private const int InspectDurationTicks = 200;
+    private const int InspectDurationTicks = 400; // butcher bills are 300
 
     private Corpse Corpse => (Corpse)job.GetTarget(TargetIndex.B).Thing;
 
