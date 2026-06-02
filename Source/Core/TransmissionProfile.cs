@@ -93,6 +93,10 @@ public sealed class TransmissionProfile : DefModExtension
     // Convenience property used by Contagion_MapTransmissionComponent.IsOutbreakActive.
     public int OutbreakEndTicks => (int)(outbreakEndDays * 60000f);
 
+    // Incubation duration in ticks. Used by outbreak-origin tracking to keep a recorded origin
+    // alive across the pre-symptomatic window before the first visible case appears.
+    public int IncubationTicks => (int)(incubationDays * 60000f);
+
     public bool corpseContagious;
 
     public float corpseInfectivityDecayPerDay = 0.5f;

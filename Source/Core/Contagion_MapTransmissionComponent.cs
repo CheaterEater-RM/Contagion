@@ -42,6 +42,15 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private Dictionary<HediffDef, int> _animalOutbreakClusterLetterId = new();
 
+    // Outbreak origin: the seed source that began the current wave, tracked once per disease and
+    // deliberately NOT split by species. Diseases that cross between humans and animals (e.g. Plague
+    // arriving on a caravan or a wild animal) have one true origin regardless of which species shows
+    // symptoms first, so both the human and animal first-case letters read from the same record.
+    // originTick is the tick of the first seed, used to expire a stale origin once the wave is over.
+    private Dictionary<HediffDef, ContagionSeedSource> _outbreakOriginSource = new();
+
+    private Dictionary<HediffDef, int> _outbreakOriginTick = new();
+
     public Contagion_MapTransmissionComponent(Map map)
         : base(map)
     {
@@ -69,6 +78,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         Scribe_Collections.Look(ref _animalOutbreakLastCaseTick, "animalOutbreakLastCaseTick", LookMode.Def, LookMode.Value);
         Scribe_Collections.Look(ref _humanOutbreakClusterLetterId, "humanOutbreakClusterLetterId", LookMode.Def, LookMode.Value);
         Scribe_Collections.Look(ref _animalOutbreakClusterLetterId, "animalOutbreakClusterLetterId", LookMode.Def, LookMode.Value);
+        Scribe_Collections.Look(ref _outbreakOriginSource, "outbreakOriginSource", LookMode.Def, LookMode.Value);
+        Scribe_Collections.Look(ref _outbreakOriginTick, "outbreakOriginTick", LookMode.Def, LookMode.Value);
 
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
@@ -79,6 +90,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             _humanOutbreakClusterLetterId ??= new Dictionary<HediffDef, int>();
             _animalOutbreakLastCaseTick ??= new Dictionary<HediffDef, int>();
             _animalOutbreakClusterLetterId ??= new Dictionary<HediffDef, int>();
+            _outbreakOriginSource ??= new Dictionary<HediffDef, ContagionSeedSource>();
+            _outbreakOriginTick ??= new Dictionary<HediffDef, int>();
             _vomitFomiteTracker.Cleanup(map);
             _fecalOralTracker.Cleanup(map);
         }
@@ -208,6 +221,48 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     public void RecordAnimalOutbreakCase(ResolvedTransmissionProfile resolvedProfile)
         => RecordOutbreakCaseIn(_animalOutbreakLastCaseTick, resolvedProfile);
 
+    // Records the seed source that began the current outbreak wave. The first seed of a fresh wave
+    // wins regardless of species. While the wave is still live — a visible outbreak active on either
+    // track, or within one incubation + the outbreak window of the first seed — the recorded origin
+    // is not overwritten by downstream contact seeds. This lets both the human and animal first-case
+    // letters attribute a crossover wave to its true origin even when a contact-infected pawn of
+    // either species shows symptoms before the still-incubating index case.
+    public void RecordOutbreakOrigin(ResolvedTransmissionProfile resolvedProfile, ContagionSeedSource source)
+    {
+        if (resolvedProfile?.DiseaseDef == null)
+        {
+            return;
+        }
+
+        HediffDef key = resolvedProfile.DiseaseDef;
+        int now = Find.TickManager.TicksGame;
+        int pendingTicks = resolvedProfile.Profile.IncubationTicks + resolvedProfile.Profile.OutbreakEndTicks;
+
+        bool originPending = _outbreakOriginTick.TryGetValue(key, out int originTick)
+            && (IsHumanOutbreakActive(resolvedProfile)
+                || IsAnimalOutbreakActive(resolvedProfile)
+                || now - originTick <= pendingTicks);
+
+        if (!originPending)
+        {
+            _outbreakOriginSource[key] = source;
+            _outbreakOriginTick[key] = now;
+        }
+    }
+
+    // Returns the recorded origin for the wave, or fallback if none is tracked (e.g. a developer-forced
+    // disease added without going through TrySeedIncubation, or a save from before origin tracking).
+    public ContagionSeedSource GetOutbreakOrigin(ResolvedTransmissionProfile resolvedProfile, ContagionSeedSource fallback)
+    {
+        if (resolvedProfile?.DiseaseDef != null
+            && _outbreakOriginSource.TryGetValue(resolvedProfile.DiseaseDef, out ContagionSeedSource source))
+        {
+            return source;
+        }
+
+        return fallback;
+    }
+
     public Letter GetHumanClusterLetter(ResolvedTransmissionProfile resolvedProfile)
         => GetClusterLetterFrom(_humanOutbreakClusterLetterId, resolvedProfile);
 
@@ -293,6 +348,50 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     {
         PruneStaleEntriesFrom(_humanOutbreakLastCaseTick, _humanOutbreakClusterLetterId);
         PruneStaleEntriesFrom(_animalOutbreakLastCaseTick, _animalOutbreakClusterLetterId);
+        PruneStaleOrigins();
+    }
+
+    // Drops a recorded origin once its wave is definitively over: the pending window (one incubation
+    // plus the outbreak window) has lapsed and no visible outbreak is active on either track. A
+    // fizzled seed that never produced a visible case is cleaned up the same way. Lingering entries
+    // are otherwise harmless — RecordOutbreakOrigin overwrites an expired origin on the next wave.
+    private void PruneStaleOrigins()
+    {
+        if (_outbreakOriginTick.Count == 0)
+        {
+            return;
+        }
+
+        int ticksNow = Find.TickManager.TicksGame;
+        List<HediffDef> toRemove = null;
+
+        foreach (KeyValuePair<HediffDef, int> kv in _outbreakOriginTick)
+        {
+            if (!DiseaseProfileCache.TryGetResolvedProfile(kv.Key, out ResolvedTransmissionProfile resolvedProfile))
+            {
+                (toRemove ??= new List<HediffDef>()).Add(kv.Key);
+                continue;
+            }
+
+            int pendingTicks = resolvedProfile.Profile.IncubationTicks + resolvedProfile.Profile.OutbreakEndTicks;
+            bool waveOver = ticksNow - kv.Value > pendingTicks
+                && !IsHumanOutbreakActive(resolvedProfile)
+                && !IsAnimalOutbreakActive(resolvedProfile);
+
+            if (waveOver)
+            {
+                (toRemove ??= new List<HediffDef>()).Add(kv.Key);
+            }
+        }
+
+        if (toRemove != null)
+        {
+            foreach (HediffDef def in toRemove)
+            {
+                _outbreakOriginTick.Remove(def);
+                _outbreakOriginSource.Remove(def);
+            }
+        }
     }
 
     private static void PruneStaleEntriesFrom(Dictionary<HediffDef, int> tickDict, Dictionary<HediffDef, int> letterDict)

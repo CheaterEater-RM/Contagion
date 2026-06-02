@@ -95,20 +95,21 @@
   <Contagion_MessageDiseaseActivated>{0} has developed {1}.</Contagion_MessageDiseaseActivated>
   <Contagion_LetterLabelOutbreak>Outbreak detected: {0}</Contagion_LetterLabelOutbreak>
   <Contagion_LetterOutbreakFirstCase>{0} is showing symptoms of {1}. This is the first visible case in the colony, but transmission may already be underway.</Contagion_LetterOutbreakFirstCase>
-  <Contagion_LetterOutbreakFirstCase_Environmental>{0} is showing symptoms of {1}. This infection appears to have come from the local environment.</Contagion_LetterOutbreakFirstCase_Environmental>
-  <Contagion_LetterOutbreakFirstCase_Arrival>{0} is showing symptoms of {1}. This infection appears to have arrived with recent visitors.</Contagion_LetterOutbreakFirstCase_Arrival>
-  <Contagion_LetterOutbreakFirstCase_Foodborne>{0} is showing symptoms of {1}. This infection has been traced to contaminated food.</Contagion_LetterOutbreakFirstCase_Foodborne>
-  <Contagion_LetterOutbreakFirstCase_Cooking>{0} is showing symptoms of {1}. This infection was contracted while preparing contaminated ingredients.</Contagion_LetterOutbreakFirstCase_Cooking>
-  <Contagion_LetterOutbreakFirstCase_Corpse>{0} is showing symptoms of {1}. This infection was likely contracted from handling an infected corpse.</Contagion_LetterOutbreakFirstCase_Corpse>
-  <Contagion_LetterOutbreakFirstCase_CorpseIngestion>{0} is showing symptoms of {1}. This infection was contracted from eating a diseased corpse.</Contagion_LetterOutbreakFirstCase_CorpseIngestion>
+  <Contagion_LetterOutbreakFirstCase_Environmental>{0} is showing symptoms of {1}. This infection most likely came from the local environment.</Contagion_LetterOutbreakFirstCase_Environmental>
+  <Contagion_LetterOutbreakFirstCase_Arrival>{0} is showing symptoms of {1}. This infection most likely arrived with recent visitors.</Contagion_LetterOutbreakFirstCase_Arrival>
+  <Contagion_LetterOutbreakFirstCase_Foodborne>{0} is showing symptoms of {1}. This infection most likely came from contaminated food.</Contagion_LetterOutbreakFirstCase_Foodborne>
+  <Contagion_LetterOutbreakFirstCase_Cooking>{0} is showing symptoms of {1}. This infection most likely came from preparing contaminated ingredients.</Contagion_LetterOutbreakFirstCase_Cooking>
+  <Contagion_LetterOutbreakFirstCase_Corpse>{0} is showing symptoms of {1}. This infection most likely came from handling an infected corpse.</Contagion_LetterOutbreakFirstCase_Corpse>
+  <Contagion_LetterOutbreakFirstCase_CorpseIngestion>{0} is showing symptoms of {1}. This infection most likely came from eating a diseased corpse.</Contagion_LetterOutbreakFirstCase_CorpseIngestion>
   <Contagion_LetterOutbreakFirstCase_Unknown>{0} is showing symptoms of {1}. The infection vector is unknown.</Contagion_LetterOutbreakFirstCase_Unknown>
   <Contagion_LetterLabelAnimalOutbreak>Infected animal: {0}</Contagion_LetterLabelAnimalOutbreak>
   <Contagion_LetterAnimalOutbreakFirstCase>{0} is showing signs of {1}. This disease can also spread to your colonists, slaves, and prisoners — consider isolating infected animals or disposing of them safely before butchering.</Contagion_LetterAnimalOutbreakFirstCase>
-  <Contagion_LetterAnimalOutbreakFirstCase_Environmental>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection appears to have come from the local environment.</Contagion_LetterAnimalOutbreakFirstCase_Environmental>
-  <Contagion_LetterAnimalOutbreakFirstCase_Arrival>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection appears to have arrived with recent visitors.</Contagion_LetterAnimalOutbreakFirstCase_Arrival>
-  <Contagion_LetterAnimalOutbreakFirstCase_Foodborne>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection has been traced to contaminated food.</Contagion_LetterAnimalOutbreakFirstCase_Foodborne>
-  <Contagion_LetterAnimalOutbreakFirstCase_Corpse>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection was likely contracted from handling an infected corpse.</Contagion_LetterAnimalOutbreakFirstCase_Corpse>
-  <Contagion_LetterAnimalOutbreakFirstCase_CorpseIngestion>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection was contracted from eating a diseased corpse.</Contagion_LetterAnimalOutbreakFirstCase_CorpseIngestion>
+  <Contagion_LetterAnimalOutbreakFirstCase_Environmental>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection most likely came from the local environment.</Contagion_LetterAnimalOutbreakFirstCase_Environmental>
+  <Contagion_LetterAnimalOutbreakFirstCase_Arrival>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection most likely arrived with recent visitors.</Contagion_LetterAnimalOutbreakFirstCase_Arrival>
+  <Contagion_LetterAnimalOutbreakFirstCase_Foodborne>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection most likely came from contaminated food.</Contagion_LetterAnimalOutbreakFirstCase_Foodborne>
+  <Contagion_LetterAnimalOutbreakFirstCase_Cooking>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection most likely came from preparing contaminated ingredients.</Contagion_LetterAnimalOutbreakFirstCase_Cooking>
+  <Contagion_LetterAnimalOutbreakFirstCase_Corpse>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection most likely came from handling an infected corpse.</Contagion_LetterAnimalOutbreakFirstCase_Corpse>
+  <Contagion_LetterAnimalOutbreakFirstCase_CorpseIngestion>{0} is showing signs of {1} — a disease that can spread to your colonists. This infection most likely came from eating a diseased corpse.</Contagion_LetterAnimalOutbreakFirstCase_CorpseIngestion>
   <Contagion_LetterAnimalOutbreakFirstCase_Unknown>{0} is showing signs of {1} — a disease that can spread to your colonists. The infection vector is unknown.</Contagion_LetterAnimalOutbreakFirstCase_Unknown>
   <Contagion_LetterLabelClusterCase>More cases: {0}</Contagion_LetterLabelClusterCase>
   <Contagion_LetterClusterCase>{0} has also developed {1}. {2}</Contagion_LetterClusterCase>

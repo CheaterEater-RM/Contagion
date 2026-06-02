@@ -55,6 +55,14 @@ public static class ContagionDiseaseUtility
         List<BodyPartDef> resolvedParts = ResolvePartsForPawn(pawn, resolvedProfile, partsToAffect);
         incubation.Configure(targetDiseaseDef, resolvedParts, activationTick, seedSource);
         pawn.health.AddHediff(incubation);
+
+        // Record the seed source as the outbreak origin (first seed of a wave wins). Tracked once per
+        // disease, species-agnostic, so the first-case letter can report the true origin even when a
+        // contact-infected pawn — or a different species — shows symptoms before the index case.
+        Map map = pawn.MapHeld;
+        Contagion_MapTransmissionComponent mapComp = map?.GetComponent<Contagion_MapTransmissionComponent>();
+        mapComp?.RecordOutbreakOrigin(resolvedProfile, seedSource);
+
         ContagionTransmissionUtility.NotifyCaseAdded();
         ContagionDiagnostics.RecordApplicationResult(origin, seeded: true, immunityCause: null);
         ContagionDiagnostics.Trace($"Incubation seeded ({origin}): {targetDiseaseDef.defName} on {pawn.LabelShortCap}.");

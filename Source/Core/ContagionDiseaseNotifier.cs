@@ -97,19 +97,24 @@ internal static class ContagionDiseaseNotifier
     {
         string diseaseLabel = diseaseHediff?.LabelCap ?? diseaseDef.LabelCap;
 
+        // Attribute to the wave's recorded origin rather than this pawn's per-pawn seed source, so a
+        // contact case (or a different species) showing symptoms first still names the true origin.
+        // Falls back to the per-pawn source when no origin was recorded (e.g. a dev-forced disease).
+        ContagionSeedSource origin = mapComp.GetOutbreakOrigin(resolvedProfile, seedSource);
+
         string label;
         string body;
 
         if (isAnimal)
         {
             label = "Contagion_LetterLabelAnimalOutbreak".Translate(diseaseDef.LabelCap);
-            body = GetFirstCaseBody(pawn, diseaseLabel, seedSource, animal: true);
+            body = GetFirstCaseBody(pawn, diseaseLabel, origin, animal: true);
             mapComp.RecordAnimalOutbreakCase(resolvedProfile);
         }
         else
         {
             label = "Contagion_LetterLabelOutbreak".Translate(diseaseDef.LabelCap);
-            body = GetFirstCaseBody(pawn, diseaseLabel, seedSource, animal: false);
+            body = GetFirstCaseBody(pawn, diseaseLabel, origin, animal: false);
             mapComp.RecordHumanOutbreakCase(resolvedProfile);
         }
 
@@ -187,7 +192,9 @@ internal static class ContagionDiseaseNotifier
             ContagionSeedSource.Foodborne => animal
                 ? "Contagion_LetterAnimalOutbreakFirstCase_Foodborne"
                 : "Contagion_LetterOutbreakFirstCase_Foodborne",
-            ContagionSeedSource.Cooking => "Contagion_LetterOutbreakFirstCase_Cooking",
+            ContagionSeedSource.Cooking => animal
+                ? "Contagion_LetterAnimalOutbreakFirstCase_Cooking"
+                : "Contagion_LetterOutbreakFirstCase_Cooking",
             ContagionSeedSource.Corpse => animal
                 ? "Contagion_LetterAnimalOutbreakFirstCase_Corpse"
                 : "Contagion_LetterOutbreakFirstCase_Corpse",
