@@ -206,7 +206,7 @@ None configured for live-host spread. Corpse flea survival is handled directly f
 | Field | Value | Notes |
 |---|---|---|
 | useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected player pawn in that track, floored, max 50% |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected colony pawn in that track, floored, max 50% |
 | spreadSuppressionScale | 1.0 | Normal colony-fraction suppression applies |
 | outbreakNotification | FirstCase (default) | |
 

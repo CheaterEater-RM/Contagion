@@ -15,7 +15,9 @@ public enum ContagionDebugVectorKind
     CorpseFluid,
     Cooking,
     Fomite,
-    Environmental
+    Environmental,
+    Developer,
+    OffMap
 }
 
 // Glyph selector for rendering a trace node. Derived from the node's current anchor.

@@ -35,7 +35,8 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         List<ContagionSpreadBreakdown> breakdowns = BuildBreakdowns(sourcePawn, targetPawn);
         if (breakdowns.Count == 0)
         {
-            component.DeveloperDiagnostics.ClearHoverPair();
+            component.DeveloperDiagnostics.SetHoverPair(sourcePawn, targetPawn);
+            DrawNoDirectVectorReadout(sourcePawn, targetPawn);
             return;
         }
 
@@ -142,7 +143,7 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         }
 
         bool hasContagiousProfiles = false;
-        foreach (ResolvedTransmissionProfile resolvedProfile in ContagionDiseaseUtility.GetContagiousProfiles(sourcePawn))
+        foreach (ResolvedTransmissionProfile resolvedProfile in GetDiagnosticProfiles(sourcePawn))
         {
             hasContagiousProfiles = true;
             break;
@@ -184,7 +185,7 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         Map map = sourcePawn.Map;
         float settingsMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
 
-        foreach (ResolvedTransmissionProfile resolvedProfile in ContagionDiseaseUtility.GetContagiousProfiles(sourcePawn))
+        foreach (ResolvedTransmissionProfile resolvedProfile in GetDiagnosticProfiles(sourcePawn))
         {
             if (ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_Airborne airborne)
                 && sourcePawn.Position.InHorDistOf(targetPawn.Position, airborne.maxRange))
@@ -307,6 +308,33 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         return breakdowns;
     }
 
+    private static IEnumerable<ResolvedTransmissionProfile> GetDiagnosticProfiles(Pawn pawn)
+    {
+        if (pawn?.health?.hediffSet == null)
+        {
+            yield break;
+        }
+
+        HashSet<HediffDef> seenDiseases = new HashSet<HediffDef>();
+        List<Hediff> hediffs = pawn.health.hediffSet.hediffs;
+        for (int i = 0; i < hediffs.Count; i++)
+        {
+            Hediff hediff = hediffs[i];
+            HediffDef diseaseDef = hediff is Hediff_ContagionIncubation incubation
+                ? incubation.TargetDiseaseDef
+                : hediff?.def;
+            if (diseaseDef == null
+                || !DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile)
+                || resolvedProfile?.Profile?.HasVectors != true
+                || !seenDiseases.Add(resolvedProfile.DiseaseDef))
+            {
+                continue;
+            }
+
+            yield return resolvedProfile;
+        }
+    }
+
     private static bool TryGetPathDistance(Map map, IntVec3 source, IntVec3 target, float maxRange, out float pathDistance)
     {
         pathDistance = 0f;
@@ -387,6 +415,14 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
             }
         }
 
+        DrawReadoutText(builder.ToString().TrimEnd());
+    }
+
+    private static void DrawNoDirectVectorReadout(Pawn sourcePawn, Pawn targetPawn)
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("Contagion_DeveloperHoverHeader".Translate(sourcePawn.LabelShortCap, targetPawn.LabelShortCap).Resolve());
+        builder.AppendLine("Contagion_DeveloperHoverNoDirectVector".Translate().Resolve());
         DrawReadoutText(builder.ToString().TrimEnd());
     }
 

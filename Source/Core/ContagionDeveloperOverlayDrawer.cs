@@ -33,6 +33,10 @@ public static class ContagionDeveloperOverlayDrawer
 
     private static readonly Color TraceEnvironmentalColor = new Color(0.30f, 0.78f, 0.78f, 0.72f);
 
+    private static readonly Color TraceDeveloperColor = new Color(1f, 0.45f, 0.18f, 0.72f);
+
+    private static readonly Color TraceOffMapColor = new Color(0.92f, 0.92f, 0.98f, 0.72f);
+
     // Node glyph colors, keyed by anchor kind.
     private static readonly Color NodePawnColor = new Color(0.30f, 0.96f, 0.34f, 0.85f);
 
@@ -43,6 +47,8 @@ public static class ContagionDeveloperOverlayDrawer
     private static readonly Color NodeItemColor = new Color(0.98f, 0.90f, 0.30f, 0.85f);
 
     private static readonly Color NodeGhostColor = new Color(0.70f, 0.70f, 0.74f, 0.65f);
+
+    private static readonly Color NodeSourceColor = new Color(0.20f, 0.92f, 1f, 0.86f);
 
     // Always-on infected indicator colors (dev mode).
     private static readonly Color IndicatorPawnColor = new Color(0.95f, 0.30f, 0.30f, 0.80f);
@@ -129,6 +135,13 @@ public static class ContagionDeveloperOverlayDrawer
     private static void DrawTraceNode(ContagionTraceNode node)
     {
         Vector3 position = LiftToOverlay(node.DrawPosition);
+
+        if (node.Anchor == null)
+        {
+            DrawRing(position, 0.28f, NodeSourceColor, 0.055f);
+            DrawMarker(position, NodeSourceColor, 0.11f, 0.02f);
+            return;
+        }
 
         if (node.Orphaned)
         {
@@ -644,6 +657,8 @@ public static class ContagionDeveloperOverlayDrawer
             ContagionDebugVectorKind.Cooking => TraceCookingColor,
             ContagionDebugVectorKind.Fomite => TraceFomiteColor,
             ContagionDebugVectorKind.Environmental => TraceEnvironmentalColor,
+            ContagionDebugVectorKind.Developer => TraceDeveloperColor,
+            ContagionDebugVectorKind.OffMap => TraceOffMapColor,
             _ => TraceSocialColor
         };
     }

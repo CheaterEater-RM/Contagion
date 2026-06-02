@@ -246,13 +246,12 @@ public static class ContagionTransmissionUtility
 
     private const float MaxActiveCaseChance = 0.50f;
 
-    // True for pawns the spread-suppression mechanic treats as part of "the colony". The suppression
-    // fraction is measured over player-faction pawns, so it must only be applied when transmitting TO
-    // a player-faction pawn — otherwise a fully-infected colony would wrongly throttle spread among
-    // unrelated visitors or raiders, whose infection counts never entered the fraction.
+    // True for pawns the spread-suppression mechanic treats as part of "the colony". This is
+    // deliberately narrower than Faction.OfPlayer for humanlike pawns so guest groups, visitors,
+    // and other transient arrivals do not consume the colony's active-case budget.
     public static bool IsSuppressionTarget(Pawn pawn)
     {
-        return pawn != null && pawn.Faction == Faction.OfPlayer;
+        return IsColonyCasePawn(pawn);
     }
 
     public static ContagionCaseTrack GetCaseTrack(Pawn pawn)
@@ -463,7 +462,7 @@ public static class ContagionTransmissionUtility
             Pawn pawn = pawns[i];
             if (pawn == null
                 || pawn.Dead
-                || pawn.Faction != Faction.OfPlayer
+                || !IsColonyCasePawn(pawn)
                 || GetCaseTrack(pawn) != track
                 || !resolvedProfile.Profile.CanAffect(pawn))
             {
@@ -494,7 +493,7 @@ public static class ContagionTransmissionUtility
         for (int i = 0; i < pawns.Count; i++)
         {
             Pawn pawn = pawns[i];
-            if (pawn?.health?.hediffSet == null || pawn.Faction != Faction.OfPlayer || GetCaseTrack(pawn) != track)
+            if (pawn?.health?.hediffSet == null || !IsColonyCasePawn(pawn) || GetCaseTrack(pawn) != track)
             {
                 continue;
             }
@@ -508,6 +507,26 @@ public static class ContagionTransmissionUtility
         }
 
         return count;
+    }
+
+    private static bool IsColonyCasePawn(Pawn pawn)
+    {
+        if (pawn == null || pawn.Dead)
+        {
+            return false;
+        }
+
+        if (pawn.RaceProps?.Animal == true)
+        {
+            return pawn.Faction == Faction.OfPlayer;
+        }
+
+        if (pawn.RaceProps?.Humanlike == true)
+        {
+            return pawn.IsColonist || pawn.IsSlaveOfColony || pawn.IsPrisonerOfColony;
+        }
+
+        return false;
     }
 
     private static float GetVanillaContractFactor(Pawn target, ResolvedTransmissionProfile resolvedProfile, out HediffDef immunityCause)

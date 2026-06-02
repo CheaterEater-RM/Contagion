@@ -68,6 +68,7 @@ public static class ContagionSeedingExecutionUtility
             {
                 seededPawns.Add(pawn);
                 ContagionDiagnostics.LogRoll(ContagionDebugVectorKind.Environmental, null, pawn, resolvedProfile.DiseaseDef, Mathf.Clamp01(chance), passed: true);
+                ContagionTrace.SourceAtCell(pawn.PositionHeld, pawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.Environmental);
             }
             else if (seedImmunityCause != null)
             {

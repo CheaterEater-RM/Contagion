@@ -62,7 +62,7 @@ public sealed class Command_ContagionDeveloperSeedDisease : Command_Action
             return;
         }
 
-        if (!ContagionDiseaseUtility.TrySeedIncubation(
+        if (ContagionDiseaseUtility.TrySeedIncubation(
             _pawn,
             resolvedProfile.DiseaseDef,
             resolvedProfile.PartsToAffect,
@@ -70,12 +70,15 @@ public sealed class Command_ContagionDeveloperSeedDisease : Command_Action
             ContagionSeedSource.Developer,
             out HediffDef _))
         {
-            Messages.Message(
-                "Contagion_DeveloperSeedDiseaseFailed".Translate(_pawn.LabelShortCap, resolvedProfile.DiseaseDef.LabelCap),
-                _pawn,
-                MessageTypeDefOf.RejectInput,
-                historical: false);
+            ContagionTrace.SourceAtCell(_pawn.PositionHeld, _pawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.Developer);
+            return;
         }
+
+        Messages.Message(
+            "Contagion_DeveloperSeedDiseaseFailed".Translate(_pawn.LabelShortCap, resolvedProfile.DiseaseDef.LabelCap),
+            _pawn,
+            MessageTypeDefOf.RejectInput,
+            historical: false);
     }
 
     private static bool HasIncubation(Pawn pawn)

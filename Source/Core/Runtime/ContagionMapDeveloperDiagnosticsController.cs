@@ -99,6 +99,23 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
         return targetId;
     }
 
+    public int RecordSourceTrace(
+        IntVec3 sourceCell,
+        Pawn targetPawn,
+        HediffDef diseaseDef,
+        ContagionDebugVectorKind vectorKind)
+    {
+        if (!CaptureActive() || targetPawn == null || diseaseDef == null || !ThingOnMap(targetPawn) || !sourceCell.IsValid)
+        {
+            return -1;
+        }
+
+        int targetId = EnsureNode(targetPawn, diseaseDef);
+        int sourceId = EnsureCellNode(sourceCell, diseaseDef);
+        RecordEdge(sourceId, targetId, vectorKind);
+        return targetId;
+    }
+
     // Finds the live node for this anchor+disease or creates one. Returns the node id, -1 if disabled.
     public int EnsureNode(Thing anchor, HediffDef diseaseDef)
     {

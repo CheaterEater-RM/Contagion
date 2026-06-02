@@ -24,6 +24,26 @@ internal static class ContagionTrace
         Controller(target.MapHeld)?.RecordTransmission(source, target, disease, vector);
     }
 
+    public static void SourceAtCell(IntVec3 sourceCell, Pawn target, HediffDef disease, ContagionDebugVectorKind vector)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        Controller(target.MapHeld)?.RecordSourceTrace(sourceCell, target, disease, vector);
+    }
+
+    public static void SourceAtNearestMapEdge(Pawn target, HediffDef disease, ContagionDebugVectorKind vector)
+    {
+        if (target?.MapHeld == null)
+        {
+            return;
+        }
+
+        SourceAtCell(GetNearestMapEdgeCell(target.MapHeld, target.PositionHeld), target, disease, vector);
+    }
+
     // Ensures a node for a thing (e.g. a corpse, bench, or food stack) and returns its id, -1 if
     // tracing is disabled or the thing isn't on a map.
     public static int EnsureNode(Thing anchor, HediffDef disease)
@@ -114,5 +134,42 @@ internal static class ContagionTrace
 
         return Controller(map)?.GetContaminationSourceNodeId(anchor, disease, fallbackSourceNodeId)
             ?? fallbackSourceNodeId;
+    }
+
+    private static IntVec3 GetNearestMapEdgeCell(Map map, IntVec3 position)
+    {
+        if (map == null || !position.IsValid)
+        {
+            return position;
+        }
+
+        int maxX = map.Size.x - 1;
+        int maxZ = map.Size.z - 1;
+        int x = UnityEngine.Mathf.Clamp(position.x, 0, maxX);
+        int z = UnityEngine.Mathf.Clamp(position.z, 0, maxZ);
+        int west = x;
+        int east = maxX - x;
+        int south = z;
+        int north = maxZ - z;
+        int nearest = UnityEngine.Mathf.Min(UnityEngine.Mathf.Min(west, east), UnityEngine.Mathf.Min(south, north));
+
+        if (nearest == west)
+        {
+            x = 0;
+        }
+        else if (nearest == east)
+        {
+            x = maxX;
+        }
+        else if (nearest == south)
+        {
+            z = 0;
+        }
+        else
+        {
+            z = maxZ;
+        }
+
+        return new IntVec3(x, position.y, z);
     }
 }

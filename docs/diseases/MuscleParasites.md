@@ -151,7 +151,7 @@ None configured.
 | Field | Value | Notes |
 |---|---|---|
 | useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected player pawn in that track, floored, max 50% |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected colony pawn in that track, floored, max 50% |
 | spreadSuppressionScale | **0** | Disabled — foodborne is not herd spread |
 | outbreakNotification | **FirstCase** | Letter fires on first human case (not animal acquisition) |
 

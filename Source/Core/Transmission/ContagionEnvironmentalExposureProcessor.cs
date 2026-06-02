@@ -136,7 +136,7 @@ internal sealed class ContagionEnvironmentalExposureProcessor
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalSeeded);
                 ContagionDiagnostics.Trace($"Environmental transmission: {environmentalProfile.ResolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap}.");
                 // No source thing — anchor the chain origin at the pawn's cell.
-                ContagionTrace.Transmission(null, pawn, environmentalProfile.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Environmental);
+                ContagionTrace.SourceAtCell(pawn.PositionHeld, pawn, environmentalProfile.ResolvedProfile.DiseaseDef, ContagionDebugVectorKind.Environmental);
             }
         }
 

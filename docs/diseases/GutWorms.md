@@ -157,7 +157,7 @@ None configured.
 | Field | Value | Notes |
 |---|---|---|
 | useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected player pawn in that track, floored, max 50% |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected colony pawn in that track, floored, max 50% |
 | spreadSuppressionScale | **0** | Colony-fraction suppression **disabled** — gut worms is foodborne, not person-to-person herd spread |
 | outbreakNotification | **None** | Silent — no letter. Discovery via health tab inspection |
 

@@ -606,7 +606,7 @@ Suppression uses `load = active_cases / scaled_max_cases` for the target track, 
 | Weak | 0.98 | 2.00 | 0.15 | Hard-mode warning, not a hard wall |
 | Let 'er rip | disabled | disabled | 1.00 | No suppression |
 
-Scaled max cases are calculated separately for human and animal tracks: `floor(population × clamp(30% + 1% per pawn + maxActiveCaseChanceOffset, 0%, 50%))`, minimum 1 for a non-empty affected track.
+Scaled max cases are calculated separately for human and animal colony tracks: `floor(population × clamp(30% + 1% per pawn + maxActiveCaseChanceOffset, 0%, 50%))`, minimum 1 for a non-empty affected track.
 
 ### Toggles and advanced tuning
 
@@ -788,7 +788,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | `crossSpeciesTransmissionFactor 0.5` for plague | Plague crosses species fairly readily (flea vector doesn't care about species), but with a 50% barrier. First-pass value; needs tuning. |
 | Penoxycyline via `DiseaseContractChanceFactor` / `Factor_Hediff` | Stays vanilla-compatible; no hardcoded list |
 | Susceptibility/source factors as polymorphic XML lists | New modifiers need no C#; enables the sister-mod soft API |
-| Suppression target-gated to player faction | A fully-infected colony must not throttle unrelated visitors/raiders |
+| Suppression target-gated to colony pawns | A fully-infected colony must not throttle unrelated visitors/raiders or arriving non-colony carriers |
 | Contagious food poisoning cut from v1 | Vanilla food safety already works; changing it adds churn without benefit |
 | Reserved fields shipped in schema | Modders can plan for corpse/carrier/caravan without waiting on the engine |
 | Two seeding modes (storyteller-driven default, Contagion-driven opt-in) | Vanilla cadence preserved as default; opt-in continuous pressure for sim-leaning players; mode toggle keeps the mental model clear per player |

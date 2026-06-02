@@ -167,7 +167,6 @@ public static class ContagionSeedingCoordinator
         });
 
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingQueued);
-        ContagionDiagnostics.Trace($"Queued pending storyteller request: {resolvedProfile.DiseaseDef.defName} until tick {currentTick + Mathf.Max(1, Mathf.RoundToInt(resolvedProfile.Profile.pendingWindowDays * TicksPerDay))}.");
         result = true;
         return true;
     }
@@ -393,7 +392,6 @@ public static class ContagionSeedingCoordinator
         component.AddPendingEvent(pendingEvent);
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingQueued);
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowOpened);
-        ContagionDiagnostics.Trace($"Opened environmental window for {resolvedProfile.DiseaseDef.defName} with budget {pendingEvent.infectionBudget}.");
         return true;
     }
 
@@ -415,6 +413,7 @@ public static class ContagionSeedingCoordinator
             component.NotifySeederFired(resolvedProfile, acausalSeeder);
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingExpiredToAcausal);
             ContagionDiagnostics.Trace($"Acausal resolution ({reason}) seeded {resolvedProfile.DiseaseDef.defName} on {seededPawn.LabelShortCap}.");
+            ContagionTrace.SourceAtNearestMapEdge(seededPawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.OffMap);
         }
 
         return seeded;
@@ -820,6 +819,7 @@ public static class ContagionSeedingCoordinator
                 out bool visibleDisease))
             {
                 seededCount++;
+                ContagionTrace.SourceAtNearestMapEdge(selectedCandidate.Pawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.OffMap);
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.ArrivalCarrierSeeded);
                 ContagionDiagnostics.Record(visibleDisease
                     ? ContagionDiagnosticCounter.ArrivalCarrierMildVisible
@@ -1071,6 +1071,7 @@ public static class ContagionSeedingCoordinator
         component.RemovePendingEvent(pendingEvent);
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingResolvedAnimal);
         ContagionDiagnostics.Trace($"Animal-linked pending request resolved {resolvedProfile.DiseaseDef.defName} onto {seededPawn.LabelShortCap}.");
+        ContagionTrace.SourceAtCell(seededPawn.PositionHeld, seededPawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.Environmental);
         return true;
     }
 
@@ -1108,6 +1109,7 @@ public static class ContagionSeedingCoordinator
 
             seededCount++;
             ContagionDiagnostics.Trace($"Environmental acausal fallback seeded {resolvedProfile.DiseaseDef.defName} on {seededPawn.LabelShortCap}.");
+            ContagionTrace.SourceAtNearestMapEdge(seededPawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.OffMap);
         }
 
         component.RemovePendingEvent(pendingEvent);
@@ -1147,6 +1149,7 @@ public static class ContagionSeedingCoordinator
         {
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingExpiredToAcausal);
             ContagionDiagnostics.Trace($"Acausal fallback ({reason}) seeded {resolvedProfile.DiseaseDef.defName} on {seededPawn.LabelShortCap}.");
+            ContagionTrace.SourceAtNearestMapEdge(seededPawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.OffMap);
         }
 
         return seeded;
@@ -1243,6 +1246,14 @@ public static class ContagionSeedingCoordinator
         component.DiseaseDirector.NotifySeeded(resolvedProfile.Profile, 1);
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.ContinuousSeederSeeded);
         ContagionDiagnostics.Trace($"{seeder.GetType().Name} seeded {resolvedProfile.DiseaseDef.defName} on {seededPawn.LabelShortCap}.");
+        if (seeder is Seeder_Acausal)
+        {
+            ContagionTrace.SourceAtNearestMapEdge(seededPawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.OffMap);
+        }
+        else
+        {
+            ContagionTrace.SourceAtCell(seededPawn.PositionHeld, seededPawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.Environmental);
+        }
     }
 
     private static float GetAnimalLinkedWeight(Pawn pawn, Seeder_AnimalLinked seeder)
