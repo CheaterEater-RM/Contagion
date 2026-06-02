@@ -87,7 +87,7 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
                     continue;
                 }
 
-                float sourceSpeciesFactor = GetFomiteSourceSpeciesFactor(entry.SourceDef, pawn, resolvedProfile.Profile);
+                float sourceSpeciesFactor = ContagionTransmissionUtility.GetSourceSpeciesFactor(entry.SourceDef, pawn, resolvedProfile, map);
                 if (sourceSpeciesFactor <= 0f)
                 {
                     continue;
@@ -144,28 +144,6 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
     {
         float elapsedHours = Mathf.Max(0f, (Find.TickManager.TicksGame - contaminationTick) / (float)TicksPerHour);
         return Mathf.Exp(-Mathf.Max(0f, potencyDecayPerHour) * elapsedHours);
-    }
-
-    private static float GetFomiteSourceSpeciesFactor(ThingDef sourcePawnDef, Pawn target, TransmissionProfile profile)
-    {
-        RaceProperties sourceRace = sourcePawnDef?.race;
-        RaceProperties targetRace = target?.RaceProps;
-        if (sourceRace == null || targetRace == null || profile == null)
-        {
-            return 1f;
-        }
-
-        if ((sourceRace.Humanlike && targetRace.Animal) || (sourceRace.Animal && targetRace.Humanlike))
-        {
-            return Mathf.Max(0f, profile.crossSpeciesTransmissionFactor);
-        }
-
-        if (sourceRace.Animal && targetRace.Animal && sourcePawnDef != target.def)
-        {
-            return Mathf.Max(0f, profile.animalCrossSpeciesFactor);
-        }
-
-        return 1f;
     }
 
 }

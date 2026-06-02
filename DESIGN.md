@@ -209,6 +209,7 @@ The entire modder-facing contract, attached to any `HediffDef` to make it contag
 | `affectsHumans` | bool | true | Species scope |
 | `affectsAnimals` | bool | false | Species scope |
 | `crossSpeciesTransmissionFactor` | float | 0.0 | Multiplier when transmission crosses the human/animal boundary |
+| `animalCrossSpeciesFactorCurve` | SimpleCurve | null (= no barrier) | Multiplier for animal-to-animal different-race transmission into a new colony animal race, keyed by the number of player-colony animal races already infected on the map |
 | `vectors` | List\<TransmissionVector\> | required | Spread mechanisms |
 | `seeders` | List\<TransmissionSeeder\> | required | Outbreak-initiation mechanisms |
 | `useScaledActiveCaseCap` | bool | true | Enables population-scaled active+incubating caps for seeding and suppression load |
@@ -505,7 +506,7 @@ Vanilla disease profiles are patched onto their `HediffDef` in `1.6/Patches/Cont
 | Disease | Vectors | Seeders | Incubation | Immunity | Species | Notes |
 |---|---|---|---|---|---|---|
 | Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival, Acausal | 1.5 d | none* | Human | Seasonal (winter-peaking); acausal is Mode 1 fallback only; scaled active-case cap offset 0 |
-| Animal_Flu | Airborne, Fomite | Storyteller, Arrival, Acausal | 1.5 d | none* | Animal | Species-isolated; acausal is Mode 1 fallback only; safe to butcher (no `corpseContagious`) |
+| Animal_Flu | Airborne, Fomite | Storyteller, Arrival, Acausal | 1.5 d | none* | Animal | Human-isolated; animal cross-species jumps use `animalCrossSpeciesFactorCurve` (first colony race free from outside carriers, later colony races suppressed); acausal is Mode 1 fallback only; safe to butcher (no `corpseContagious`) |
 | Plague | Proximity (cleanliness) | Storyteller, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; incoming humans and animals can carry it; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; separate scaled human/animal caps, offset 0 |
 | GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 0` |
 | MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 0` |

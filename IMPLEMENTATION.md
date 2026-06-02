@@ -189,7 +189,7 @@ Implication for Contagion:
 
 | Disease | Vanilla source | Natural immunity | Vomit behavior | Implementation note |
 |---|---|---|---|---|
-| Flu | `Disease_Flu` storyteller incident, `Animal_Flu` for animals | Yes | Major at 0.666, extreme at 0.833 | Human and animal use separate hediff defs; good fit for species-isolated airborne spread |
+| Flu | `Disease_Flu` storyteller incident, `Animal_Flu` for animals | Yes | Major at 0.666, extreme at 0.833 | Human and animal use separate hediff defs; animal flu uses suppressed inter-animal race jumps |
 | Plague | `Disease_Plague` storyteller incident, `Animal_Plague` for animals | Yes | None | Vanilla penoxycyline blocks it; good fit for proximity or cleanliness-driven spread |
 | Malaria | `Disease_Malaria` storyteller incident | Yes | Major at 0.78, extreme at 0.91 | Biome-weighted, penoxy-protected, best treated as environmental rather than person-to-person |
 | Sleeping sickness | `Disease_SleepingSickness` storyteller incident | Yes | Major at 0.625, extreme at 0.875 and 0.9375 | Tropical-weighted and penoxy-protected; also environmental-first |

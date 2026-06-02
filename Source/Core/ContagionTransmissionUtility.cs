@@ -71,6 +71,12 @@ public static class ContagionTransmissionUtility
             return 0f;
         }
 
+        float animalSpeciesFactor = GetAnimalCrossSpeciesFactor(source?.Map ?? target.Map, source?.def, target, resolvedProfile);
+        if (animalSpeciesFactor <= 0f)
+        {
+            return 0f;
+        }
+
         if (target.health?.hediffSet == null || target.health.immunity == null)
         {
             return 0f;
@@ -91,6 +97,7 @@ public static class ContagionTransmissionUtility
         }
 
         return speciesFactor
+            * animalSpeciesFactor
             * vanillaFactor
             * GetSusceptibilityFactorProduct(target, resolvedProfile.Profile);
     }
@@ -120,6 +127,11 @@ public static class ContagionTransmissionUtility
             return speciesFactor <= 0f
                 ? "species barrier"
                 : "profile cannot affect target";
+        }
+
+        if (GetAnimalCrossSpeciesFactor(source?.Map ?? target.Map, source?.def, target, resolvedProfile) <= 0f)
+        {
+            return "species barrier";
         }
 
         if (target.health?.hediffSet == null || target.health.immunity == null)
@@ -267,6 +279,49 @@ public static class ContagionTransmissionUtility
         }
 
         return ContagionCaseTrack.None;
+    }
+
+    public static float GetSourceSpeciesFactor(ThingDef sourcePawnDef, Pawn target, ResolvedTransmissionProfile resolvedProfile, Map map)
+    {
+        RaceProperties sourceRace = sourcePawnDef?.race;
+        RaceProperties targetRace = target?.RaceProps;
+        TransmissionProfile profile = resolvedProfile?.Profile;
+        if (sourceRace == null || targetRace == null || profile == null)
+        {
+            return 1f;
+        }
+
+        if ((sourceRace.Humanlike && targetRace.Animal) || (sourceRace.Animal && targetRace.Humanlike))
+        {
+            return Mathf.Max(0f, profile.crossSpeciesTransmissionFactor);
+        }
+
+        return GetAnimalCrossSpeciesFactor(map, sourcePawnDef, target, resolvedProfile);
+    }
+
+    private static float GetAnimalCrossSpeciesFactor(
+        Map map,
+        ThingDef sourcePawnDef,
+        Pawn target,
+        ResolvedTransmissionProfile resolvedProfile)
+    {
+        TransmissionProfile profile = resolvedProfile?.Profile;
+        if (sourcePawnDef?.race?.Animal != true
+            || target?.RaceProps?.Animal != true
+            || sourcePawnDef == target.def
+            || !IsColonyCasePawn(target)
+            || profile?.animalCrossSpeciesFactorCurve == null)
+        {
+            return 1f;
+        }
+
+        HashSet<ThingDef> infectedColonyAnimalSpecies = GetInfectedColonyAnimalSpecies(map, resolvedProfile);
+        if (infectedColonyAnimalSpecies.Contains(target.def))
+        {
+            return 1f;
+        }
+
+        return Mathf.Max(0f, profile.animalCrossSpeciesFactorCurve.Evaluate(infectedColonyAnimalSpecies.Count));
     }
 
     public static bool IsAtActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile, Pawn targetPawn)
@@ -468,6 +523,9 @@ public static class ContagionTransmissionUtility
     private static readonly Dictionary<(int map, HediffDef disease, ContagionCaseTrack track), int> _affectablePopulationCache =
         new Dictionary<(int, HediffDef, ContagionCaseTrack), int>();
 
+    private static readonly Dictionary<(int map, HediffDef disease), HashSet<ThingDef>> _infectedColonyAnimalSpeciesCache =
+        new Dictionary<(int, HediffDef), HashSet<ThingDef>>();
+
     private static void EnsureCountCacheFresh()
     {
         int tick = Find.TickManager.TicksGame;
@@ -479,6 +537,7 @@ public static class ContagionTransmissionUtility
         _countCacheTick = tick;
         _activeCaseCountCache.Clear();
         _affectablePopulationCache.Clear();
+        _infectedColonyAnimalSpeciesCache.Clear();
     }
 
     // Invalidates the active-case count cache when a new case (incubation or active disease) is
@@ -487,6 +546,53 @@ public static class ContagionTransmissionUtility
     public static void NotifyCaseAdded()
     {
         _activeCaseCountCache.Clear();
+        _infectedColonyAnimalSpeciesCache.Clear();
+    }
+
+    private static HashSet<ThingDef> GetInfectedColonyAnimalSpecies(Map map, ResolvedTransmissionProfile resolvedProfile)
+    {
+        if (map == null || resolvedProfile?.DiseaseDef == null)
+        {
+            return new HashSet<ThingDef>();
+        }
+
+        EnsureCountCacheFresh();
+        (int, HediffDef) key = (map.uniqueID, resolvedProfile.DiseaseDef);
+        if (!_infectedColonyAnimalSpeciesCache.TryGetValue(key, out HashSet<ThingDef> infectedSpecies))
+        {
+            infectedSpecies = CountInfectedColonyAnimalSpeciesUncached(map, resolvedProfile);
+            _infectedColonyAnimalSpeciesCache[key] = infectedSpecies;
+        }
+
+        return infectedSpecies;
+    }
+
+    private static HashSet<ThingDef> CountInfectedColonyAnimalSpeciesUncached(Map map, ResolvedTransmissionProfile resolvedProfile)
+    {
+        HashSet<ThingDef> infectedSpecies = new HashSet<ThingDef>();
+        IReadOnlyList<Pawn> pawns = map?.mapPawns?.AllPawnsSpawned;
+        if (pawns == null || resolvedProfile?.DiseaseDef == null)
+        {
+            return infectedSpecies;
+        }
+
+        for (int i = 0; i < pawns.Count; i++)
+        {
+            Pawn pawn = pawns[i];
+            if (pawn?.health?.hediffSet == null || pawn.def == null || !IsColonyCasePawn(pawn) || pawn.RaceProps?.Animal != true)
+            {
+                continue;
+            }
+
+            HediffDef pawnDef = resolvedProfile.ResolveHediffForPawn(pawn);
+            if (pawn.health.hediffSet.HasHediff(pawnDef)
+                || ContagionDiseaseUtility.FindIncubation(pawn, pawnDef) != null)
+            {
+                infectedSpecies.Add(pawn.def);
+            }
+        }
+
+        return infectedSpecies;
     }
 
     private static int CountAffectablePlayerPawns(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)

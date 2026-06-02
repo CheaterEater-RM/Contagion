@@ -1,6 +1,6 @@
 # Animal Flu — Contagion Profile
 
-Respiratory flu strain adapted to non-human animals. Mirrors human Flu in mechanics but is completely species-isolated — no crossover in either direction. Safe to butcher infected animals.
+Respiratory flu strain adapted to non-human animals. Mirrors human Flu in mechanics, cannot infect humans, and uses colony species-count suppression for jumps between animal races. Safe to butcher infected animals.
 
 ---
 
@@ -72,7 +72,7 @@ Vomit contamination from sick animals spreads the disease if other animals step 
 | potencyDecayPerHour | 0.1 |
 | activeInfectivityCurveOverride | none; uses the profile active infectivity curve |
 
-The vomit stores its fomite-specific potency when it is created, then decays over time. Mixed-animal-species fomite exposure uses the same `animalCrossSpeciesFactor` barrier as airborne spread.
+The vomit stores its fomite-specific potency when it is created, then decays over time. Mixed-animal-species fomite exposure uses the same species-count suppression curve as airborne spread.
 
 ---
 
@@ -126,9 +126,17 @@ None configured.
 
 `affectsHumans false`, `affectsAnimals true`. Animal flu cannot infect humans under any circumstances, and human flu cannot infect animals. Butchering a flu-infected animal produces clean meat (`corpseContagious false`).
 
-### Inter-animal cross-species barrier
+### Inter-animal cross-species suppression
 
-`animalCrossSpeciesFactor 0.10`. Transmission between animals of **different races** (e.g. chicken → pig, duck → cow) runs at 10% of same-species efficiency. A sick flock is very unlikely to spontaneously infect other animal types sharing the same barn, though rare cross-species jumps remain possible — consistent with how avian influenza occasionally spills into mammals. Same-race transmission (chicken → chicken) is unaffected.
+`animalCrossSpeciesFactorCurve` scales transmission into a new colony animal race when the source and target are animals of **different races** (e.g. chicken -> pig, duck -> cow). The curve is keyed by the number of player-colony animal races already carrying Animal Flu on the map; visiting, caravan, wild, or other non-colony carriers do not count.
+
+| Infected colony animal races | New-race cross-species factor |
+|---|---:|
+| 0 | 1.00 |
+| 1 | 0.25 |
+| 2+ | 0.05 |
+
+This makes the first spillover into a colony's animal population free if the disease arrives on an animal race the colony does not keep. Once one colony animal race is involved, jumps into another colony animal race are strongly suppressed, and broader multi-species spread becomes rare. Same-race transmission (chicken -> chicken) and transmission into a colony animal race that is already involved are unaffected.
 
 ---
 
@@ -146,4 +154,4 @@ None configured.
 - No seasonal variation is currently configured. A mild winter peak or a flat year-round profile may both be defensible (animal flu outbreaks in real farming are year-round), but it is worth making a deliberate choice.
 - The fomite vector intentionally does not use the human flu high-severity override. Animal flu progresses and tends differently, and animals sharing dirty barns should remain a plausible fomite risk.
 - Scaled caps replace the old flat herd cap. A 10-animal herd has an animal-flu cap of 4 active+incubating cases, and a 20-animal herd caps at 10.
-- `animalCrossSpeciesFactor 0.10` is a first-pass value. If mixed-species herds are still seeing consistent spillover in testing, lower it toward 0.02–0.04. If cross-species transmission feels too theoretical, leave it as-is.
+- `animalCrossSpeciesFactorCurve` is a first-pass tuning pass. If Animal Flu still spreads too widely through mixed herds, lower the 1-race and 2-race factors; if it fails to establish from absent-species carriers, keep the 0-race factor at 1.0.

@@ -48,10 +48,10 @@ public sealed class TransmissionProfile : DefModExtension
 
     public float crossSpeciesTransmissionFactor;
 
-    // Applied when both source and target are animals but of different races (e.g. chicken → pig).
-    // Default 1.0 = no barrier between animal species. Set below 1.0 to model diseases that spread
-    // freely within a species but poorly across species boundaries (avian flu analogy).
-    public float animalCrossSpeciesFactor = 1f;
+    // Applied when both source and target are animals but of different races (e.g. chicken -> pig).
+    // The x-axis is the number of player-colony animal races already carrying this disease on the
+    // map. Null = no inter-animal species barrier.
+    public SimpleCurve animalCrossSpeciesFactorCurve;
 
     public List<TransmissionVector> vectors;
 
@@ -165,15 +165,6 @@ public sealed class TransmissionProfile : DefModExtension
             return speciesFactor > 0f;
         }
 
-        // Inter-animal species barrier: a different factor applies when both source and target are
-        // animals but of different races. Models diseases like avian flu that spread freely within
-        // a species but only rarely jump to other animal species.
-        if (source != null && animalCrossSpeciesFactor < 1f && BothAnimalsButDifferentSpecies(source, target))
-        {
-            speciesFactor = animalCrossSpeciesFactor;
-            return animalCrossSpeciesFactor > 0f;
-        }
-
         return true;
     }
 
@@ -183,10 +174,6 @@ public sealed class TransmissionProfile : DefModExtension
             || (first.RaceProps.Animal && second.RaceProps.Humanlike);
     }
 
-    private static bool BothAnimalsButDifferentSpecies(Pawn first, Pawn second)
-    {
-        return first.RaceProps.Animal && second.RaceProps.Animal && first.def != second.def;
-    }
 }
 
 public sealed class SeasonalInfectivity
