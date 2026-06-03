@@ -320,7 +320,7 @@ internal sealed class ContagionPawnTransmissionProcessor
         bool hasLineOfSight = GenSight.LineOfSight(source.Pawn.Position, targetPawn.Position, _map);
         float enclosureFactor = sourceRoofed && targetRoofed ? 1f : vector.outdoorFactor;
         float obstructionFactor = hasLineOfSight ? 1f : vector.obstructedFactor;
-        float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
+        float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
         float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, source.ResolvedProfile, targetPawn);
         if (!ContagionDeveloperDiagnosticsUtility.TryBuildAirborneBreakdown(
             source.Pawn,
@@ -361,7 +361,7 @@ internal sealed class ContagionPawnTransmissionProcessor
         }
 
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneAttempted);
-        float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
+        float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
         float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, source.ResolvedProfile, targetPawn);
         if (!ContagionDeveloperDiagnosticsUtility.TryBuildAirborneRoomBreakdown(
             source.Pawn,
@@ -404,7 +404,7 @@ internal sealed class ContagionPawnTransmissionProcessor
             : 1f;
         float cleanlinessFactor = ContagionTransmissionUtility.GetLocalCleanlinessFactor(
             targetPawn.Position, targetRoom, _map, vector.cleanlinessImpact, vector.outdoorFilthRadius);
-        float maskFactor = ContagionMaskUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
+        float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
         float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, source.ResolvedProfile, targetPawn);
         if (!ContagionDeveloperDiagnosticsUtility.TryBuildProximityBreakdown(
             source.Pawn,

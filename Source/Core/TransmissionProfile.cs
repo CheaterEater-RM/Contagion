@@ -198,15 +198,16 @@ public abstract class TransmissionVector
     public SimpleCurve incubationInfectivityCurveOverride;
 }
 
-// Vectors that spread through the air / respiration, where face masks can reduce transmission.
-// Effectiveness values are how much of a worn mask's apparel ToxicEnvironmentResistance (0-1)
-// is applied. The final per-side factor is (1 - apparelResistance * effectiveness).
+// Vectors that spread through the air / respiration. Airway protection is two-sided and
+// sealed-vs-filtering (see ContagionApparelProtectionUtility): an enclosed helmet (or capstone)
+// seals the airway -> immune; masks and lung implants only filter, capped by the effectiveness
+// fields below. The per-side filtering factor is (1 - airwayFilterSeal * effectiveness).
 public abstract class RespiratoryVector : TransmissionVector
 {
-    // How much a mask on the susceptible target blocks inhaling the pathogen.
+    // How much a filtering mask on the susceptible target blocks inhaling the pathogen.
     public float maskTargetEffectiveness = 0.7f;
 
-    // How much a mask on the infectious source blocks emitting the pathogen.
+    // How much a filtering mask on the infectious source blocks emitting the pathogen.
     public float maskSourceEffectiveness = 0.5f;
 
     // How airway-dependent this vector is, gating gene-based airway immunity (e.g. breathless).
@@ -260,6 +261,10 @@ public sealed class Vector_Environmental : TransmissionVector
 {
     public float baseChancePerCheck = 0.02f;
 
+    // Worn-apparel protection (target side, humanlike only). Sealed suits / boots reduce ambient
+    // exposure from contaminated water/soil. Null = no clothing protection for this vector.
+    public ContactProtectionProfile apparelProtection;
+
     // Human pawns can have a lower ambient/environmental exposure rate than animals to
     // reflect hygiene and less direct contact with contaminated water, soil, and feces.
     public float humanExposureFactor = 1f;
@@ -284,6 +289,10 @@ public sealed class Vector_Fomite : TransmissionVector
     public float baseChancePerContact = 0.03f;
 
     public float potencyDecayPerHour = 0.1f;
+
+    // Worn-apparel protection (target side). A glove is a real touch barrier; a sealed helmet blocks
+    // touching your face. Null = no clothing protection for this vector.
+    public ContactProtectionProfile apparelProtection;
 }
 
 public sealed class Vector_Foodborne : TransmissionVector
@@ -291,6 +300,11 @@ public sealed class Vector_Foodborne : TransmissionVector
     public float baseChancePerMeal = 0.08f;
 
     public float cleanlinessImpact = 1f;
+
+    // Cook -> food ("Typhoid Mary"): source-side protection that cuts how much contamination an
+    // infected cook bakes into the meals they produce. PPE on the cook (mask + gloves) is the upstream
+    // control on Foodborne risk. The eater takes no gear protection by design. Null = no reduction.
+    public ContactProtectionProfile cookSourceProtection;
 
     // Contamination baked into Comp_ContaminatedFood at production time expires after this many
     // days, preventing very old preserved food from triggering new outbreaks.
@@ -335,6 +349,10 @@ public sealed class Vector_FecalOralLiving : TransmissionVector
 {
     public float baseChancePerCheck = 0.0012f;
 
+    // Worn-apparel protection (target side, fomite-style / feet-leaning). Currently inert: this pass
+    // only targets animals, which wear nothing; the hook activates if humanlike targets are ever added.
+    public ContactProtectionProfile apparelProtection;
+
     public float filthContaminationChance = 1f;
 
     public int maxFilthPerDisease = 48;
@@ -353,10 +371,18 @@ public sealed class Vector_CookingExposure : TransmissionVector
     public float lowSkillFactor = 2f;
 
     public float highSkillFactor = 0.5f;
+
+    // Worn-apparel protection (target side, the cook). Food-handling PPE (gloves/apron/mask) protects
+    // the handler from contracting disease off contaminated ingredients. Null = no clothing protection.
+    public ContactProtectionProfile apparelProtection;
 }
 
 public sealed class Vector_CorpseFlea : TransmissionVector
 {
+    // Worn-apparel protection (target side). Clothing barely stops a flea (low unsealedEffectiveness);
+    // a sealed suit does the work. Null = no clothing protection for this vector.
+    public ContactProtectionProfile apparelProtection;
+
     public float baseChancePerCheck = 0.006f;
 
     public float carriedBaseChancePerCheck = 0.025f;
@@ -378,6 +404,10 @@ public sealed class Vector_CorpseFlea : TransmissionVector
 
 public sealed class Vector_CorpseFluid : TransmissionVector
 {
+    // Worn-apparel protection (target side). Fabric catches a splash; bare hands are a real route, so
+    // gloves matter most. Null = no clothing protection for this vector.
+    public ContactProtectionProfile apparelProtection;
+
     public float pickupChance = 0.015f;
 
     public float putdownChance = 0.015f;

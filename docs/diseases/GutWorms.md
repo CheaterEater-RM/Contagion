@@ -70,7 +70,7 @@ The main way colonists get gut worms is eating contaminated food — either cook
 | contaminationExpiryDays | 30 | Old preserved food becomes safe after 30 days |
 
 **Contamination sources:**
-- *Infected cook:* an active gut worms patient cooking a meal stamps contamination proportional to infectivity × kitchen cleanliness.
+- *Infected cook (Typhoid Mary):* an active gut worms patient cooking a meal stamps contamination proportional to infectivity × kitchen cleanliness, then reduced by the cook's PPE via the foodborne vector's `cookSourceProtection` (airway/hands 50/50, `unsealedEffectiveness` 0.60). A masked-and-gloved cook contaminates little; a sealed-suit cook contaminates ~nothing. The eater takes **no** gear protection — control this upstream (quarantine sick cooks, PPE them, or rely on recipe/skill). See `docs/Apparel_Protection_Design.md` §5.
 - *Infected meat:* `Patch_Corpse_ButcherProducts` stamps raw meat from a `corpseContagious` animal (see below).
 - *Ingredient propagation:* cooking contaminated raw ingredients propagates contamination to the meal, reduced by recipe factor and Cooking skill. Ordinary simple/fine/lavish meals share a 0.20 recipe factor; higher-tier meals are safer because they require better cooks. Cooking skill applies an asymptotic exponential multiplier: `0.25 + (1.5 - 0.25) * exp(-0.18 * Cooking)`.
 
@@ -209,6 +209,7 @@ This mechanic is especially important for gut worms: undetected infected animals
 - **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
 - **Butcher skill** — the notice roll in `Patch_Corpse_ButcherProducts` uses Medical as primary and Cooking at 0.60× weight; Animals adds at 0.25× for animal corpses. A skilled butcher-medic or a dedicated cook-handler significantly reduces meat-chain risk.
 - **Kitchen hygiene** — infected cooks in dirty kitchens produce more contaminated food. Restricting sick pawns from cooking is the strongest single lever against the food-chain spread.
+- **Cook PPE (Typhoid Mary)** — if a sick cook must keep working, food-handling gear cuts both ends: their `cookSourceProtection` reduces contamination baked into meals, and their `Vector_CookingExposure` `apparelProtection` (hands/airway-weighted) reduces the cook contracting it off raw ingredients. A sealed-suit cook is effectively a non-vector.
 - **Cooking** — ordinary cooked meals use a shared 0.20 recipe factor before Cooking skill. Survival meals (0.05×) are safer because they are cooked and sealed; pemmican (0.70×) remains risky with contaminated meat.
 - **Immunity** — 15-day post-recovery immunity prevents immediate re-infection from the same source.
 

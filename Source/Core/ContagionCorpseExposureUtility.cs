@@ -130,11 +130,14 @@ public static class ContagionCorpseExposureUtility
             return false;
         }
 
+        // Worn apparel (sealed suit) reduces fleas reaching the skin; clothing alone barely helps.
+        float protectionFactor = ContagionApparelProtectionUtility.GetContactProtectionFactor(target, vector.apparelProtection);
+
         return TryApplyCorpseExposure(
             target,
             corpse,
             resolvedProfile,
-            Mathf.Max(0f, baseChance) * fleaPotency * Mathf.Max(0f, contextFactor),
+            Mathf.Max(0f, baseChance) * fleaPotency * Mathf.Max(0f, contextFactor) * protectionFactor,
             ContagionDiagnosticCounter.CorpseFleaAttempted,
             ContagionDiagnosticCounter.CorpseFleaSeeded,
             ContagionDebugVectorKind.CorpseFlea,
@@ -167,11 +170,14 @@ public static class ContagionCorpseExposureUtility
             return false;
         }
 
+        // Worn apparel (gloves / sealed suit) reduces skin/hand contact with corpse fluids.
+        float protectionFactor = ContagionApparelProtectionUtility.GetContactProtectionFactor(target, vector.apparelProtection);
+
         return TryApplyCorpseExposure(
             target,
             corpse,
             resolvedProfile,
-            baseChance * potency * Mathf.Max(0f, contextFactor),
+            baseChance * potency * Mathf.Max(0f, contextFactor) * protectionFactor,
             ContagionDiagnosticCounter.CorpseFluidAttempted,
             ContagionDiagnosticCounter.CorpseFluidSeeded,
             ContagionDebugVectorKind.CorpseFluid,

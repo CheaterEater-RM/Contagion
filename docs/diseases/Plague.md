@@ -78,6 +78,7 @@ This vector starts low at death, ramps over the first hours as fleas abandon the
 | distanceFalloffRate | 0.25 | Applied to reachable path distance, not straight-line distance |
 | frozenTemperature | 0 C | At or below this, flea viability is destroyed |
 | frozenViabilityLossPerDay | 4.0 | About 6 in-game hours to kill a full flea load |
+| apparelProtection | skin 0.85, hands/feet/airway 0.05 each; unsealedEffectiveness 0.20 | Target-side. Clothing barely stops a flea (low floor 0.20) — a sealed suit does the work, riding the seal term. A fresh vacsuit/full sealed set is immune (capstone); a ratty incidental suit drops to strong-partial. See `docs/Apparel_Protection_Design.md`. |
 
 | Corpse age (days) | Flea potency |
 |---|---|
@@ -98,6 +99,7 @@ Corpse-fluid risk is event/handling based. Pickup and putdown are the main dange
 | putdownChance | 0.015 | Applied when a pawn drops/places the corpse |
 | carriedChancePerCheck | 0.003 | Small per-pass risk while carrying |
 | butcherChance | 1.000 | Very high fluid exposure while cutting the corpse open |
+| apparelProtection | hands 0.45, skin 0.45, airway 0.10; unsealedEffectiveness 0.40 | Target-side. Fabric catches a splash (floor 0.40); bare hands are a real route, so gloves matter most. A sealed suit (with assumed gauntlets) cuts fluid exposure sharply; a full sealed set is immune. See `docs/Apparel_Protection_Design.md`. |
 
 | Corpse age (days) | Fluid potency |
 |---|---|
@@ -263,7 +265,8 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - **Penoxycyline** — reduces contract chance via vanilla `DiseaseContractChanceFactor`.
 - **Vets** — diagnosed animals go into active disease at low severity (0.1) and can be treated early. A skilled vet with the 48 h window can save most animals.
 - **Job filter** — disabling `AllowInfectedCorpses` on the butcher bill (default) prevents infected corpses from entering the meat chain entirely.
-- **No mask benefit for airway** — unlike flu, masks do not provide airway immunity against plague. Physical barrier (gas mask reducing skin contact) helps slightly (`maskTargetEffectiveness 0.4`) but breathless gene does nothing.
+- **Sealed suits for corpse handling** — the strongest counterplay against the corpse-flea/fluid and butchery vectors. Their `apparelProtection` rides the *seal*, not coverage: ordinary clothing barely helps against fleas (floor 0.20), but a sealed suit (vacsuit/power armor, with assumed gauntlets) cuts exposure sharply and a full sealed loadout is immune (capstone). Combat armor degrades — keep it out of the ratty zone; the vacsuit's seal is durable. See `docs/Apparel_Protection_Design.md`.
+- **No airway immunity** — unlike flu, plague's proximity vector is flea contact, not airway, so a sealed helmet does **not** make a pawn immune to it and breathless does nothing. A mask/helmet still acts as a weak physical barrier (`maskTargetEffectiveness 0.4`), reducing but never eliminating flea-proximity transfer.
 
 ---
 

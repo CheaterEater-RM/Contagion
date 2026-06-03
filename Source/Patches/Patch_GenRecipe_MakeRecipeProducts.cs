@@ -172,7 +172,9 @@ internal static class Patch_GenRecipe_MakeRecipeProducts
         }
 
         float skillFactor = ContagionCorpseExposureUtility.GetCookingExposureFactor(cook, worstVector);
-        float baseChance = worstVector.baseChancePerRecipe * worstFactor * skillFactor;
+        // Food-handling PPE on the cook (gloves / apron / mask) reduces contracting disease off ingredients.
+        float protectionFactor = ContagionApparelProtectionUtility.GetContactProtectionFactor(cook, worstVector.apparelProtection);
+        float baseChance = worstVector.baseChancePerRecipe * worstFactor * skillFactor * protectionFactor;
         if (baseChance <= 0f)
         {
             return;

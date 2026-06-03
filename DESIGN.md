@@ -320,10 +320,15 @@ effectiveChance = vectorBaseChance
                 × susceptibilityProduct(target)        ← target factor list
                 × vanillaContractFactor(target)        ← DiseaseContractChanceFactor
                 × vectorContextModifiers(...)          ← distance, LOS, roofing, cleanliness, etc.
-                × respiratoryMaskFactor(source,target) ← respiratory vectors only
+                × respiratoryMaskFactor(source,target) ← respiratory vectors only (sealed helmet/capstone = immune; masks filter)
+                × contactProtectionFactor(target)      ← contact/surface/cooking vectors only (worn apparel seal + coverage)
                 × spreadSuppression(disease,target)    ← colonist targets, contagious vectors only
                 × globalSettingsMultiplier             ← transmission-rate slider × difficulty scale
 ```
+
+Cook → food contamination (Typhoid Mary) is not a per-candidate term: an infected cook's PPE multiplies the
+contamination potency baked into the meal at production time (`1 − cookSourceProtection`), upstream of the
+eater's Foodborne roll. See `docs/Apparel_Protection_Design.md` §5.
 
 Each term is independently tunable via XML. The engine multiplies them; a 0 in any term blocks transmission.
 
@@ -347,19 +352,17 @@ suppression = (1 - infectedColonyFraction) ^ effectiveStrength
 
 ---
 
-## Respiratory Protection (Masks, Lungs, Genes)
+## Apparel Protection (Channels, Seal, Capstone, Durability)
 
-Airborne, social, and short-range physical/contact vectors (`Vector_Airborne`, `Vector_Social`, `Vector_Proximity`) share a `RespiratoryVector` base for historical/schema reasons. The shared base reduces transmission based on protection the source and target are actually wearing or carrying, keyed on the vanilla `ToxicEnvironmentResistance` stat so existing gear (gas masks etc.) is immediately relevant. Per side:
+Full specification: **`docs/Apparel_Protection_Design.md`**. Summary:
 
-```
-sideFactor = (1 - airwayBarrierResistance × maskEffectiveness)   ← physical barrier (apparel + body parts)
-           × (1 - geneAirwayImmunity      × airwayImmunityFactor) ← whitelisted gene immunity
-```
+Worn gear protects across four **channels** — `airway`, `skin`, `hands`, `feet` — each with an automatic **coverage** (from `bodyPartGroups`/`coverageAbs`) and a **seal** (0 = porous fabric, 1 = hermetic). Seal resolves per item by: authored `ApparelContagionProtection` modExtension → Contagion compat patch → stat + **tech-level** fallback (spacer takes `VacuumResistance`/`ToxEnv`/`immuneToToxGas` at face value; industrial seals only with an explicit signal; medieval-and-below never seals). Implemented in `ContagionApparelProtectionUtility`; pure math in `ContagionRiskMath`.
 
-- **`airwayBarrierResistance`** = `ToxicEnvironmentResistance` summed from **worn apparel** (`equippedStatOffsets`) plus **air-filtering body parts / implants** (detoxifier lung, fleshmass lung), clamped 0–1. Counts at full effect, applied to both the susceptible target (less inhaled) and the infectious source (less shed). **Genes are deliberately excluded here** — most genetic toxic tolerance is metabolic, not an airway barrier. Transient drug/disease hediffs that happen to offset the stat are also excluded.
-- **`geneAirwayImmunity`** = highest protection among the pawn's active genes that are explicitly whitelisted.
-
-Vector fields: `maskTargetEffectiveness` (default 0.7, inhalation side), `maskSourceEffectiveness` (default 0.5, emission side), `airwayImmunityFactor` (default 1.0; set 0 for contact/flea vectors like plague proximity so breathless doesn't wrongly confer plague immunity). The whole layer can be disabled by the player via the "masks reduce spread" setting.
+- **Respiratory** (`Vector_Airborne`/`Social`/`Proximity`, the `RespiratoryVector` base) is two-sided and **sealed-vs-filtering**: an enclosed combat/space helmet (or the sealed-system capstone) seals the airway → immune; masks and lung implants only **filter**, via `ToxicEnvironmentResistance` capped by `maskTargetEffectiveness` (0.7) / `maskSourceEffectiveness` (0.5). Whitelisted gene airway immunity (`RespiratoryImmunityDef`, e.g. breathless) layers on top, scaled by `airwayImmunityFactor`.
+- **Contact / surface / cooking** (`Vector_Fomite`, `CorpseFlea`, `CorpseFluid`, `Environmental`, `FecalOralLiving`, `CookingExposure`) carry a composed `ContactProtectionProfile` (channel `weight`s + `unsealedEffectiveness`, the value at seal 0). Target-side: `factor = 1 − Σ weight × coverage × (unsealedEff + (1−unsealedEff)×seal)`.
+- **Cook → food** (`Vector_Foodborne.cookSourceProtection`): source-side, multiplies the contamination an infected cook bakes into meals.
+- **Sealed-system capstone**: a complete sealed loadout (aggregate `VacuumResistance ≥ 0.95`, or airway-sealed + `skinSeal ≥ 0.9` over ≥ 0.9 coverage, or `providesSealedAtmosphere`) → immune to every clothing-protectable vector. Ingestion and `Vector_Lovin` are excluded by design.
+- **Seal integrity**: worn HP gates the seal at the vanilla ratty (<50% → ×0.85) / tattered (<20% → ×0.55) states, so combat armor doing double duty must be maintained; dedicated PPE (`durableSeal`: vacsuit, vac helmet, hazmat) holds its seal to 0 HP.
 
 ### Gene whitelist: `RespiratoryImmunityDef`
 
@@ -575,7 +578,7 @@ The mod adds no quarantine mechanics; existing systems produce quarantine behavi
 - **Work restrictions** stop sick pawns from cooking, preventing foodborne spread.
 - **Room layout** matters: walls/closed doors block airborne LOS, so separate bedrooms contain disease better than open barracks.
 - **Cleaning** removes contaminated vomit and lowers proximity-vector cleanliness pressure; dedicated cleaners gain value during outbreaks.
-- **Masks & respiratory protection** reduce airborne/social/contact transmission for wearer and bystanders via `ToxicEnvironmentResistance`. Outfitting a caregiver or sick pawn with a gas mask is meaningful counterplay using existing gear.
+- **Apparel protection** is the main active counterplay (see Apparel Protection above / `docs/Apparel_Protection_Design.md`): masks filter the airway, sealed combat/space helmets make a pawn immune to airborne spread, and sealed suits/gloves block corpse fleas, fluids, fomites, and ambient exposure — a full sealed loadout is immune to every clothing-protectable vector. Outfitting a caregiver, corpse-hauler, or sick cook with the right gear is meaningful counterplay using existing items.
 - **Penoxycyline** works exactly as vanilla (malaria, plague, sleeping sickness) through `DiseaseContractChanceFactor` and/or a `Factor_Hediff` entry — no separate hardcoded list.
 - **Animal husbandry** matters for food-borne diseases. Animals kept in roofed barns accumulate far less environmental exposure than outdoor grazers. Skilled handlers notice sick animals sooner. Diagnosing infected animals before slaughter prevents contaminated meat from entering the food supply. Assigning a dedicated vet and cooking in a clean kitchen compound the safety margin.
 - **Corpse and butchery choices** use vanilla filters and bills. Stockpiles accept infected corpses by default, so disposal/storage remains easy. Butcher bills reject infected corpses by default, so unsafe meat only enters the food chain when the player explicitly opts that bill into infected corpses.
@@ -612,10 +615,9 @@ Scaled max cases are calculated separately for human and animal colony tracks: `
 | Setting | Range | Default | Effect |
 |---|---|---|---|
 | Seeding Mode | Storyteller / Contagion | Storyteller | Storyteller mode (Mode 1) intercepts storyteller picks into pending events; Contagion mode (Mode 2) cancels storyteller disease and runs continuous low-rate seeding with the disease director |
-| Masks reduce spread | on/off | on | Apparel + air-filtering body parts reduce respiratory transmission |
 | Diagnostics | Off/Summary/Verbose/Developer | Off | Summary/Verbose keep the current in-settings counters and traces; Developer adds dev-only runtime helpers (director forcing, pawn seeding gizmos, hover chance readouts) on top |
 
-Per-disease behavior (`maxActiveCaseChanceOffset`, `useScaledActiveCaseCap`, `spreadSuppressionScale`, per-vector mask effectiveness) and the gene airway-immunity whitelist live in XML for player/modder patching.
+Apparel protection is always on (no toggle); per-disease behavior (`maxActiveCaseChanceOffset`, `useScaledActiveCaseCap`, `spreadSuppressionScale`, per-vector mask effectiveness and `ContactProtectionProfile`s), the per-item `ApparelContagionProtection` seals, and the gene airway-immunity whitelist all live in XML for player/modder patching.
 
 ---
 

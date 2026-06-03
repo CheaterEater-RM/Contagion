@@ -102,9 +102,12 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
 
                 float suppression = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile, pawn);
 
+                // Worn apparel (gloves / sealed suit) reduces what the pawn picks up from the filth.
+                float protectionFactor = ContagionApparelProtectionUtility.GetContactProtectionFactor(pawn, fomiteVector.apparelProtection);
+
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.FomiteAttempted);
                 float chance = ContagionTransmissionUtility.BuildSeederChance(
-                    fomiteVector.baseChancePerContact * potencyFactor * sourceSpeciesFactor * suppression,
+                    fomiteVector.baseChancePerContact * potencyFactor * sourceSpeciesFactor * suppression * protectionFactor,
                     pawn,
                     resolvedProfile,
                     map,

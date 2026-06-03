@@ -51,6 +51,57 @@ public static class ContagionRiskMath
         return Math.Max(0f, baseChance) * Math.Max(0f, ingestionResistanceFactor);
     }
 
+    // Protection from one channel against one vector (design §3.2). At seal = 0 protection is
+    // coverage * unsealedEff (mere fabric); at seal = 1 it rises to full coverage. Naked (coverage 0)
+    // is always 0 regardless of unsealedEff.
+    public static float ChannelProtection(float coverage, float seal, float unsealedEffectiveness)
+    {
+        float floor = Clamp01(unsealedEffectiveness);
+        return Clamp01(coverage) * (floor + (1f - floor) * Clamp01(seal));
+    }
+
+    // Weighted sum of per-channel protection (design §3.2). Each entry is (weight, coverage, seal).
+    // Weights need not sum to 1; the result is clamped 0-1. unsealedEffectiveness applies per channel.
+    public static float WeightedProtection((float weight, float coverage, float seal)[] channels, float unsealedEffectiveness)
+    {
+        if (channels == null || channels.Length == 0)
+        {
+            return 0f;
+        }
+
+        float sum = 0f;
+        for (int i = 0; i < channels.Length; i++)
+        {
+            float weight = Math.Max(0f, channels[i].weight);
+            if (weight <= 0f)
+            {
+                continue;
+            }
+
+            sum += weight * ChannelProtection(channels[i].coverage, channels[i].seal, unsealedEffectiveness);
+        }
+
+        return Clamp01(sum);
+    }
+
+    // Banded seal-integrity multiplier from a worn item's HP fraction (design §7), keyed to the vanilla
+    // ratty (<50%) / tattered (<20%) states. Full seal until ratty, strong-partial when ratty, moderate
+    // when tattered. Dedicated PPE is exempt by the caller, not here.
+    public static float SealIntegrity(float hpFraction)
+    {
+        if (hpFraction >= 0.5f)
+        {
+            return 1f;
+        }
+
+        if (hpFraction >= 0.2f)
+        {
+            return 0.85f;
+        }
+
+        return 0.55f;
+    }
+
     private static float Clamp(float value, float min, float max)
     {
         return Math.Min(Math.Max(value, min), max);

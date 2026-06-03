@@ -135,7 +135,10 @@ internal sealed class ContagionFecalOralTracker : IExposable
 
                 float thicknessFactor = 1f + Mathf.Max(0, filth.thickness - 1) * Mathf.Max(0f, vector.thicknessFactor);
                 float cleanlinessFactor = GetRoomCleanlinessFactor(pawnRoom, vector.roomCleanlinessImpact);
-                float baseChance = vector.baseChancePerCheck * potency * thicknessFactor * cleanlinessFactor * sourceSpeciesFactor;
+                // Target-side apparel protection (fomite-style). Inert today: targets are animals (no
+                // apparel -> 1); activates if humanlike targets are ever added to this pass.
+                float protectionFactor = ContagionApparelProtectionUtility.GetContactProtectionFactor(pawn, vector.apparelProtection);
+                float baseChance = vector.baseChancePerCheck * potency * thicknessFactor * cleanlinessFactor * sourceSpeciesFactor * protectionFactor;
                 if (baseChance <= 0f)
                 {
                     continue;

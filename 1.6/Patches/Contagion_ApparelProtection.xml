@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <!-- Authored disease-protection seals for known sealed apparel (design §6, docs/Apparel_Protection_Design.md).
+       Resolution hierarchy rule 1: an ApparelContagionProtection modExtension is authoritative over the
+       stat/tech-level fallback, and is DLC-independent (works without Odyssey's VacuumResistance).
+
+       NOT authored here: masks (face mask, gas mask). Their airway protection is a FILTER read straight
+       from ToxicEnvironmentResistance at runtime; authoring an airwaySeal would double-count it.
+
+       Enclosed combat/space helmets set airwaySealed=true (sole airway protection, decision §2.1). Sealed
+       suits set skinSeal high + coversExtremities (assumed gauntlets/boots, §9). Dedicated PPE (vacsuit +
+       vac helmet) sets durableSeal=true so the seal holds to 0 HP; combat armor is incidental and degrades.
+
+       Helmet airwaySeal is still authored alongside airwaySealed: airwaySealed grants full respiratory
+       immunity, while airwaySeal remains the physical-filter value for non-respiratory vectors that happen
+       to use the airway channel (for example plague proximity with airwayImmunityFactor=0). -->
+
+  <!-- ============================ Core ============================ -->
+
+  <!-- Recon helmet -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetRecon" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetRecon"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <airwaySeal>0.80</airwaySeal>
+        <airwaySealed>true</airwaySealed>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- Marine helmet -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Apparel_PowerArmorHelmet" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Apparel_PowerArmorHelmet"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <airwaySeal>0.85</airwaySeal>
+        <airwaySealed>true</airwaySealed>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- Recon armor -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorRecon" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorRecon"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <skinSeal>0.90</skinSeal>
+        <coversExtremities>true</coversExtremities>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- Marine (power) armor -->
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Apparel_PowerArmor" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd">
+    <xpath>Defs/ThingDef[defName="Apparel_PowerArmor"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <skinSeal>0.95</skinSeal>
+        <coversExtremities>true</coversExtremities>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- ============================ Royalty ============================ -->
+  <!-- Cataphract helmet -->
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetCataphract" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetCataphract"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <airwaySeal>0.92</airwaySeal>
+        <airwaySealed>true</airwaySealed>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- Prestige marine helmet -->
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarineHelmetPrestige" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarineHelmetPrestige"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <airwaySeal>0.85</airwaySeal>
+        <airwaySealed>true</airwaySealed>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- Cataphract armor -->
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorCataphract" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorCataphract"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <skinSeal>1.00</skinSeal>
+        <coversExtremities>true</coversExtremities>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- Prestige marine armor -->
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarinePrestige" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarinePrestige"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <skinSeal>0.95</skinSeal>
+        <coversExtremities>true</coversExtremities>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- ============================ Odyssey ============================ -->
+  <!-- Vacsuit helmet (dedicated PPE: recycles oxygen, immune to tox gas) -->
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
+    <xpath>Defs/ThingDef[defName="Apparel_VacsuitHelmet" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
+    <xpath>Defs/ThingDef[defName="Apparel_VacsuitHelmet"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <airwaySeal>0.85</airwaySeal>
+        <airwaySealed>true</airwaySealed>
+        <durableSeal>true</durableSeal>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- Vacsuit (dedicated PPE: fully sealed body shell) -->
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
+    <xpath>Defs/ThingDef[defName="Apparel_Vacsuit" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
+    <xpath>Defs/ThingDef[defName="Apparel_Vacsuit"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <skinSeal>1.00</skinSeal>
+        <coversExtremities>true</coversExtremities>
+        <durableSeal>true</durableSeal>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- Kid vacsuit -->
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
+    <xpath>Defs/ThingDef[defName="Apparel_VacsuitChildren" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
+    <xpath>Defs/ThingDef[defName="Apparel_VacsuitChildren"]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.ApparelContagionProtection">
+        <skinSeal>1.00</skinSeal>
+        <coversExtremities>true</coversExtremities>
+        <durableSeal>true</durableSeal>
+      </li>
+    </value>
+  </Operation>
+</Patch>

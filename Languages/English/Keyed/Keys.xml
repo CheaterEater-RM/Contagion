@@ -147,4 +147,39 @@
   <!-- Animal proactive examination (JobDriver_DiagnoseAnimal / FloatMenuOptionProvider_DiagnoseAnimal) -->
   <Contagion_ExamineAnimal>Examine for illness</Contagion_ExamineAnimal>
   <Contagion_ExamineAnimalCooldown>Examined recently (cooldown)</Contagion_ExamineAnimalCooldown>
+
+  <!-- Apparel disease protection (Gear tab + item info card) -->
+  <Contagion_DiseaseProtectionHeader>Disease protection</Contagion_DiseaseProtectionHeader>
+  <Contagion_DiseaseProtectionAirborne>Airborne</Contagion_DiseaseProtectionAirborne>
+  <Contagion_DiseaseProtectionContact>Contact</Contagion_DiseaseProtectionContact>
+  <Contagion_DiseaseProtectionSurface>Surface</Contagion_DiseaseProtectionSurface>
+  <Contagion_ProtectionImmune>Immune</Contagion_ProtectionImmune>
+  <Contagion_ProtectionExcellent>Excellent</Contagion_ProtectionExcellent>
+  <Contagion_ProtectionGood>Good</Contagion_ProtectionGood>
+  <Contagion_ProtectionOk>Ok</Contagion_ProtectionOk>
+  <Contagion_ProtectionPoor>Poor</Contagion_ProtectionPoor>
+  <Contagion_ProtectionMinimal>Minimal</Contagion_ProtectionMinimal>
+  <Contagion_ProtectionNone>None</Contagion_ProtectionNone>
+  <Contagion_DiseaseProtectionCompact>{0}: {1} | {2}: {3} | {4}: {5}</Contagion_DiseaseProtectionCompact>
+  <Contagion_DiseaseProtectionTooltipLine>{0}: {1} ({2})</Contagion_DiseaseProtectionTooltipLine>
+  <Contagion_DiseaseProtectionContributor>- mostly {0}</Contagion_DiseaseProtectionContributor>
+  <Contagion_DiseaseProtectionAirborneTooltip>Airborne folds in direct airborne, social, and proximity spread. Sealed airway gear blocks airway-dependent spread; masks and implants reduce it.</Contagion_DiseaseProtectionAirborneTooltip>
+  <Contagion_DiseaseProtectionContactTooltip>Contact folds in corpse fleas, corpse fluids, fomites, and cook-source contamination. Gloves, suits, and face protection reduce hand/skin/airway transfer.</Contagion_DiseaseProtectionContactTooltip>
+  <Contagion_DiseaseProtectionSurfaceTooltip>Surface folds in environmental and fecal-oral exposure. Boots, suits, and sealed systems reduce ground and ambient exposure.</Contagion_DiseaseProtectionSurfaceTooltip>
+  <Contagion_DiseaseProtectionFullySealedTooltip>Immune because this loadout forms a sealed system. Individual gear rows show standalone contribution; the full set can still become airtight together.</Contagion_DiseaseProtectionFullySealedTooltip>
+  <Contagion_ItemProtectionStatValue>{0} ({1})</Contagion_ItemProtectionStatValue>
+  <Contagion_ItemAirborneSealedNote>Seals the airway when worn intact.</Contagion_ItemAirborneSealedNote>
+  <Contagion_ItemAirborneFilterNote>Filters inhaled exposure when worn.</Contagion_ItemAirborneFilterNote>
+  <Contagion_ItemContactNote>Contributes to contact protection according to covered body parts and seal quality.</Contagion_ItemContactNote>
+  <Contagion_ItemSurfaceNote>Contributes to surface protection according to covered body parts and seal quality.</Contagion_ItemSurfaceNote>
+  <Contagion_ItemDamagedNote>Current damage weakens the seal.</Contagion_ItemDamagedNote>
+  <Contagion_ItemAirborneStatLabel>Disease protection (airborne)</Contagion_ItemAirborneStatLabel>
+  <Contagion_ItemAirborneStatDesc>How well this item protects the airway. Sealed helmets block airway-dependent spread; masks filter airborne, social, and proximity exposure.</Contagion_ItemAirborneStatDesc>
+  <Contagion_ItemContactStatLabel>Disease protection (contact)</Contagion_ItemContactStatLabel>
+  <Contagion_ItemContactStatDesc>How well this item's seal blocks contact-borne disease (corpse fleas and fluids, contaminated surfaces, ambient exposure) over the area it covers. A full set of sealed gear grants immunity.</Contagion_ItemContactStatDesc>
+  <Contagion_ItemSurfaceStatLabel>Disease protection (surface)</Contagion_ItemSurfaceStatLabel>
+  <Contagion_ItemSurfaceStatDesc>How well this item helps block environmental and fecal-oral exposure through covered body parts. A full sealed loadout grants immunity.</Contagion_ItemSurfaceStatDesc>
+  <Contagion_ItemSealedValue>Sealed (100%)</Contagion_ItemSealedValue>
+  <Contagion_ItemSealValue>{0} seal</Contagion_ItemSealValue>
+  <Contagion_ItemSealDurableValue>{0} seal (durable)</Contagion_ItemSealDurableValue>
 </LanguageData>

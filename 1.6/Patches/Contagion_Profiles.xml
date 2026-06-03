@@ -72,6 +72,12 @@
             <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
           </li>
           <li Class="Contagion.Vector_Fomite">
+            <!-- Touch barrier: a glove is the real protection; a sealed helmet blocks touching your face. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <handsWeight>0.60</handsWeight>
+              <airwayWeight>0.40</airwayWeight>
+            </apparelProtection>
             <contaminatesVomit>true</contaminatesVomit>
             <baseChancePerContact>0.03</baseChancePerContact>
             <potencyDecayPerHour>0.1</potencyDecayPerHour>
@@ -158,6 +164,12 @@
             <roomAirMaxCells>100</roomAirMaxCells>
           </li>
           <li Class="Contagion.Vector_Fomite">
+            <!-- Touch barrier: a glove is the real protection; a sealed helmet blocks touching your face. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <handsWeight>0.60</handsWeight>
+              <airwayWeight>0.40</airwayWeight>
+            </apparelProtection>
             <contaminatesVomit>true</contaminatesVomit>
             <baseChancePerContact>0.03</baseChancePerContact>
             <potencyDecayPerHour>0.1</potencyDecayPerHour>
@@ -238,6 +250,14 @@
           <!-- Fresh plague corpses shed fleas after a short post-death ramp. Freezing kills
                this vector quickly; otherwise the flea burst fades within a couple of days. -->
           <li Class="Contagion.Vector_CorpseFlea">
+            <!-- Clothing barely stops a flea (low floor); a sealed suit does the work. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.20</unsealedEffectiveness>
+              <skinWeight>0.85</skinWeight>
+              <handsWeight>0.05</handsWeight>
+              <feetWeight>0.05</feetWeight>
+              <airwayWeight>0.05</airwayWeight>
+            </apparelProtection>
             <baseChancePerCheck>0.006</baseChancePerCheck>
             <carriedBaseChancePerCheck>0.025</carriedBaseChancePerCheck>
             <butcherBaseChance>0.600</butcherBaseChance>
@@ -260,6 +280,13 @@
           <!-- Corpse fluids start low, then grow more dangerous as the body breaks down.
                Dessicated corpses no longer expose handlers through this vector. -->
           <li Class="Contagion.Vector_CorpseFluid">
+            <!-- Fabric catches a splash; bare hands are a real route, so gloves matter most. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.40</unsealedEffectiveness>
+              <handsWeight>0.45</handsWeight>
+              <skinWeight>0.45</skinWeight>
+              <airwayWeight>0.10</airwayWeight>
+            </apparelProtection>
             <pickupChance>0.015</pickupChance>
             <putdownChance>0.015</putdownChance>
             <carriedChancePerCheck>0.003</carriedChancePerCheck>
@@ -277,11 +304,25 @@
             </corpseAgePotencyCurve>
           </li>
           <li Class="Contagion.Vector_Foodborne">
+            <!-- Typhoid Mary: PPE on an infected cook (source side) cuts contamination baked into meals.
+                 The eater takes no gear protection. A sealed-suit cook contaminates ~nothing. -->
+            <cookSourceProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <airwayWeight>0.50</airwayWeight>
+              <handsWeight>0.50</handsWeight>
+            </cookSourceProtection>
             <baseChancePerMeal>0.25</baseChancePerMeal>
             <cleanlinessImpact>0.5</cleanlinessImpact>
             <contaminationExpiryDays>15</contaminationExpiryDays>
           </li>
           <li Class="Contagion.Vector_CookingExposure">
+            <!-- Food-handling PPE on the cook (gloves/apron/mask) protects the handler. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <handsWeight>0.55</handsWeight>
+              <airwayWeight>0.30</airwayWeight>
+              <skinWeight>0.15</skinWeight>
+            </apparelProtection>
             <baseChancePerRecipe>0.004</baseChancePerRecipe>
             <lowSkillFactor>2.0</lowSkillFactor>
             <highSkillFactor>0.5</highSkillFactor>
@@ -373,6 +414,13 @@
         <vectors>
           <!-- Primary human exposure: contaminated food (from infected cook or infected meat). -->
           <li Class="Contagion.Vector_Foodborne">
+            <!-- Typhoid Mary: PPE on an infected cook (source side) cuts contamination baked into meals.
+                 The eater takes no gear protection. A sealed-suit cook contaminates ~nothing. -->
+            <cookSourceProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <airwayWeight>0.50</airwayWeight>
+              <handsWeight>0.50</handsWeight>
+            </cookSourceProtection>
             <baseChancePerMeal>0.80</baseChancePerMeal>
             <cleanlinessImpact>1.0</cleanlinessImpact>
             <contaminationExpiryDays>30</contaminationExpiryDays>
@@ -380,6 +428,13 @@
           <!-- Very low parasite exposure while cutting open an infected carcass. Normal hauling is
                still safe; gut worms mainly matter through contaminated food and vomit. -->
           <li Class="Contagion.Vector_CorpseFluid">
+            <!-- Fabric catches a splash; bare hands are a real route, so gloves matter most. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.40</unsealedEffectiveness>
+              <handsWeight>0.45</handsWeight>
+              <skinWeight>0.45</skinWeight>
+              <airwayWeight>0.10</airwayWeight>
+            </apparelProtection>
             <pickupChance>0</pickupChance>
             <putdownChance>0</putdownChance>
             <carriedChancePerCheck>0</carriedChancePerCheck>
@@ -395,12 +450,25 @@
             </corpseAgePotencyCurve>
           </li>
           <li Class="Contagion.Vector_CookingExposure">
+            <!-- Food-handling PPE on the cook (gloves/apron/mask) protects the handler. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <handsWeight>0.55</handsWeight>
+              <airwayWeight>0.30</airwayWeight>
+              <skinWeight>0.15</skinWeight>
+            </apparelProtection>
             <baseChancePerRecipe>0.003</baseChancePerRecipe>
             <lowSkillFactor>2.0</lowSkillFactor>
             <highSkillFactor>0.5</highSkillFactor>
           </li>
           <!-- Secondary spread within colony: vomit fomite (gut worms causes vomiting). -->
           <li Class="Contagion.Vector_Fomite">
+            <!-- Touch barrier: a glove is the real protection; a sealed helmet blocks touching your face. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <handsWeight>0.60</handsWeight>
+              <airwayWeight>0.40</airwayWeight>
+            </apparelProtection>
             <contaminatesVomit>true</contaminatesVomit>
             <baseChancePerContact>0.025</baseChancePerContact>
             <potencyDecayPerHour>0.08</potencyDecayPerHour>
@@ -417,6 +485,13 @@
                animal filth. Other animals sharing that dirty room can slowly pick up infection
                even without eating from the same stack. Colonists are excluded in code. -->
           <li Class="Contagion.Vector_FecalOralLiving">
+            <!-- Fomite-style, feet-leaning. Inert today (animal-only targets); authored for forward use. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <feetWeight>0.50</feetWeight>
+              <skinWeight>0.30</skinWeight>
+              <handsWeight>0.20</handsWeight>
+            </apparelProtection>
             <baseChancePerCheck>0.0014</baseChancePerCheck>
             <filthContaminationChance>1.0</filthContaminationChance>
             <maxFilthPerDisease>48</maxFilthPerDisease>
@@ -449,6 +524,13 @@
                Peak in moderate warmth. Outdoor animals are fully exposed; indoor ones are not.
                Humans can catch it too, but hygiene lowers their ambient exposure. -->
           <li Class="Contagion.Vector_Environmental">
+            <!-- Sealed full-body suits / boots reduce ambient water/soil exposure (humanlike only). -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.40</unsealedEffectiveness>
+              <skinWeight>0.45</skinWeight>
+              <feetWeight>0.40</feetWeight>
+              <airwayWeight>0.15</airwayWeight>
+            </apparelProtection>
             <baseChancePerCheck>0.002</baseChancePerCheck>
             <humanExposureFactor>0.50</humanExposureFactor>
             <minTemperature>0</minTemperature>
@@ -534,6 +616,13 @@
         <vectors>
           <!-- Primary human exposure: contaminated meat (raw or undercooked). -->
           <li Class="Contagion.Vector_Foodborne">
+            <!-- Typhoid Mary: PPE on an infected cook (source side) cuts contamination baked into meals.
+                 The eater takes no gear protection. A sealed-suit cook contaminates ~nothing. -->
+            <cookSourceProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <airwayWeight>0.50</airwayWeight>
+              <handsWeight>0.50</handsWeight>
+            </cookSourceProtection>
             <baseChancePerMeal>0.85</baseChancePerMeal>
             <cleanlinessImpact>0.5</cleanlinessImpact>
             <contaminationExpiryDays>45</contaminationExpiryDays>
@@ -541,6 +630,13 @@
           <!-- Low direct butchery exposure: larvae are mainly a meat-ingestion problem, but
                cutting infected tissue is not perfectly safe. -->
           <li Class="Contagion.Vector_CorpseFluid">
+            <!-- Fabric catches a splash; bare hands are a real route, so gloves matter most. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.40</unsealedEffectiveness>
+              <handsWeight>0.45</handsWeight>
+              <skinWeight>0.45</skinWeight>
+              <airwayWeight>0.10</airwayWeight>
+            </apparelProtection>
             <pickupChance>0</pickupChance>
             <putdownChance>0</putdownChance>
             <carriedChancePerCheck>0</carriedChancePerCheck>
@@ -556,6 +652,13 @@
             </corpseAgePotencyCurve>
           </li>
           <li Class="Contagion.Vector_CookingExposure">
+            <!-- Food-handling PPE on the cook (gloves/apron/mask) protects the handler. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <handsWeight>0.55</handsWeight>
+              <airwayWeight>0.30</airwayWeight>
+              <skinWeight>0.15</skinWeight>
+            </apparelProtection>
             <baseChancePerRecipe>0.004</baseChancePerRecipe>
             <lowSkillFactor>2.0</lowSkillFactor>
             <highSkillFactor>0.5</highSkillFactor>
@@ -564,6 +667,13 @@
                animal filth. Muscle parasite material persists better in bedding/dirty barns than
                gut worm eggs, but ambient pickup is still slow. Colonists are excluded in code. -->
           <li Class="Contagion.Vector_FecalOralLiving">
+            <!-- Fomite-style, feet-leaning. Inert today (animal-only targets); authored for forward use. -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <feetWeight>0.50</feetWeight>
+              <skinWeight>0.30</skinWeight>
+              <handsWeight>0.20</handsWeight>
+            </apparelProtection>
             <baseChancePerCheck>0.0010</baseChancePerCheck>
             <filthContaminationChance>1.0</filthContaminationChance>
             <maxFilthPerDisease>48</maxFilthPerDisease>
@@ -598,6 +708,13 @@
                Heavy indoor reduction: grazing/outdoor animals are most exposed. Humans can catch
                it too, but hygiene lowers their ambient exposure. -->
           <li Class="Contagion.Vector_Environmental">
+            <!-- Sealed full-body suits / boots reduce ambient water/soil exposure (humanlike only). -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.40</unsealedEffectiveness>
+              <skinWeight>0.45</skinWeight>
+              <feetWeight>0.40</feetWeight>
+              <airwayWeight>0.15</airwayWeight>
+            </apparelProtection>
             <baseChancePerCheck>0.0015</baseChancePerCheck>
             <humanExposureFactor>0.45</humanExposureFactor>
             <minTemperature>-5</minTemperature>
@@ -666,6 +783,13 @@
           <!-- Mosquito pressure: warm water, broad climate tolerance, and weaker indoor
                reduction because mosquitoes can reach shallow rooms. -->
           <li Class="Contagion.Vector_Environmental">
+            <!-- Sealed full-body suits / boots reduce ambient water/soil exposure (humanlike only). -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.40</unsealedEffectiveness>
+              <skinWeight>0.45</skinWeight>
+              <feetWeight>0.40</feetWeight>
+              <airwayWeight>0.15</airwayWeight>
+            </apparelProtection>
             <baseChancePerCheck>0.0035</baseChancePerCheck>
             <minTemperature>16</minTemperature>
             <peakTemperature>30</peakTemperature>
@@ -722,6 +846,13 @@
           <!-- Tsetse habitat: hotter and rarer than malaria, with stronger indoor protection
                and heavier river/wetland dependency. -->
           <li Class="Contagion.Vector_Environmental">
+            <!-- Sealed full-body suits / boots reduce ambient water/soil exposure (humanlike only). -->
+            <apparelProtection>
+              <unsealedEffectiveness>0.40</unsealedEffectiveness>
+              <skinWeight>0.45</skinWeight>
+              <feetWeight>0.40</feetWeight>
+              <airwayWeight>0.15</airwayWeight>
+            </apparelProtection>
             <baseChancePerCheck>0.0022</baseChancePerCheck>
             <minTemperature>20</minTemperature>
             <peakTemperature>32</peakTemperature>

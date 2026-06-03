@@ -106,6 +106,8 @@ internal sealed class ContagionEnvironmentalExposureProcessor
         chance *= GetEnvironmentalShelterFactor(pawn.Position, room, ambientTemperature, environmentalProfile.Vector, roofEdgeCache);
         chance *= GetWaterProximityFactor(pawn.Position, environmentalProfile.Vector, waterProximityCache);
         chance *= GetEnvironmentalPawnFactor(pawn, environmentalProfile.Vector);
+        // Sealed full-body suits / boots reduce ambient exposure (target side; animals wear nothing -> 1).
+        chance *= ContagionApparelProtectionUtility.GetContactProtectionFactor(pawn, environmentalProfile.Vector.apparelProtection);
         chance = ContagionTransmissionUtility.BuildSeederChance(
             chance,
             pawn,

@@ -16,6 +16,8 @@ public sealed class Comp_ContaminatedFood : ThingComp
 {
     private const float MinCleanlinessFactor = 0.1f;
 
+    private const float MinContaminationFactor = 0f;
+
     private const float MaxCleanlinessFactor = 3f;
 
     private const int TicksPerDay = 60000;
@@ -46,7 +48,7 @@ public sealed class Comp_ContaminatedFood : ThingComp
         }
 
         _contaminatedDiseaseDef = diseaseDef;
-        _contaminationFactor = Mathf.Clamp(factor, MinCleanlinessFactor, MaxCleanlinessFactor);
+        _contaminationFactor = Mathf.Clamp(factor, MinContaminationFactor, MaxCleanlinessFactor);
         _contaminationTick = Find.TickManager.TicksGame;
         EnsureTraceNode();
     }
@@ -74,8 +76,11 @@ public sealed class Comp_ContaminatedFood : ThingComp
                 continue;
             }
 
+            // Typhoid Mary control: PPE on the infected cook (mask + gloves, source side) cuts how much
+            // contamination they bake into the meal. A sealed-suit cook contaminates ~nothing.
+            float cookSourceProtection = ContagionApparelProtectionUtility.GetCookSourceProtectionFactor(pawn, foodborneVector.cookSourceProtection);
             _contaminatedDiseaseDef = resolvedProfile.DiseaseDef;
-            _contaminationFactor = sourceInfectivity * GetCleanlinessFactor(pawn.GetRoom(), foodborneVector.cleanlinessImpact);
+            _contaminationFactor = sourceInfectivity * GetCleanlinessFactor(pawn.GetRoom(), foodborneVector.cleanlinessImpact) * cookSourceProtection;
             _contaminationTick = Find.TickManager.TicksGame;
             // Trace lineage: a contagious cook contaminates the bench they work at, which in turn
             // contaminates the meal — so route cook → stove → meal. The meal's own node is created
@@ -309,7 +314,7 @@ public sealed class Comp_ContaminatedFood : ThingComp
         Scribe_Defs.Look(ref _contaminatedDiseaseDef, "contaminatedDiseaseDef");
         Scribe_Values.Look(ref _contaminationFactor, "contaminationFactor", 1f);
         Scribe_Values.Look(ref _contaminationTick, "contaminationTick", -1);
-        _contaminationFactor = Mathf.Clamp(_contaminationFactor, MinCleanlinessFactor, MaxCleanlinessFactor);
+        _contaminationFactor = Mathf.Clamp(_contaminationFactor, MinContaminationFactor, MaxCleanlinessFactor);
     }
 
     private void ClearContamination()

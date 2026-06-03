@@ -105,6 +105,51 @@ internal static class Program
         checks.Add(Check.Bool("corpse fleas use path-walk distances", corpseExposureProcessor.Contains("CollectReachablePathDistances"), true));
         checks.Add(Check.Bool("live proximity uses path-walk distances", pawnTransmissionProcessor.Contains("CollectReachablePathDistances"), true));
 
+        // ---- Apparel protection (docs/Apparel_Protection_Design.md) -------------------------------
+        // Seal integrity bands (design §7) keyed to the vanilla ratty (<50%) / tattered (<20%) states.
+        checks.Add(Check.Close("seal integrity normal HP", ContagionRiskMath.SealIntegrity(0.60f), 1.00f, 0.0001f));
+        checks.Add(Check.Close("seal integrity ratty", ContagionRiskMath.SealIntegrity(0.35f), 0.85f, 0.0001f));
+        checks.Add(Check.Close("seal integrity tattered", ContagionRiskMath.SealIntegrity(0.10f), 0.55f, 0.0001f));
+
+        // Channel protection formula (design §3.2): full seal => full coverage; unsealed => floor; naked => 0.
+        checks.Add(Check.Close("channel full seal is full", ContagionRiskMath.ChannelProtection(1f, 1f, 0.20f), 1.00f, 0.0001f));
+        checks.Add(Check.Close("channel unsealed rides floor", ContagionRiskMath.ChannelProtection(1f, 0f, 0.20f), 0.20f, 0.0001f));
+        checks.Add(Check.Close("channel naked is zero", ContagionRiskMath.ChannelProtection(0f, 1f, 0.50f), 0.00f, 0.0001f));
+
+        // Authored per-vector floors (unsealedEffectiveness) match the design: flea barely helps unsealed,
+        // fomite/cooking moderate.
+        XElement plagueFleaProtection = Child(plagueFlea, "apparelProtection");
+        XElement plagueCookingProtection = Child(plagueCooking, "apparelProtection");
+        XElement fluFomiteProtection = Child(Vector(flu, "Contagion.Vector_Fomite"), "apparelProtection");
+        XElement plagueFoodCookSource = Child(plagueFood, "cookSourceProtection");
+        checks.Add(Check.Close("corpse flea unsealed effectiveness", Field(plagueFleaProtection, "unsealedEffectiveness"), 0.20f, 0.0001f));
+        checks.Add(Check.Close("fomite unsealed effectiveness", Field(fluFomiteProtection, "unsealedEffectiveness"), 0.60f, 0.0001f));
+        checks.Add(Check.Close("cooking exposure unsealed effectiveness", Field(plagueCookingProtection, "unsealedEffectiveness"), 0.60f, 0.0001f));
+
+        // Typhoid Mary (design §5): a sealed-suit cook bakes ~no contamination; a bare cook the full amount.
+        float cookUnsealedEff = Field(plagueFoodCookSource, "unsealedEffectiveness");
+        var sealedCook = new[] { (0.5f, 1f, 1f), (0.5f, 1f, 1f) };
+        var bareCook = new[] { (0.5f, 0f, 0f), (0.5f, 0f, 0f) };
+        checks.Add(Check.Close("sealed cook contaminates ~nothing", 1f - ContagionRiskMath.WeightedProtection(sealedCook, cookUnsealedEff), 0.00f, 0.001f));
+        checks.Add(Check.Close("bare cook full contamination", 1f - ContagionRiskMath.WeightedProtection(bareCook, cookUnsealedEff), 1.00f, 0.001f));
+
+        // Wiring: each protected vector site multiplies in the apparel factor.
+        string fomiteTracker = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionVomitFomiteTracker.cs"));
+        string corpseExposureUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionCorpseExposureUtility.cs"));
+        string environmentalProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionEnvironmentalExposureProcessor.cs"));
+        string fecalOralTracker = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionFecalOralTracker.cs"));
+        string cookingPatch = File.ReadAllText(Path.Combine(Root, "Source", "Patches", "Patch_GenRecipe_MakeRecipeProducts.cs"));
+        string contaminatedFood = File.ReadAllText(Path.Combine(Root, "Source", "Comps", "Comp_ContaminatedFood.cs"));
+        string apparelUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionApparelProtectionUtility.cs"));
+        checks.Add(Check.Bool("fomite applies contact protection", fomiteTracker.Contains("GetContactProtectionFactor"), true));
+        checks.Add(Check.Bool("corpse flea/fluid apply contact protection", corpseExposureUtility.Contains("GetContactProtectionFactor"), true));
+        checks.Add(Check.Bool("environmental applies contact protection", environmentalProcessor.Contains("GetContactProtectionFactor"), true));
+        checks.Add(Check.Bool("fecal-oral living applies contact protection", fecalOralTracker.Contains("GetContactProtectionFactor"), true));
+        checks.Add(Check.Bool("cooking exposure applies contact protection", cookingPatch.Contains("GetContactProtectionFactor"), true));
+        checks.Add(Check.Bool("cook->food applies source protection", contaminatedFood.Contains("GetCookSourceProtectionFactor"), true));
+        checks.Add(Check.Bool("seal integrity reads worn HitPoints", apparelUtility.Contains("HitPoints"), true));
+        checks.Add(Check.Bool("apparel utility uses SealIntegrity", apparelUtility.Contains("SealIntegrity"), true));
+
         int failures = 0;
         foreach (Check check in checks)
         {
@@ -148,6 +193,12 @@ internal static class Program
             .Elements("li")
             .FirstOrDefault(li => li.Attribute("Class")?.Value == className);
         return vector ?? throw new InvalidOperationException($"Missing vector {className}.");
+    }
+
+    private static XElement Child(XElement element, string name)
+    {
+        XElement child = element?.Element(name);
+        return child ?? throw new InvalidOperationException($"Missing element {name}.");
     }
 
     private static float Field(XElement element, string name)

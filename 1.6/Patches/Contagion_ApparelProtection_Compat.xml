@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <!-- Compatibility seals for known third-party apparel that Contagion can't infer well from stats
+       (design §3.5 rule 2). Each operation MUST guard with PatchOperationFindMod (the source mod) AND
+       only apply when the item author hasn't already shipped their own protection, so rule 1 always wins:
+
+         <xpath>Defs/ThingDef[defName="SomeModdedSuit"
+                  and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]</xpath>
+
+       Most modded spacer armor already "just works" via the tech-level fallback (Spacer + VacuumResistance/
+       ToxEnv taken at face value), so entries here are only for gear the heuristic misjudges.
+
+       No third-party entries yet — intentionally empty, kept to document the convention. -->
+</Patch>

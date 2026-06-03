@@ -84,6 +84,7 @@ Contaminated vomit. Flu only reaches peak fomite infectivity at high severity (0
 | baseChancePerContact | 0.03 | |
 | potencyDecayPerHour | 0.1 | Filth loses 10% potency per hour; cleaned filth removes risk entirely |
 | activeInfectivityCurveOverride | (0.50, 0.0) → (0.65, 0.5) → (0.80, 1.0) → (1.00, 0.5) | Only high-severity cases contaminate vomit |
+| apparelProtection | hands 0.60, airway 0.40; unsealedEffectiveness 0.60 | Target-side. A glove is a real touch barrier; a sealed helmet blocks touching your face. Ordinary clothing helps moderately (floor 0.6); a sealed suit/glove approaches immunity. See `docs/Apparel_Protection_Design.md`. |
 
 ---
 
@@ -144,10 +145,10 @@ Sickly pawns catch flu more often (vanilla `randomDiseaseMtbDays`) but shed at h
 
 ## Counterplay
 
-- **Masks** significantly reduce airborne and social transmission (breathless gene also helps).
+- **Masks** significantly reduce airborne and social transmission (filter); a sealed combat/space helmet makes the wearer immune to airborne/social/proximity spread. Breathless gene also helps. See `docs/Apparel_Protection_Design.md`.
 - **Hospital isolation** — walls and closed doors block direct airborne LOS and split room-air exposure; keeping sick pawns out of shared spaces matters.
 - **Social work priority** — cancelling social recreation for sick pawns eliminates the social vector.
-- **Cleaning** — removing vomit filth quickly cuts the fomite escalation path.
+- **Cleaning + gloves** — removing vomit filth quickly cuts the fomite escalation path; gloves/sealed gear reduce what a pawn picks up from tagged vomit (fomite `apparelProtection`).
 - **Penoxycyline** — `DiseaseContractChanceFactor` reduces contract chance; a `Factor_Hediff` entry in the profile would make it explicit if added.
 
 ---
