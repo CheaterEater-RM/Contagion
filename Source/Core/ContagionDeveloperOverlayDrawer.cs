@@ -79,6 +79,8 @@ public static class ContagionDeveloperOverlayDrawer
 
     private static readonly Queue<IntVec3> PathOpenCells = new Queue<IntVec3>();
 
+    private static readonly Dictionary<int, float> EatingRiskByCell = new Dictionary<int, float>();
+
     public static void DrawHoverLine(Pawn sourcePawn, Pawn targetPawn)
     {
         if (sourcePawn == null || targetPawn == null)
@@ -558,6 +560,96 @@ public static class ContagionDeveloperOverlayDrawer
             }
 
             IntVec3 cell = CellIndicesUtility.IndexToCell(chanceEntry.Key, map.Size.x);
+            Color color = ValueBands[GetValueBand(normalizedChance)];
+            int colorKey = PackColor(color);
+            if (!FillOverlayBuckets.TryGetValue(colorKey, out List<IntVec3> bucket))
+            {
+                bucket = new List<IntVec3>();
+                FillOverlayBuckets[colorKey] = bucket;
+            }
+
+            FillOverlayBucketColors[colorKey] = color;
+            bucket.Add(cell);
+        }
+
+        foreach (KeyValuePair<int, List<IntVec3>> bucket in FillOverlayBuckets)
+        {
+            if (bucket.Value.Count > 0)
+            {
+                DrawFilledCells(bucket.Value, FillOverlayBucketColors[bucket.Key]);
+            }
+        }
+    }
+
+    // Heatmap of where a selected animal would risk picking up a fecal-oral disease if it grazed,
+    // reading the live eating nodes via the map's transmission component. Pure dev visualization; the
+    // per-cell math mirrors the real ingestion roll (see ContagionFecalOralTracker.TryGetNodeGrazingChance).
+    // Cells are shaded relative to the strongest risk cell; the mouseover readout gives absolute %.
+    public static void DrawEatingRiskOverlay(Pawn ingester)
+    {
+        if (ingester?.Map == null
+            || !ingester.Spawned
+            || ingester.Dead
+            || ingester.RaceProps?.Animal != true
+            || Find.Selector.SingleSelectedThing != ingester)
+        {
+            return;
+        }
+
+        Map map = ingester.Map;
+        Contagion_MapTransmissionComponent component = map.GetComponent<Contagion_MapTransmissionComponent>();
+        if (component == null)
+        {
+            return;
+        }
+
+        component.BuildEatingRiskOverlay(ingester, EatingRiskByCell);
+        if (EatingRiskByCell.Count == 0)
+        {
+            return;
+        }
+
+        foreach (List<IntVec3> bucket in FillOverlayBuckets.Values)
+        {
+            bucket.Clear();
+        }
+
+        FillOverlayBucketColors.Clear();
+        float strongestChance = 0f;
+        foreach (KeyValuePair<int, float> chanceEntry in EatingRiskByCell)
+        {
+            IntVec3 cell = CellIndicesUtility.IndexToCell(chanceEntry.Key, map.Size.x);
+            strongestChance = ContagionRiskMath.VisibleChanceMaximum(
+                strongestChance,
+                chanceEntry.Value,
+                ShouldDrawCell(map, cell),
+                MinVisibleNominalChance);
+        }
+
+        if (strongestChance <= 0f)
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<int, float> chanceEntry in EatingRiskByCell)
+        {
+            if (chanceEntry.Value < MinVisibleNominalChance)
+            {
+                continue;
+            }
+
+            float normalizedChance = GetDisplayStrength(chanceEntry.Value, strongestChance);
+            if (normalizedChance <= 0f)
+            {
+                continue;
+            }
+
+            IntVec3 cell = CellIndicesUtility.IndexToCell(chanceEntry.Key, map.Size.x);
+            if (!ShouldDrawCell(map, cell))
+            {
+                continue;
+            }
+
             Color color = ValueBands[GetValueBand(normalizedChance)];
             int colorKey = PackColor(color);
             if (!FillOverlayBuckets.TryGetValue(colorKey, out List<IntVec3> bucket))

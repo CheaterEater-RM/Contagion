@@ -51,6 +51,60 @@ public static class ContagionRiskMath
         return Math.Max(0f, baseChance) * Math.Max(0f, ingestionResistanceFactor);
     }
 
+    // Stored fecal-oral hotspot potency after time decay. Weather is deliberately excluded because
+    // rain/freezing only suppress current infectivity and must not permanently delete the node.
+    public static float HotspotPotencyAfterDecay(float potency, float decayPerDay, float elapsedDays)
+    {
+        float retentionPerDay = 1f - Clamp01(decayPerDay);
+        return Math.Max(0f, potency)
+            * (float)Math.Pow(retentionPerDay, Math.Max(0f, elapsedDays));
+    }
+
+    public static float HotspotEffectivePotency(
+        float storedPotency,
+        bool raining,
+        float rainPotencyFactor,
+        bool freezing,
+        float freezingPotencyFactor)
+    {
+        float potency = Math.Max(0f, storedPotency);
+        if (raining)
+        {
+            potency *= Clamp01(rainPotencyFactor);
+        }
+
+        if (freezing)
+        {
+            potency *= Clamp01(freezingPotencyFactor);
+        }
+
+        return potency;
+    }
+
+    public static float AddHotspotPotency(float decayedExistingPotency, float newPotency, float maxPotency)
+    {
+        return Math.Min(
+            Math.Max(0f, decayedExistingPotency) + Math.Max(0f, newPotency),
+            Math.Max(0f, maxPotency));
+    }
+
+    public static bool ShouldCleanupHotspot(
+        float potency,
+        float decayPerDay,
+        float elapsedDays,
+        float minimumPotency)
+    {
+        return HotspotPotencyAfterDecay(potency, decayPerDay, elapsedDays) <= Math.Max(0f, minimumPotency);
+    }
+
+    public static float VisibleChanceMaximum(float currentMaximum, float chance, bool visible, float minimumChance)
+    {
+        float maximum = Math.Max(0f, currentMaximum);
+        return visible && chance >= Math.Max(0f, minimumChance)
+            ? Math.Max(maximum, Math.Max(0f, chance))
+            : maximum;
+    }
+
     // Protection from one channel against one vector (design §3.2). At seal = 0 protection is
     // coverage * unsealedEff (mere fabric); at seal = 1 it rises to full coverage. Naked (coverage 0)
     // is always 0 regardless of unsealedEff.

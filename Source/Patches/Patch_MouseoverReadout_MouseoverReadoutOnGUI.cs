@@ -27,8 +27,13 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         if (!TryGetHoverContext(out Pawn sourcePawn, out Pawn targetPawn, out Contagion_MapTransmissionComponent component))
         {
             component?.DeveloperDiagnostics.ClearHoverPair();
-            // No pawn-source context — fall back to a corpse infectivity readout if hovering one.
-            TryDrawCorpseReadout();
+            // No pawn-source context — show a selected animal's grazing risk at the cursor, else fall
+            // back to a corpse infectivity readout if hovering one.
+            if (!TryDrawEatingRiskReadout())
+            {
+                TryDrawCorpseReadout();
+            }
+
             return;
         }
 
@@ -115,6 +120,64 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         }
 
         DrawReadoutText(builder.ToString().TrimEnd());
+    }
+
+    // When an animal is selected, show the fecal-oral grazing risk it would face if it ate at the
+    // cursor cell — the tooltip companion to the eating-risk heatmap (DrawEatingRiskOverlay). Returns
+    // false (so the corpse readout can try) when there's no selected animal or no risk at the cell.
+    private static bool TryDrawEatingRiskReadout()
+    {
+        if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true
+            || Find.Selector.SingleSelectedThing is not Pawn pawn
+            || !pawn.Spawned
+            || pawn.Dead
+            || pawn.Map == null
+            || pawn.Map != Find.CurrentMap
+            || pawn.RaceProps?.Animal != true)
+        {
+            return false;
+        }
+
+        Map map = pawn.Map;
+        IntVec3 mouseCell = UI.MouseCell();
+        if (!mouseCell.InBounds(map) || mouseCell.Fogged(map))
+        {
+            return false;
+        }
+
+        Contagion_MapTransmissionComponent component = map.GetComponent<Contagion_MapTransmissionComponent>();
+        if (component == null)
+        {
+            return false;
+        }
+
+        List<ContagionEatingRiskEntry> entries = component.GetEatingRiskBreakdown(pawn, mouseCell);
+        if (entries.Count == 0)
+        {
+            return false;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("Contagion_DeveloperEatingRiskHeader".Translate(pawn.LabelShortCap).Resolve());
+        float combined = 0f;
+        for (int i = 0; i < entries.Count; i++)
+        {
+            ContagionEatingRiskEntry entry = entries[i];
+            combined = 1f - (1f - Mathf.Clamp01(combined)) * (1f - Mathf.Clamp01(entry.Chance));
+            builder.AppendLine("Contagion_DeveloperEatingRiskLine".Translate(
+                entry.DiseaseDef?.LabelCap ?? "?",
+                FormatChance(entry.Chance),
+                entry.Potency.ToString("0.00"),
+                entry.Distance.ToString("0.#")).Resolve());
+        }
+
+        if (entries.Count > 1)
+        {
+            builder.AppendLine("Contagion_DeveloperEatingRiskCombined".Translate(FormatChance(combined)).Resolve());
+        }
+
+        DrawReadoutText(builder.ToString().TrimEnd());
+        return true;
     }
 
     private static bool TryGetHoverContext(

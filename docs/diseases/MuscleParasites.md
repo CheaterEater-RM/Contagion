@@ -114,14 +114,19 @@ Infected animals can contaminate vanilla `Filth_AnimalFilth` in roofed or enclos
 
 ### Vector_FecalOralEating (animal-only grazing exposure)
 
-Infected outdoor animals create hidden pasture hotspots. Animals eating *near* a hotspot (within `hotspotRadius` = 8 cells, exponential distance falloff — not cell-exact) can pick up muscle parasites, with context weighting: grazing live plants is highest risk, raw outdoor ground food is lower, kibble/hay on the ground is lower still, and stored or indoor feed is near-zero risk. Sheds within `hotspotMergeRadius` (4) merge into one node (max potency, decay/expiry clock reset).
+Infected outdoor animals create hidden pasture hotspots. Animals eating *near* a hotspot (within `hotspotRadius` = 2 cells, steep exponential falloff — not cell-exact) can pick up muscle parasites, with context weighting: grazing live plants is highest risk, raw outdoor ground food is lower, kibble/hay on the ground is lower still, and stored or indoor feed is near-zero risk. The route is **point-blank** — the animal essentially has to graze on the droppings. Cross-cell merging is **off** (`hotspotMergeRadius` 0, kept as a re-enable knob); repeat sheds on the **same cell** instead accumulate additively (decay-to-now + add, capped at `MaxNodePotency` 8) so a fouled latrine builds up — see [GutWorms.md](GutWorms.md) → Vector_FecalOralEating → *Same-cell accumulation* for the shared logic.
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerIngestion | 0.006 | Rolled when an animal eats near a hotspot |
+| baseChancePerIngestion | 0.125 | Rolled when an animal eats near a hotspot; cow-anchored (same as gut worms) |
 | bodySizeDropsPerDayCurve | (0.2,4) (1.2,2) (2.4,1) (4.0,1) | Deterministic nodes/day by shedder BodySize (same curve as gut worms) |
-| bodySizePotencyExponent | 1.0 | Per-node potency ×= BodySize^1.0 — large animals make stronger nodes |
-| hotspotDurationDays | 12 | Soil contamination lingers longer than gut worms |
+| bodySizePotencyExponent | 1.0 | Per-node potency ×= BodySize^1.0 (clamped to 2.5 — the cow ceiling) |
+| hotspotRadius | 2 | Exposure reaches only two tiles from the node |
+| distanceFalloffRate | 0.6931 (ln 2) | Chance halves per cell out |
+| hotspotDecayPerDay | 0.5 | Fraction of potency lost per day (×0.5/day); per-disease |
+| hotspotDurationDays | 7 | Hard-expiry backstop only — natural ×0.5/day decay clears nodes first (~day 5) |
+
+`baseChancePerIngestion` (0.125) is **cow-anchored** exactly like gut worms: a full-potency cow node grazed point-blank reads ~30%, smaller grazers scale down with body size, larger ones are capped at the cow by `MaxBodySizePotencyFactor` (2.5). See [GutWorms.md](GutWorms.md) → Vector_FecalOralEating for the full anchoring rationale and distance-falloff numbers. The audit guards both diseases (`muscle parasites full cow point-blank grazing`).
 
 Shedding is the deterministic **waste meter** model — see [GutWorms.md](GutWorms.md) → Vector_FecalOralEating for the full description (steady body-size-driven cadence, paused while starving, drop-when-full, potency tracking infectivity).
 

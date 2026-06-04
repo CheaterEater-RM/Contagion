@@ -334,7 +334,8 @@ public sealed class Vector_FecalOralEating : TransmissionVector
 
     public float hotspotDurationDays = 8f;
 
-    public float hotspotDecayPerDay = 0.35f;
+    // Fraction of node potency lost per day (daily multiplier = 1 - this). 0.5 = halves per day.
+    public float hotspotDecayPerDay = 0.5f;
 
     public float distanceFalloffRate = 0.25f;
 

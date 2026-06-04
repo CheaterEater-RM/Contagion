@@ -88,6 +88,10 @@
   <Contagion_CorpseInfectivityFlea>Flea (radial): potency {0}, peak nearby chance {1}, range {2}</Contagion_CorpseInfectivityFlea>
   <Contagion_CorpseInfectivityFluid>Fluid (contact): potency {0}</Contagion_CorpseInfectivityFluid>
   <Contagion_CorpseInfectivityNone>No active radial infectivity yet.</Contagion_CorpseInfectivityNone>
+  <Contagion_DeveloperEatingRiskHeader>{0}: fecal-oral grazing risk if it ate at cursor</Contagion_DeveloperEatingRiskHeader>
+  <Contagion_DeveloperEatingRiskLine>{0} — {1} (node potency {2}, nearest node {3}c)</Contagion_DeveloperEatingRiskLine>
+  <Contagion_DeveloperEatingRiskCombined>Combined: {0}</Contagion_DeveloperEatingRiskCombined>
+  <Contagion_DeveloperEatingRiskNone>No contaminated grazing risk at this cell.</Contagion_DeveloperEatingRiskNone>
   <Contagion_ClearDiagnostics>Clear diagnostics</Contagion_ClearDiagnostics>
   <Contagion_IncubationLabel>{0} incubation</Contagion_IncubationLabel>
   <Contagion_MessageDiseaseActivated>{0} has developed {1}.</Contagion_MessageDiseaseActivated>

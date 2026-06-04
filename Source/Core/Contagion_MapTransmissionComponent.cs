@@ -205,6 +205,18 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         _fecalOralTracker.NotifyAnimalIngested(ingester, context);
     }
 
+    // Dev-overlay read models for the fecal-oral eating ("if it grazed here") danger heatmap and its
+    // mouseover breakdown. Pure reads — no rolling or seeding.
+    internal void BuildEatingRiskOverlay(Pawn ingester, Dictionary<int, float> chanceByCell)
+    {
+        _fecalOralTracker.BuildEatingRiskOverlay(ingester, map, chanceByCell);
+    }
+
+    internal List<ContagionEatingRiskEntry> GetEatingRiskBreakdown(Pawn ingester, IntVec3 cell)
+    {
+        return _fecalOralTracker.GetEatingRiskBreakdown(ingester, cell, map);
+    }
+
     // ── Outbreak tracking ──────────────────────────────────────────────────────────────────────
     // Human and animal tracks are separate: an animal case never suppresses a human first-case
     // letter. ContagionDiseaseNotifier picks the right track based on pawn.RaceProps.Animal.

@@ -78,11 +78,38 @@ internal sealed class ContagionWasteMeterEntry : IExposable
     }
 }
 
+// Dev-overlay read model: one row per disease for the fecal-oral eating risk a candidate grazer
+// would face if it ate at a given cell. Chance is the noisy-or across that disease's in-range nodes;
+// Potency is the strongest contributing node, Distance the nearest contributing node (cells).
+internal readonly struct ContagionEatingRiskEntry
+{
+    public ContagionEatingRiskEntry(HediffDef diseaseDef, float chance, float potency, float distance)
+    {
+        DiseaseDef = diseaseDef;
+        Chance = chance;
+        Potency = potency;
+        Distance = distance;
+    }
+
+    public HediffDef DiseaseDef { get; }
+
+    public float Chance { get; }
+
+    public float Potency { get; }
+
+    public float Distance { get; }
+}
+
 internal sealed class ContagionFecalOralTracker : IExposable
 {
     private const int TicksPerDay = 60000;
 
     private const float MinPotency = 0.03f;
+
+    // Cleanup/skip floor for eating nodes, in potency units. 0.08 potency = ~0.01 point-blank chance
+    // (0.125 × 0.08), so a node "decays away" once it can't realistically infect. A full cow node
+    // (potency 2.4) halving daily crosses this on ~day 5; hotspotDurationDays is only a backstop.
+    private const float MinHotspotPotency = 0.08f;
 
     private const float MinCleanlinessFactor = 0.1f;
 
@@ -92,7 +119,17 @@ internal sealed class ContagionFecalOralTracker : IExposable
     // isn't worthless and a modded giant doesn't mint a near-permanent super-node.
     private const float MinBodySizePotencyFactor = 0.1f;
 
-    private const float MaxBodySizePotencyFactor = 5f;
+    // Cow-as-ceiling: a cow's BodySize is 2.4 and the eating route is anchored so a full-potency cow
+    // node reads ~30% at point-blank grazing. Clamping the body-size factor here at 2.5 keeps larger
+    // grazers (rhino 3.0, elephant 4.0, modded giants) from exceeding the cow rather than minting a
+    // hotter node; everything smaller scales down linearly from there.
+    private const float MaxBodySizePotencyFactor = 2.5f;
+
+    // Cap on a single cell's accumulated node potency as repeat droppings foul it. A single shed tops
+    // out at ~2.5 (cow ceiling); this lets a heavily fouled latrine build toward ~100% point-blank at
+    // the current base chance (0.125 × 8 = 1.0) while bounding stored potency so a node can't linger
+    // forever against the decay/MinHotspotPotency cleanup floor.
+    private const float MaxNodePotency = 8f;
 
     // Fallback drop-rate curve (nodes/day vs BodySize) used when a vector omits bodySizeDropsPerDayCurve.
     // Level ~1/day for large animals, rising toward ~4/day for tiny ones; deliberately not exponential.
@@ -311,7 +348,7 @@ internal sealed class ContagionFecalOralTracker : IExposable
                     // still defecates on schedule but drops weak, short-lived nodes. A near-inert node
                     // is skipped rather than spawned and immediately cleaned up.
                     float nodePotency = sourceInfectivity * GetBodySizePotencyFactor(pawn, vector);
-                    if (nodePotency > MinPotency)
+                    if (nodePotency > MinHotspotPotency)
                     {
                         _hotspots.AddOrRefresh(
                             pawn.Position,
@@ -319,7 +356,9 @@ internal sealed class ContagionFecalOralTracker : IExposable
                             pawn.def,
                             nodePotency,
                             vector.hotspotMergeRadius,
-                            vector.maxHotspotsPerDisease);
+                            vector.maxHotspotsPerDisease,
+                            vector.hotspotDecayPerDay,
+                            MaxNodePotency);
                         ContagionDiagnostics.Record(ContagionDiagnosticCounter.FecalOralEatingHotspotCreated);
                         ContagionDiagnostics.Trace($"Fecal-oral eating hotspot: {resolvedProfile.DiseaseDef.defName} near {pawn.LabelShortCap}.");
                         ContagionTrace.TransmissionToCell(pawn, pawn.PositionHeld, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.FecalOralEating);
@@ -383,6 +422,7 @@ internal sealed class ContagionFecalOralTracker : IExposable
         }
 
         float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
+        Dictionary<HediffDef, float> seederConstantByDisease = new Dictionary<HediffDef, float>();
         for (int hotspotIndex = 0; hotspotIndex < _hotspots.Count; hotspotIndex++)
         {
             ContagionHotspotEntry hotspot = _hotspots.Get(hotspotIndex);
@@ -413,7 +453,7 @@ internal sealed class ContagionFecalOralTracker : IExposable
             }
 
             float potency = GetHotspotPotency(hotspot, vector, context.Map);
-            if (potency <= MinPotency)
+            if (potency <= MinHotspotPotency)
             {
                 continue;
             }
@@ -427,14 +467,18 @@ internal sealed class ContagionFecalOralTracker : IExposable
             }
 
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.FecalOralEatingAttempted);
-            float chance = ContagionTransmissionUtility.BuildSeederChance(
-                baseChance,
-                ingester,
-                resolvedProfile,
-                context.Map,
-                transmissionMultiplier,
-                out HediffDef _);
-            float finalChance = Mathf.Clamp01(chance);
+            // The seeder factor (season × target eligibility × suppression × settings) is identical for
+            // every node of a disease, so memoize it per disease — on animal-heavy maps an ingester can
+            // overlap several nodes and this eligibility/suppression lookup is the expensive part. Each
+            // node still rolls independently (noisy-or), which is correct for separate piles of dung.
+            if (!seederConstantByDisease.TryGetValue(hotspot.DiseaseDef, out float seederConstant))
+            {
+                seederConstant = ContagionTransmissionUtility.BuildSeederChance(
+                    1f, ingester, resolvedProfile, context.Map, transmissionMultiplier, out HediffDef _);
+                seederConstantByDisease[hotspot.DiseaseDef] = seederConstant;
+            }
+
+            float finalChance = Mathf.Clamp01(baseChance * seederConstant);
             bool passed = Rand.Chance(finalChance);
             bool seeded = false;
             if (passed)
@@ -463,6 +507,172 @@ internal sealed class ContagionFecalOralTracker : IExposable
         }
     }
 
+    // Dev-overlay heatmap: for a candidate grazer, fill chanceByCell with the noisy-or grazing
+    // infection chance at each cell within range of any eating node, assuming the pawn grazed there.
+    // Pure read — rolls and seeds nothing. Empty when the pawn isn't a valid animal target or there
+    // are no nodes (e.g. a pawn already carrying every node's disease yields nothing, since its
+    // per-disease seeder factor is zero).
+    internal void BuildEatingRiskOverlay(Pawn ingester, Map map, Dictionary<int, float> chanceByCell)
+    {
+        chanceByCell?.Clear();
+        if (chanceByCell == null || map == null || _hotspots.Count == 0 || !IsAnimalExposureTarget(ingester, map))
+        {
+            return;
+        }
+
+        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
+        Dictionary<HediffDef, float> seederConstantByDisease = new Dictionary<HediffDef, float>();
+        for (int hotspotIndex = 0; hotspotIndex < _hotspots.Count; hotspotIndex++)
+        {
+            ContagionHotspotEntry hotspot = _hotspots.Get(hotspotIndex);
+            if (hotspot?.DiseaseDef == null
+                || !DiseaseProfileCache.TryGetResolvedProfile(hotspot.DiseaseDef, out ResolvedTransmissionProfile resolvedProfile)
+                || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_FecalOralEating vector))
+            {
+                continue;
+            }
+
+            foreach (IntVec3 cell in GenRadial.RadialCellsAround(hotspot.Cell, vector.hotspotRadius, useCenter: true))
+            {
+                if (!cell.InBounds(map)
+                    || !TryGetNodeGrazingChance(hotspot, ingester, cell, map, transmissionMultiplier, seederConstantByDisease,
+                        out HediffDef _, out float nodeChance, out float _, out float _))
+                {
+                    continue;
+                }
+
+                int index = map.cellIndices.CellToIndex(cell);
+                chanceByCell.TryGetValue(index, out float existing);
+                chanceByCell[index] = CombineProbabilities(existing, nodeChance);
+            }
+        }
+    }
+
+    // Dev-tooltip companion to BuildEatingRiskOverlay: the per-disease grazing risk at a single cell,
+    // sorted strongest-first, for the mouseover readout.
+    internal List<ContagionEatingRiskEntry> GetEatingRiskBreakdown(Pawn ingester, IntVec3 cell, Map map)
+    {
+        List<ContagionEatingRiskEntry> entries = new List<ContagionEatingRiskEntry>();
+        if (map == null || !cell.InBounds(map) || _hotspots.Count == 0 || !IsAnimalExposureTarget(ingester, map))
+        {
+            return entries;
+        }
+
+        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
+        Dictionary<HediffDef, float> seederConstantByDisease = new Dictionary<HediffDef, float>();
+        Dictionary<HediffDef, ContagionEatingRiskEntry> byDisease = new Dictionary<HediffDef, ContagionEatingRiskEntry>();
+        for (int hotspotIndex = 0; hotspotIndex < _hotspots.Count; hotspotIndex++)
+        {
+            ContagionHotspotEntry hotspot = _hotspots.Get(hotspotIndex);
+            if (!TryGetNodeGrazingChance(hotspot, ingester, cell, map, transmissionMultiplier, seederConstantByDisease,
+                    out HediffDef diseaseDef, out float nodeChance, out float nodePotency, out float nodeDistance))
+            {
+                continue;
+            }
+
+            if (byDisease.TryGetValue(diseaseDef, out ContagionEatingRiskEntry existing))
+            {
+                byDisease[diseaseDef] = new ContagionEatingRiskEntry(
+                    diseaseDef,
+                    CombineProbabilities(existing.Chance, nodeChance),
+                    Mathf.Max(existing.Potency, nodePotency),
+                    Mathf.Min(existing.Distance, nodeDistance));
+            }
+            else
+            {
+                byDisease[diseaseDef] = new ContagionEatingRiskEntry(diseaseDef, nodeChance, nodePotency, nodeDistance);
+            }
+        }
+
+        entries.AddRange(byDisease.Values);
+        entries.Sort((a, b) => b.Chance.CompareTo(a.Chance));
+        return entries;
+    }
+
+    // Shared per-node math for the dev overlay/tooltip: the seeded grazing chance this ingester would
+    // face from one node if it grazed at `cell`. Mirrors NotifyAnimalIngested's per-hotspot pipeline
+    // exactly (context -> radius -> source species -> potency -> seeder factor -> distance), but rolls
+    // and seeds nothing. seederConstantByDisease memoizes the cell-independent seeder factor (season ×
+    // target eligibility × suppression × settings) so the eligibility lookup runs once per disease.
+    private bool TryGetNodeGrazingChance(
+        ContagionHotspotEntry hotspot,
+        Pawn ingester,
+        IntVec3 cell,
+        Map map,
+        float transmissionMultiplier,
+        Dictionary<HediffDef, float> seederConstantByDisease,
+        out HediffDef diseaseDef,
+        out float chance,
+        out float potency,
+        out float distance)
+    {
+        diseaseDef = null;
+        chance = 0f;
+        potency = 0f;
+        distance = 0f;
+
+        if (hotspot?.DiseaseDef == null
+            || !DiseaseProfileCache.TryGetResolvedProfile(hotspot.DiseaseDef, out ResolvedTransmissionProfile resolvedProfile)
+            || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_FecalOralEating vector))
+        {
+            return false;
+        }
+
+        float contextFactor = GetEatingContextFactor(ContagionFecalOralEatingContext.Grazing, vector);
+        if (contextFactor <= 0f || !cell.InHorDistOf(hotspot.Cell, vector.hotspotRadius))
+        {
+            return false;
+        }
+
+        float sourceSpeciesFactor = ContagionTransmissionUtility.GetSourceSpeciesFactor(hotspot.SourceDef, ingester, resolvedProfile, map);
+        if (sourceSpeciesFactor <= 0f)
+        {
+            return false;
+        }
+
+        float nodePotency = GetHotspotPotency(hotspot, vector, map);
+        if (nodePotency <= MinHotspotPotency)
+        {
+            return false;
+        }
+
+        if (!seederConstantByDisease.TryGetValue(hotspot.DiseaseDef, out float seederConstant))
+        {
+            seederConstant = ContagionTransmissionUtility.BuildSeederChance(
+                1f, ingester, resolvedProfile, map, transmissionMultiplier, out HediffDef _);
+            seederConstantByDisease[hotspot.DiseaseDef] = seederConstant;
+        }
+
+        if (seederConstant <= 0f)
+        {
+            return false;
+        }
+
+        float nodeDistance = ContagionTransmissionUtility.GetHorizontalDistance(cell, hotspot.Cell);
+        float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(nodeDistance, vector.distanceFalloffRate);
+        float finalChance = Mathf.Clamp01(
+            vector.baseChancePerIngestion * contextFactor * nodePotency * sourceSpeciesFactor * distanceFactor * seederConstant);
+        if (finalChance <= 0f)
+        {
+            return false;
+        }
+
+        diseaseDef = hotspot.DiseaseDef;
+        chance = finalChance;
+        potency = nodePotency;
+        distance = nodeDistance;
+        return true;
+    }
+
+    // Independent-probability union of two infection chances (1 - (1-a)(1-b)); each node rolls
+    // separately in NotifyAnimalIngested, so combined exposure at a cell composes this way.
+    private static float CombineProbabilities(float existing, float additional)
+    {
+        float a = Mathf.Clamp01(existing);
+        float b = Mathf.Clamp01(additional);
+        return 1f - (1f - a) * (1f - b);
+    }
+
     private void CleanupFilth(Map map)
     {
         _contaminatedFilth.Cleanup(
@@ -479,7 +689,13 @@ internal sealed class ContagionFecalOralTracker : IExposable
             hotspot => !DiseaseProfileCache.TryGetResolvedProfile(hotspot.DiseaseDef, out ResolvedTransmissionProfile resolvedProfile)
                 || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_FecalOralEating vector)
                 || IsHotspotExpired(hotspot.Tick, vector)
-                || GetHotspotPotency(hotspot, vector, map) <= MinPotency);
+                // Rain/freezing are temporary infectivity suppressors. Cleanup only follows stored
+                // time decay, otherwise one cold snap or shower can permanently erase viable nodes.
+                || ContagionRiskMath.ShouldCleanupHotspot(
+                    hotspot.Potency,
+                    vector.hotspotDecayPerDay,
+                    GetElapsedDays(hotspot.Tick),
+                    MinHotspotPotency));
     }
 
     private ContagionFecalOralEatingContext ClassifyEatingContext(ContagionIngestionContext context, Vector_FecalOralEating vector)
@@ -700,19 +916,18 @@ internal sealed class ContagionFecalOralTracker : IExposable
 
     private static float GetHotspotPotency(ContagionHotspotEntry hotspot, Vector_FecalOralEating vector, Map map)
     {
-        float potency = Mathf.Max(0f, hotspot.Potency)
-            * Mathf.Exp(-Mathf.Max(0f, vector.hotspotDecayPerDay) * GetElapsedDays(hotspot.Tick));
-        if (map != null && map.weatherManager.RainRate > 0.05f)
-        {
-            potency *= Mathf.Clamp01(vector.rainPotencyFactor);
-        }
-
-        if (map != null && map.mapTemperature.OutdoorTemp <= vector.freezingTemperature)
-        {
-            potency *= Mathf.Clamp01(vector.freezingPotencyFactor);
-        }
-
-        return potency;
+        // hotspotDecayPerDay is the fraction of potency LOST per day, so daily multiplier = 1 - it
+        // (e.g. 0.5 -> halves per day). Per-disease via the vector, so diseases can tune independently.
+        float storedPotency = ContagionRiskMath.HotspotPotencyAfterDecay(
+            hotspot.Potency,
+            vector.hotspotDecayPerDay,
+            GetElapsedDays(hotspot.Tick));
+        return ContagionRiskMath.HotspotEffectivePotency(
+            storedPotency,
+            map != null && map.weatherManager.RainRate > 0.05f,
+            vector.rainPotencyFactor,
+            map != null && map.mapTemperature.OutdoorTemp <= vector.freezingTemperature,
+            vector.freezingPotencyFactor);
     }
 
     private static bool IsHotspotExpired(int createdTick, Vector_FecalOralEating vector)

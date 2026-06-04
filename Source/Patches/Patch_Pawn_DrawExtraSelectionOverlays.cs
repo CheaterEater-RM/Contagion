@@ -18,5 +18,14 @@ internal static class Patch_Pawn_DrawExtraSelectionOverlays
         }
 
         ContagionDeveloperOverlayDrawer.DrawNominalSpreadOverlay(__instance);
+
+        // A single selected animal also gets a "danger if it grazed here" fecal-oral eating heatmap.
+        // Keeping this single-selection-only avoids stacking independently normalized heatmaps when
+        // selecting a herd. Parasites carry no airborne/proximity vectors, so the spread overlay above
+        // no-ops for them and only this fires.
+        if (__instance.RaceProps?.Animal == true && Find.Selector.SingleSelectedThing == __instance)
+        {
+            ContagionDeveloperOverlayDrawer.DrawEatingRiskOverlay(__instance);
+        }
     }
 }

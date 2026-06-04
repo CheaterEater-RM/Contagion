@@ -42,6 +42,8 @@ internal sealed class ContagionHotspotEntry : IExposable
 
 internal sealed class ContagionHotspotStore
 {
+    private const int TicksPerDay = 60000;
+
     private List<ContagionHotspotEntry> _entries = new List<ContagionHotspotEntry>();
 
     public int Count => _entries.Count;
@@ -61,29 +63,52 @@ internal sealed class ContagionHotspotStore
         return index >= 0 && index < _entries.Count ? _entries[index] : null;
     }
 
-    public void AddOrRefresh(IntVec3 cell, HediffDef diseaseDef, ThingDef sourceDef, float potency, int mergeRadius, int maxPerDisease)
+    // Records a fresh shed. A shed matching an existing node (same disease, within mergeRadius — 0
+    // means same cell only) accumulates additively: fouling a spot repeatedly builds a stronger,
+    // longer-lived node, capped at maxPotency. Otherwise a new node is created.
+    public void AddOrRefresh(
+        IntVec3 cell,
+        HediffDef diseaseDef,
+        ThingDef sourceDef,
+        float potency,
+        int mergeRadius,
+        int maxPerDisease,
+        float decayPerDay,
+        float maxPotency)
     {
         int now = Find.TickManager.TicksGame;
         int clampedMergeRadius = Math.Max(0, mergeRadius);
+        float newPotency = Math.Max(0f, potency);
         for (int i = 0; i < _entries.Count; i++)
         {
             ContagionHotspotEntry entry = _entries[i];
             if (entry?.DiseaseDef == diseaseDef && entry.Cell.InHorDistOf(cell, clampedMergeRadius))
             {
-                entry.Cell = cell;
-                entry.Tick = now;
-                float clampedPotency = Math.Max(0f, potency);
-                if (clampedPotency > entry.Potency || entry.SourceDef == null)
+                // Decay the existing node's potency up to now BEFORE adding the new shed. This is what
+                // stops a tiny shed (a rat) from resetting a big, older node (an elephant pat) for
+                // free: the old potency keeps fading on its own schedule and the newcomer only adds its
+                // own contribution. Tick moves to now so the hard-expiry clock tracks the latest fouling.
+                // decayPerDay is the fraction lost per day (daily multiplier = 1 - it), matching
+                // ContagionFecalOralTracker.GetHotspotPotency, so the decay-to-now here stays in sync.
+                float elapsedDays = Math.Max(0f, (now - entry.Tick) / (float)TicksPerDay);
+                float decayedExisting = ContagionRiskMath.HotspotPotencyAfterDecay(entry.Potency, decayPerDay, elapsedDays);
+                float combined = ContagionRiskMath.AddHotspotPotency(decayedExisting, newPotency, maxPotency);
+
+                // Attribute the node to whichever shed dominates its current potency, so a small
+                // newcomer can't relabel a large node's source species (used for cross-species factors).
+                if (newPotency >= decayedExisting || entry.SourceDef == null)
                 {
-                    entry.Potency = clampedPotency;
                     entry.SourceDef = sourceDef;
                 }
 
+                entry.Cell = cell;
+                entry.Tick = now;
+                entry.Potency = combined;
                 return;
             }
         }
 
-        _entries.Add(new ContagionHotspotEntry(cell, diseaseDef, now, Math.Max(0f, potency), sourceDef));
+        _entries.Add(new ContagionHotspotEntry(cell, diseaseDef, now, Math.Min(newPotency, Math.Max(0f, maxPotency)), sourceDef));
         EnforceDiseaseCap(diseaseDef, maxPerDisease);
     }
 
