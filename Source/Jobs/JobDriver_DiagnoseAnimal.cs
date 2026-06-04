@@ -17,6 +17,7 @@ namespace Contagion;
 public class JobDriver_DiagnoseAnimal : JobDriver
 {
     private const int ExamineDurationTicks = 100; // milking a cow takes 400 ticks
+    private const float ExamineMedicineXp = 87.5f; // Vanilla animal tend XP without medicine.
 
     private Pawn Animal => (Pawn)job.GetTarget(TargetIndex.A).Thing;
 
@@ -27,7 +28,8 @@ public class JobDriver_DiagnoseAnimal : JobDriver
 
     protected override IEnumerable<Toil> MakeNewToils()
     {
-        this.FailOnDestroyedOrNull(TargetIndex.A);
+        this.FailOnDespawnedNullOrForbidden(TargetIndex.A);
+        this.FailOnAggroMentalState(TargetIndex.A);
         this.FailOn(() => Animal.Dead);
         this.FailOn(() => Animal.Faction != Faction.OfPlayer);
         // Abort early if the cooldown was applied by a concurrent tending job.
@@ -36,26 +38,32 @@ public class JobDriver_DiagnoseAnimal : JobDriver
         yield return Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.Touch)
             .FailOn(() => Animal.Dead);
 
-        Toil examine = Toils_General.Wait(ExamineDurationTicks, TargetIndex.A);
-        examine.WithProgressBarToilDelay(TargetIndex.A);
+        Toil examine = Toils_General.WaitWith(
+            TargetIndex.A,
+            ExamineDurationTicks,
+            useProgressBar: true,
+            maintainPosture: true,
+            maintainSleep: true,
+            TargetIndex.A,
+            PathEndMode.Touch);
         examine.PlaySustainerOrSound(() => SoundDefOf.Recipe_Surgery);
+        examine.activeSkill = () => SkillDefOf.Medicine;
+        examine.AddFinishAction(() =>
+        {
+            Pawn animal = Animal;
+            if (animal?.CurJobDef == JobDefOf.Wait_MaintainPosture)
+            {
+                animal.jobs.EndCurrentJob(JobCondition.InterruptForced);
+            }
+        });
         yield return examine;
 
         Toil diagnose = ToilMaker.MakeToil("ContagionDiagnoseAnimal_Diagnose");
         diagnose.initAction = () =>
         {
             Pawn animal = Animal;
-
-            // If the animal is also showing the sick signal, clear it — examination
-            // concludes that check regardless of what the proactive roll finds.
-            Hediff sickHediff = animal.health.hediffSet.GetFirstHediffOfDef(ContagionDefOf.Contagion_AnimalSick);
-            if (sickHediff != null)
-            {
-                animal.health.RemoveHediff(sickHediff);
-            }
-
-            ContagionAnimalDiagnosisUtility.TryDiagnoseAnimal(animal, pawn);
-            ContagionAnimalDiagnosisUtility.ApplyDiagnosisCooldown(animal);
+            pawn.skills?.Learn(SkillDefOf.Medicine, ExamineMedicineXp);
+            ContagionAnimalDiagnosisUtility.ResolveDiagnosisAttempt(animal, pawn);
         };
         diagnose.defaultCompleteMode = ToilCompleteMode.Instant;
         yield return diagnose;

@@ -2,18 +2,9 @@ using System.Collections.Generic;
 using HarmonyLib;
 using RimWorld;
 using Verse;
+using Verse.AI;
 
 namespace Contagion.Patches;
-
-// Two-class pattern:
-//   1. Patch_TendUtility_DoTend_TrackDoctor — prefix/postfix on DoTend to capture the doctor
-//      for the duration of the call.
-//   2. Patch_Hediff_Tended_AnimalDiagnosis — postfix on Hediff.Tended, guarded to
-//      Contagion_AnimalSick only. Fires exclusively when the sick-signal hediff is actually
-//      among the hediffs being tended, which is the correct gate for H3.
-//
-// Diagnosis logic lives in ContagionAnimalDiagnosisUtility and is shared with
-// JobDriver_DiagnoseAnimal (proactive examination of non-presenting animals).
 
 [HarmonyPatch(typeof(TendUtility), nameof(TendUtility.DoTend))]
 internal static class Patch_TendUtility_DoTend_TrackDoctor
@@ -29,7 +20,9 @@ internal static class Patch_TendUtility_DoTend_TrackDoctor
         _doctorStack.Push(doctor);
     }
 
-    public static void Postfix()
+    // A void finalizer always runs, including when DoTend or another patch throws.
+    [HarmonyFinalizer]
+    public static void Finalizer()
     {
         if (_doctorStack?.Count > 0)
         {
@@ -38,29 +31,43 @@ internal static class Patch_TendUtility_DoTend_TrackDoctor
     }
 }
 
-[HarmonyPatch(typeof(Hediff), nameof(Hediff.Tended))]
-internal static class Patch_Hediff_Tended_AnimalDiagnosis
+[HarmonyPatch(typeof(TendUtility), nameof(TendUtility.DoTend))]
+internal static class Patch_TendUtility_DoTend_NoMedicineForDiagnosis
 {
-    public static void Postfix(Hediff __instance)
+    public static void Prefix(Pawn patient, ref Medicine medicine)
     {
-        if (__instance.def != ContagionDefOf.Contagion_AnimalSick)
+        if (medicine != null
+            && ContagionAnimalDiagnosisUtility.IsNextTreatmentOnlyAnimalSick(patient, usingMedicine: true))
         {
-            return;
+            medicine = null;
         }
-
-        Pawn patient = __instance.pawn;
-        if (patient?.RaceProps?.Animal != true)
-        {
-            return;
-        }
-
-        Pawn doctor = Patch_TendUtility_DoTend_TrackDoctor.CurrentDoctor;
-
-        // Remove the sick signal — the examination always concludes it, regardless of outcome.
-        patient.health.RemoveHediff(__instance);
-
-        ContagionAnimalDiagnosisUtility.TryDiagnoseAnimal(patient, doctor);
-        ContagionAnimalDiagnosisUtility.ApplyDiagnosisCooldown(patient);
     }
 }
 
+[HarmonyPatch(typeof(Medicine), nameof(Medicine.GetMedicineCountToFullyHeal))]
+internal static class Patch_Medicine_GetMedicineCountToFullyHeal_AnimalDiagnosis
+{
+    public static void Postfix(Pawn pawn, ref int __result)
+    {
+        int diagnosisTreatments = ContagionAnimalDiagnosisUtility.CountTendableAnimalSickSignals(pawn);
+        if (diagnosisTreatments > 0)
+        {
+            __result = System.Math.Max(0, __result - diagnosisTreatments);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(JobDriver_TendPatient), nameof(JobDriver_TendPatient.TryMakePreToilReservations))]
+internal static class Patch_JobDriver_TendPatient_NoStaleDiagnosisMedicineReservation
+{
+    public static void Prefix(JobDriver_TendPatient __instance)
+    {
+        Pawn patient = __instance.job?.targetA.Pawn;
+        if (ContagionAnimalDiagnosisUtility.CountTendableAnimalSickSignals(patient) > 0
+            && Medicine.GetMedicineCountToFullyHeal(patient) == 0)
+        {
+            __instance.job.SetTarget(TargetIndex.B, LocalTargetInfo.Invalid);
+            __instance.job.SetTarget(TargetIndex.C, LocalTargetInfo.Invalid);
+        }
+    }
+}

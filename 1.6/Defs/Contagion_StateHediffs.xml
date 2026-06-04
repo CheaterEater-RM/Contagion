@@ -56,11 +56,18 @@
     <tendable>true</tendable>
     <scenarioCanAdd>false</scenarioCanAdd>
     <comps>
+      <!-- Permanent after one treatment: vanilla's safety invariant that prevents TendPatient
+           from looping if diagnosis code fails before the signal can be removed. -->
+      <li Class="HediffCompProperties_TendDuration">
+        <showTendQuality>false</showTendQuality>
+      </li>
       <li Class="Contagion.HediffCompProperties_AnimalSickNaturalRecovery">
         <firstDayChance>0.20</firstDayChance>
         <chanceIncreasePerDay>0.10</chanceIncreasePerDay>
         <maxDays>5</maxDays>
       </li>
+      <!-- Must remain last so vanilla marks the signal tended before diagnosis resolves it. -->
+      <li Class="Contagion.HediffCompProperties_AnimalSickDiagnosis" />
     </comps>
   </HediffDef>  <!-- Per-animal cooldown applied after any examination (tending-path or proactive job).
        Prevents spamming exam attempts to statistically guarantee finding a hidden disease.

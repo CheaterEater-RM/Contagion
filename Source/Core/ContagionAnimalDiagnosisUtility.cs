@@ -8,8 +8,7 @@ namespace Contagion;
 // Shared logic for live-animal vet examination.
 //
 // Two paths call this:
-//   1. Tending-path patch (Patch_Hediff_Tended_AnimalDiagnosis) — fires when a vet tends
-//      Contagion_AnimalSick on a presenting animal.
+//   1. HediffComp_AnimalSickDiagnosis fires through vanilla HediffWithComps.CompTended.
 //   2. Proactive examination job (JobDriver_DiagnoseAnimal) — fires when the player manually
 //      assigns a colonist to examine a domestic animal, even when no sick signal is visible.
 //
@@ -18,6 +17,9 @@ namespace Contagion;
 // statistically guarantee finding a hidden disease before it has had a chance to present.
 internal static class ContagionAnimalDiagnosisUtility
 {
+    [System.ThreadStatic]
+    private static List<Hediff> _nextTreatment;
+
     // Freshly-revealed diseases start at mild severity so the player has time to act.
     internal const float MildDiagnosedSeverity = 0.10f;
 
@@ -48,6 +50,90 @@ internal static class ContagionAnimalDiagnosisUtility
             ContagionDefOf.Contagion_AnimalDiagnosisCooldown, animal);
         cooldown.Configure(Find.TickManager.TicksGame + DiagnosisCooldownTicks);
         animal.health.AddHediff(cooldown);
+    }
+
+    // Resolves exactly one diagnosis attempt. Cleanup is guaranteed so an error cannot leave
+    // the signal immediately tendable and restart vanilla's TendPatient loop.
+    internal static bool ResolveDiagnosisAttempt(Pawn patient, Pawn doctor)
+    {
+        try
+        {
+            if (doctor == null)
+            {
+                ContagionDiagnostics.Trace(
+                    $"Animal diagnosis resolved without doctor context: {patient?.LabelShortCap ?? "null"}.");
+                return false;
+            }
+
+            return TryDiagnoseAnimal(patient, doctor);
+        }
+        finally
+        {
+            try
+            {
+                RemoveAllSickSignals(patient);
+            }
+            finally
+            {
+                ApplyDiagnosisCooldown(patient);
+            }
+        }
+    }
+
+    // Vanilla uses this count for medicine selection, reservations, pickup, and replenishment.
+    // The diagnostic signal is a no-medicine treatment, so it must not contribute to that count.
+    internal static int CountTendableAnimalSickSignals(Pawn patient)
+    {
+        if (patient?.health?.hediffSet == null)
+        {
+            return 0;
+        }
+
+        int count = 0;
+        List<Hediff> hediffs = patient.health.hediffSet.hediffs;
+        for (int i = 0; i < hediffs.Count; i++)
+        {
+            if (hediffs[i].def == ContagionDefOf.Contagion_AnimalSick && hediffs[i].TendableNow())
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // A mixed tend job may already be carrying medicine for a real injury or disease. Suppress
+    // that medicine only when vanilla has selected the diagnostic signal as this treatment.
+    internal static bool IsNextTreatmentOnlyAnimalSick(Pawn patient, bool usingMedicine)
+    {
+        if (patient?.health?.hediffSet == null)
+        {
+            return false;
+        }
+
+        _nextTreatment ??= new List<Hediff>();
+        try
+        {
+            TendUtility.GetOptimalHediffsToTendWithSingleTreatment(patient, usingMedicine, _nextTreatment);
+            if (_nextTreatment.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _nextTreatment.Count; i++)
+            {
+                if (_nextTreatment[i].def != ContagionDefOf.Contagion_AnimalSick)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+        finally
+        {
+            _nextTreatment.Clear();
+        }
     }
 
     // Core diagnosis roll. Returns true when the vet identifies a disease.
@@ -151,6 +237,23 @@ internal static class ContagionAnimalDiagnosisUtility
         if (setMildSeverity && hediff.def == targetDiseaseDef)
         {
             hediff.Severity = Mathf.Min(hediff.def.maxSeverity, MildDiagnosedSeverity);
+        }
+    }
+
+    private static void RemoveAllSickSignals(Pawn patient)
+    {
+        if (patient?.health?.hediffSet == null)
+        {
+            return;
+        }
+
+        for (int i = patient.health.hediffSet.hediffs.Count - 1; i >= 0; i--)
+        {
+            Hediff hediff = patient.health.hediffSet.hediffs[i];
+            if (hediff.def == ContagionDefOf.Contagion_AnimalSick)
+            {
+                patient.health.RemoveHediff(hediff);
+            }
         }
     }
 
