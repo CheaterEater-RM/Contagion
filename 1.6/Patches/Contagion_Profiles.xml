@@ -126,6 +126,15 @@
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
+        <!-- Sick signal + diagnosis chain (matches the other animal diseases): infected animals
+             stay hidden until a vet diagnoses them (Animal_Flu hediffClass is patched to
+             Hediff_ContagionAnimalHiddenDisease in Contagion_AnimalDiseasePatches.xml). Handlers can
+             notice the sick signal, doctors can diagnose, so the player learns about an animal-flu
+             outbreak through husbandry instead of having to inspect every animal's health tab.
+             corpseContagious stays false: flu meat is safe, so the disease never posthumously marks
+             a corpse infected — an animal showing the sick signal at death only leaves a "suspected"
+             corpse that post-mortem inspection clears as a harmless false positive. -->
+        <showsSickSignal>true</showsSickSignal>
         <!-- Animal flu can freely establish in the first colony animal species it reaches from
              an outside carrier, but additional colony animal species are much harder to involve. -->
         <animalCrossSpeciesFactorCurve>

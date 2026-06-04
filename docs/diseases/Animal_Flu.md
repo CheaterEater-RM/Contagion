@@ -1,6 +1,6 @@
 # Animal Flu — Contagion Profile
 
-Respiratory flu strain adapted to non-human animals. Mirrors human Flu in mechanics, cannot infect humans, and uses colony species-count suppression for jumps between animal races. Safe to butcher infected animals.
+Respiratory flu strain adapted to non-human animals. Mirrors human Flu in mechanics, cannot infect humans, and uses colony species-count suppression for jumps between animal races. Infected animals are hidden until diagnosed and surface through the sick-signal + vet diagnosis chain, like the other animal diseases. Meat from a flu-infected animal is safe — butchering carries no infection risk.
 
 ---
 
@@ -119,15 +119,16 @@ None configured.
 | useScaledActiveCaseCap | true (default) | Animal cap scales from player animal count |
 | maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per animal, floored, max 50% |
 | spreadSuppressionScale | 1.0 (default) | |
-| outbreakNotification | FirstCase (default) | Pure-animal exception suppresses outbreak and cluster letters; visible cases still produce disease-activation messages |
+| outbreakNotification | FirstCase (default) | Pure-animal exception suppresses outbreak and cluster letters; the player is notified through the sick-signal + diagnosis path instead |
+| showsSickSignal | true | Hidden until diagnosed; handlers notice the sick signal, doctors diagnose |
 
-Although the profile inherits `FirstCase`, Animal Flu has `affectsHumans false`. The notifier deliberately suppresses outbreak letters for pure-animal diseases, so Animal Flu does not create red first-case or yellow cluster letters.
+Although the profile inherits `FirstCase`, Animal Flu has `affectsHumans false`. The notifier deliberately suppresses the red/yellow outbreak letters for pure-animal diseases. Player notification instead comes through the animal-disease chain shared with plague, gut worms, and muscle parasites: a handler noticing the sick signal, a vet diagnosis letter, and the floating disease-activation message.
 
 ---
 
 ## Species Isolation
 
-`affectsHumans false`, `affectsAnimals true`. Animal flu cannot infect humans under any circumstances, and human flu cannot infect animals. Butchering a flu-infected animal produces clean meat (`corpseContagious false`).
+`affectsHumans false`, `affectsAnimals true`. Animal flu cannot infect humans under any circumstances, and human flu cannot infect animals. Butchering a flu-infected animal produces clean meat (`corpseContagious false`) — no posthumous infected-corpse marker is ever applied. The one nuance: if an animal is showing the sick signal at the moment it dies, its corpse is flagged *suspected infected* (the generic sick-signal-at-death rule), which a post-mortem inspection clears as a harmless false positive. This matches the other animal diseases and reinforces that a sick signal is uncertainty, not proof of danger.
 
 ### Inter-animal cross-species suppression
 
@@ -148,7 +149,7 @@ This makes the first spillover into a colony's animal population free if the dis
 - **Barn separation** — keeping sick animals in a separate roofed area away from healthy animals contains airborne spread.
 - **Vet tending** — a dedicated doctor or handler with high Medicine skill keeping the 48 h tend window reduces severity progression.
 - **Cleaning** — removing vomit filth from shared animal areas cuts fomite spread.
-- There is no sick-signal mechanic for animal flu (`showsSickSignal false`). Detection is player-initiated via health tab inspection.
+- **Sick signal + diagnosis** — animal flu uses the shared animal-disease chain (`showsSickSignal true`). Infected animals stay hidden until a handler notices the sick signal and a vet diagnoses them. A diagnosis letter fires for colony animals, so an outbreak no longer requires the player to inspect every animal's health tab. The standard generic diagnosis advice ("do not butcher until it recovers") still appears, though flu meat is in fact safe.
 
 ---
 
