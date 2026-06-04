@@ -12,6 +12,7 @@ Tsetse-fly-borne protozoan disease. Hotter and wetter than malaria — this is a
 | Animal variant | none |
 | Species | Human only |
 | Vanilla incident | `Disease_SleepingSickness` |
+| Contagion incubation | 1 day |
 | Vanilla lethal severity | 1.0 |
 | Vanilla tend cycle | 10 h |
 | Vanilla immunity | `immunityPerDaySick 0.4`, `severityPerDayNotImmune 0.45` — slower than malaria |

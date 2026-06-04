@@ -12,6 +12,7 @@ Respiratory flu strain adapted to non-human animals. Mirrors human Flu in mechan
 | Human counterpart | `Flu` (separate, no shared cluster) |
 | Species | Animal only |
 | Vanilla incident | `Disease_AnimalFlu` |
+| Contagion incubation | 1 day |
 | Vanilla lethal severity | 1.0 |
 | Vanilla tend cycle | 48 h (animals tend less frequently) |
 

@@ -12,6 +12,7 @@ Mosquito-borne disease seeded by warm, wet environments. No person-to-person spr
 | Animal variant | none |
 | Species | Human only |
 | Vanilla incident | `Disease_Malaria` |
+| Contagion incubation | 1 day |
 | Vanilla lethal severity | 1.0 |
 | Vanilla tend cycle | 10 h |
 | Vanilla immunity | `immunityPerDaySick 0.5`, `severityPerDayNotImmune 0.5` — close race |

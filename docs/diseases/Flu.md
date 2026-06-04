@@ -12,6 +12,7 @@ Seasonal respiratory illness. Spreads person-to-person through the air and via c
 | Animal variant | none (see [Animal_Flu](Animal_Flu.md)) |
 | Species | Human only |
 | Vanilla incident | `Disease_Flu` |
+| Contagion incubation | 1 day |
 | Vanilla lethal severity | 1.0 |
 | Vanilla tend cycle | 12 h |
 | Immunity race | close but survivable with care — `immunityPerDaySick 0.2388`, `severityPerDayNotImmune 0.2488` |

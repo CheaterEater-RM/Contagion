@@ -12,6 +12,7 @@ Water-borne intestinal parasite entering through contaminated water, fecal conta
 | Animal variant HediffDef | `Animal_GutWorms` |
 | Species | Human + Animal |
 | Vanilla incident | `Disease_GutWorms` |
+| Contagion incubation | 2 days |
 | Target body part | Stomach (human only; animals skip part targeting) |
 | Vanilla lethal severity | **None** — gut worms cannot kill directly |
 | Vanilla removal | Accumulate 300% total tend quality (`disappearsAtTotalTendQuality 3`); no immunity race |

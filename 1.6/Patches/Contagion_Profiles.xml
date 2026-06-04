@@ -10,7 +10,7 @@
     <xpath>Defs/HediffDef[defName="Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <incubationDays>1.5</incubationDays>
+        <incubationDays>1.0</incubationDays>
         <pendingWindowDays>15</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
@@ -121,7 +121,7 @@
     <xpath>Defs/HediffDef[defName="Animal_Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <incubationDays>1.5</incubationDays>
+        <incubationDays>1.0</incubationDays>
         <pendingWindowDays>15</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>false</affectsHumans>
@@ -204,7 +204,7 @@
     <xpath>Defs/HediffDef[defName="Plague" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <incubationDays>2.5</incubationDays>
+        <incubationDays>2.0</incubationDays>
         <pendingWindowDays>5</pendingWindowDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
@@ -376,7 +376,7 @@
     <xpath>Defs/HediffDef[defName="GutWorms" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <incubationDays>3.0</incubationDays>
+        <incubationDays>2.0</incubationDays>
         <immunityDurationDays>15</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
@@ -643,7 +643,7 @@
     <xpath>Defs/HediffDef[defName="MuscleParasites" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <incubationDays>5.0</incubationDays>
+        <incubationDays>3.0</incubationDays>
         <immunityDurationDays>20</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
@@ -868,7 +868,7 @@
     <xpath>Defs/HediffDef[defName="Malaria" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <incubationDays>2.0</incubationDays>
+        <incubationDays>1.0</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>FirstCase</outbreakNotification>
@@ -935,7 +935,7 @@
     <xpath>Defs/HediffDef[defName="SleepingSickness" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
-        <incubationDays>2.5</incubationDays>
+        <incubationDays>1.0</incubationDays>
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>FirstCase</outbreakNotification>

@@ -12,6 +12,7 @@ Trichinella-type larvae contracted from raw or undercooked infected meat, contam
 | Animal variant HediffDef | `Animal_MuscleParasites` |
 | Species | Human + Animal |
 | Vanilla incident | `Disease_MuscleParasites` (vanilla Core) |
+| Contagion incubation | 3 days |
 | Vanilla lethal severity | **None** — muscle parasites cannot kill directly |
 | Vanilla removal | Accumulate 300% total tend quality (`disappearsAtTotalTendQuality 3`); no immunity race |
 | Vanilla tend window | 48 h (`baseTendDurationHours 48`); ~3 skilled tends over ~4–6 days clears the disease |

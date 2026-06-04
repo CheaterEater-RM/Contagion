@@ -12,6 +12,7 @@ Flea-borne bacterial disease that crosses freely between humans and animals. One
 | Animal variant HediffDef | `Animal_Plague` |
 | Species | Human + Animal |
 | Vanilla incidents | `Disease_Plague` (human), `Disease_AnimalPlague` (animal) |
+| Contagion incubation | 2 days |
 | Vanilla lethal severity | 1.0 (both) |
 | Human tend cycle | 12 h (`severityPerDayTended −0.3628`) |
 | Animal tend cycle | 48 h (`severityPerDayTended −0.4254`) |
@@ -185,7 +186,7 @@ Plague spreads during incubation at above-average rates because infected fleas o
 | 0.5 (mid-incubation) | 0.45 |
 | 1.0 (onset) | 0.6 |
 
-The 2.5-day incubation window means an infected pawn can spread plague silently for up to 2.5 days before showing symptoms — longer than flu (1.5 d) or malaria (2.0 d). Combined with a meaningful early infectivity, this gives plague a distinctive "hidden spreader" character that rewards early isolation.
+The 2-day incubation window means an infected pawn can spread plague silently for up to 2 days before showing symptoms — longer than flu or malaria (1 day each). Combined with meaningful early infectivity, this preserves plague's distinctive "hidden spreader" character without leaving players unaware for too long.
 
 ### Source infectivity factors
 
@@ -278,6 +279,6 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - Plague no longer uses `Seeder_AnimalLinked`; incoming humans and animals are the primary introduction route. If playtesting shows too little resident animal pressure, add a new explicit animal-reservoir seeder rather than reusing the old handler-biased path.
 - Plague uses separate scaled caps for humans and animals. A colony with 10 colonists and 10 animals has a human plague cap of 4 and an animal plague cap of 4, rather than one shared mixed-species pool.
 - Live-host plague has no seasonal variation. Corpse fleas already have temperature-based suppression through `Vector_CorpseFlea`.
-- Incubation infectivity is set to a flat-ish curve (0.3 → 0.6). If playtesting shows plague outbreaks feel too fast or uncontainable, dial the starting value down toward 0.15–0.2 first; the 2.5-day window amplifies even moderate incubation infectivity.
+- Incubation infectivity is set to a flat-ish curve (0.3 → 0.6). If playtesting shows plague outbreaks feel too fast or uncontainable, dial the starting value down toward 0.15–0.2 first; even the 2-day window amplifies moderate incubation infectivity.
 - Passive symptom presentation peaks at 5% per half-day at severity 1.0, giving ~25% cumulative over a typical untreated course. If wild animal plague feels too invisible, raise the peak toward 0.08; if messages are too noisy, lower it or raise the severity threshold.
 - Posthumous symptom chance (10%) is the probability an animal that died with hidden plague shows as an infected corpse. Raise toward 0.3 for diseases with obvious post-mortem lesions; lower toward 0 for truly occult infections.
