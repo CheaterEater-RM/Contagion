@@ -697,7 +697,7 @@
             </cookSourceProtection>
             <baseChancePerMeal>0.85</baseChancePerMeal>
             <cleanlinessImpact>0.5</cleanlinessImpact>
-            <contaminationExpiryDays>45</contaminationExpiryDays>
+            <contaminationExpiryDays>30</contaminationExpiryDays>
           </li>
           <!-- Low direct butchery exposure: larvae are mainly a meat-ingestion problem, but
                cutting infected tissue is not perfectly safe. -->

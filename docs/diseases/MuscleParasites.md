@@ -71,11 +71,9 @@ Humans most commonly get muscle parasites by eating contaminated meat, but susta
 |---|---|---|
 | baseChancePerMeal | 0.85 | Slightly higher than gut worms — larvae in meat are dense |
 | cleanlinessImpact | 0.5 | Kitchen cleanliness has half the impact compared to gut worms |
-| contaminationExpiryDays | 45 | Longer expiry — larvae survive in preserved meat for 45 days |
+| contaminationExpiryDays | 30 | Contaminated food becomes safe after 30 days, matching gut worms |
 
 **Why lower cleanlinessImpact than gut worms?** Muscle parasite larvae are embedded in muscle tissue, not on surfaces. Kitchen cleanliness matters less than whether the meat itself is contaminated.
-
-**Why 45-day expiry?** Trichinella-type cysts are robust. Preserved meat (pemmican, dried meat) can carry live larvae much longer than gut worm eggs. This means stockpiled meat from an infected animal remains a hazard for weeks.
 
 Cooking contaminated ingredients propagates surviving contamination to the meal using the recipe factor and Cooking skill. Ordinary simple/fine/lavish meals share a 0.20 recipe factor; higher-tier meals are safer because they require better cooks. Cooking skill applies an asymptotic exponential multiplier: `0.25 + (1.5 - 0.25) * exp(-0.18 * Cooking)`.
 
@@ -204,7 +202,7 @@ Spread suppression is on for the same reasons as gut worms (see [GutWorms.md](Gu
 
 Infected animal carcasses spawn fresh and are marked by `Comp_InfectedCorpse`. Butcher bills exclude infected corpses by default through the `AllowInfectedCorpses` special filter. If the player enables that filter, the unified notice roll (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: true`) and meat contamination fire normally.
 
-**Key difference from gut worms:** the 45-day contamination expiry means meat from a muscle-parasite animal that entered the freezer may contaminate colonists weeks after the animal was killed. Long-preserved contaminated pemmican is a delayed hazard.
+As with gut worms, contaminated meat and prepared food remain hazardous for up to 30 days.
 
 ### Sick signal (`showsSickSignal true`)
 
@@ -223,7 +221,7 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 - **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
 - **Cooking quality** — ordinary cooked meals share a 0.20 recipe factor before Cooking skill. Survival meals (0.05×) are safer because they are cooked and sealed. Avoid raw meat and pemmican (0.70×) from uncertain sources.
 - **Raw corpse ingestion** — eating an infected corpse raw is treated as extreme direct exposure and should almost always transmit to an eligible eater.
-- **Expiry awareness** — contaminated preserved meat stays dangerous for 45 days. A stockpile built from an infected batch remains a hazard well after the animal is dead.
+- **Expiry awareness** — contaminated preserved meat stays dangerous for 30 days. A stockpile built from an infected batch remains a hazard well after the animal is dead.
 - **Dedicated butcher** — Medical and Cooking skill are the primary levers on the notice roll; Animals adds a small bonus. A pawn with decent Medical + Cooking catches most infected batches before they enter storage.
 
 ---
@@ -231,7 +229,7 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 ## Tuning Notes
 
 - `baseChancePerCheck 0.0015` is lower than gut worms (0.002). Muscle parasites should feel slightly rarer but more impactful per outbreak. May need adjusting upward if playtesting shows muscle parasites are too infrequent on temperate maps.
-- `contaminationExpiryDays 45` is a long window that creates interesting long-memory scenarios (a stockpile from an outbreak months ago). If players find this too harsh or confusing to track, consider 30 days (same as gut worms).
+- `contaminationExpiryDays 30` matches gut worms so both parasite food chains have the same persistence window.
 - `Seeder_Arrival arrivalChance 0.004` lets incoming groups carry muscle parasites in Contagion-driven mode. Farm-animal wander-ins are the clearest carrier story, but any eligible arrival group can technically bring it.
 - `Seeder_Environmental cooldownDays 4` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
 - `spreadSuppressionScale 1.0` keeps outbreaks within the mod's active-case caps. Suppression is now applied to every vector (centrally in `BuildSeederChance`), not just person-to-person ones, and covers a dedicated **wild-animal** track so a wild fecal-oral outbreak self-limits to the wild population's capped fraction instead of saturating the map.
