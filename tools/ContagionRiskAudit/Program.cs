@@ -57,6 +57,10 @@ internal static class Program
 
         List<Check> checks = new()
         {
+            Check.Close("biome disease commonality below baseline", ContagionRiskMath.BiomeDiseaseCommonalityFactor(50f), 0.5f, 0.0001f),
+            Check.Close("biome disease commonality baseline", ContagionRiskMath.BiomeDiseaseCommonalityFactor(100f), 1f, 0.0001f),
+            Check.Close("biome disease commonality above baseline", ContagionRiskMath.BiomeDiseaseCommonalityFactor(160f), 1.6f, 0.0001f),
+            Check.Close("biome disease commonality clamps negatives", ContagionRiskMath.BiomeDiseaseCommonalityFactor(-10f), 0f, 0.0001f),
             Check.Close("skill10 butchery factor", butcherFactor, 0.5875f, 0.0001f),
             Check.Close("skill10 cooked meal survival factor", ordinaryMealFactor, 0.091325f, 0.0005f),
             Check.Close("plague fresh butchery combined", ContagionRiskMath.Combined(plagueFreshFlea, plagueFreshFluid), 0.091929f, 0.002f),
@@ -202,6 +206,7 @@ internal static class Program
         checks.Add(Check.Bool("fomite applies contact protection", fomiteTracker.Contains("GetContactProtectionFactor"), true));
         checks.Add(Check.Bool("corpse flea/fluid apply contact protection", corpseExposureUtility.Contains("GetContactProtectionFactor"), true));
         checks.Add(Check.Bool("environmental applies contact protection", environmentalProcessor.Contains("GetContactProtectionFactor"), true));
+        checks.Add(Check.Bool("environmental normalizes biome disease commonality", environmentalProcessor.Contains("BiomeDiseaseCommonalityFactor"), true));
         checks.Add(Check.Bool("fecal-oral living applies contact protection", fecalOralTracker.Contains("GetContactProtectionFactor"), true));
         checks.Add(Check.Bool("fecal-oral eating caps body-size potency at the cow", fecalOralTracker.Contains("MaxBodySizePotencyFactor = 2.5f"), true));
         checks.Add(Check.Bool("fecal-oral eating floors body-size potency so small animals shed", fecalOralTracker.Contains("MinBodySizePotencyFactor = 0.4f"), true));

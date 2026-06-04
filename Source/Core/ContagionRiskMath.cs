@@ -4,6 +4,12 @@ namespace Contagion;
 
 public static class ContagionRiskMath
 {
+    public static float BiomeDiseaseCommonalityFactor(float commonality)
+    {
+        // RimWorld authors biome disease commonality around 100 as the neutral baseline.
+        return Math.Max(0f, commonality) / 100f;
+    }
+
     public static float ButcheryExposureFactor(float cookingLevel, float medicineLevel, float animalsLevel, bool animalCorpse)
     {
         float skill = cookingLevel + medicineLevel * 0.25f;

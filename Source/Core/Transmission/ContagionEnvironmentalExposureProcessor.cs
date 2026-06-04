@@ -19,12 +19,12 @@ internal sealed class ContagionEnvironmentalExposureProcessor
             ResolvedTransmissionProfile resolvedProfile,
             Vector_Environmental vector,
             Seeder_Environmental seeder,
-            float biomeCommonality)
+            float biomeCommonalityFactor)
         {
             ResolvedProfile = resolvedProfile;
             Vector = vector;
             Seeder = seeder;
-            BiomeCommonality = biomeCommonality;
+            BiomeCommonalityFactor = biomeCommonalityFactor;
         }
 
         public ResolvedTransmissionProfile ResolvedProfile { get; }
@@ -33,7 +33,7 @@ internal sealed class ContagionEnvironmentalExposureProcessor
 
         public Seeder_Environmental Seeder { get; }
 
-        public float BiomeCommonality { get; }
+        public float BiomeCommonalityFactor { get; }
     }
 
     public ContagionEnvironmentalExposureProcessor(Contagion_MapTransmissionComponent owner)
@@ -95,7 +95,7 @@ internal sealed class ContagionEnvironmentalExposureProcessor
         float ambientTemperature = GetAmbientTemperature(room);
         float chance = environmentalProfile.Vector.baseChancePerCheck
             * environmentalProfile.Seeder.baseChanceMultiplier
-            * environmentalProfile.BiomeCommonality
+            * environmentalProfile.BiomeCommonalityFactor
             * seedingMultiplier;
         chance *= GetEnvironmentalTemperatureFactor(ambientTemperature, environmentalProfile.Vector);
         if (chance <= 0f)
@@ -158,26 +158,27 @@ internal sealed class ContagionEnvironmentalExposureProcessor
                 continue;
             }
 
-            float biomeCommonality = GetBiomeDiseaseCommonality(resolvedProfile);
-            if (biomeCommonality <= 0f)
+            float biomeCommonalityFactor = GetBiomeDiseaseCommonalityFactor(resolvedProfile);
+            if (biomeCommonalityFactor <= 0f)
             {
                 continue;
             }
 
-            environmentalProfiles.Add(new EnvironmentalProfile(resolvedProfile, vector, seeder, biomeCommonality));
+            environmentalProfiles.Add(new EnvironmentalProfile(resolvedProfile, vector, seeder, biomeCommonalityFactor));
         }
 
         return environmentalProfiles;
     }
 
-    private float GetBiomeDiseaseCommonality(ResolvedTransmissionProfile resolvedProfile)
+    private float GetBiomeDiseaseCommonalityFactor(ResolvedTransmissionProfile resolvedProfile)
     {
         if (resolvedProfile?.LinkedIncidentDef == null || _map?.Biome == null)
         {
             return 0f;
         }
 
-        return Mathf.Max(0f, _map.Biome.CommonalityOfDisease(resolvedProfile.LinkedIncidentDef));
+        return ContagionRiskMath.BiomeDiseaseCommonalityFactor(
+            _map.Biome.CommonalityOfDisease(resolvedProfile.LinkedIncidentDef));
     }
 
     private static float GetEnvironmentalPawnFactor(Pawn pawn, Vector_Environmental vector)
