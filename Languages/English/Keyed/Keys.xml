@@ -17,7 +17,7 @@
   <Contagion_SuppressionWeak>Weak</Contagion_SuppressionWeak>
   <Contagion_SuppressionWeakTooltip>Spread slows near the case cap, but risky exposure can push past it.</Contagion_SuppressionWeakTooltip>
   <Contagion_SuppressionLetErRip>Let 'er rip</Contagion_SuppressionLetErRip>
-  <Contagion_SuppressionLetErRipTooltip>Disables the outbreak case cap entirely.</Contagion_SuppressionLetErRipTooltip>
+  <Contagion_SuppressionLetErRipTooltip>Disables the outbreak suppression entirely: every pawn is at risk.</Contagion_SuppressionLetErRipTooltip>
   <Contagion_SettingSeedingMode>Seeding mode</Contagion_SettingSeedingMode>
   <Contagion_SeedingModeStoryteller>Storyteller-driven</Contagion_SeedingModeStoryteller>
   <Contagion_SeedingModeStorytellerTooltip>Storyteller incidents begin outbreaks through arrivals, animals, or the environment.</Contagion_SeedingModeStorytellerTooltip>
