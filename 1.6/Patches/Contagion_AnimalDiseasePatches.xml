@@ -13,14 +13,14 @@
   <Operation Class="PatchOperationReplace">
     <xpath>Defs/HediffDef[defName="Animal_Plague"]/description</xpath>
     <value>
-      <description>An infectious disease caused by bacteria that are carried by fleas. Cross-infectious between humans and animals.</description>
+      <description>A flea-borne bacterial disease that can spread between humans and animals.</description>
     </value>
   </Operation>
 
   <Operation Class="PatchOperationReplace">
     <xpath>Defs/HediffDef[defName="Animal_Flu"]/description</xpath>
     <value>
-      <description>An infectious disease caused by the influenza virus. This strain is adapted for infecting only non-human species.</description>
+      <description>An influenza strain that infects non-human species.</description>
     </value>
   </Operation>
 

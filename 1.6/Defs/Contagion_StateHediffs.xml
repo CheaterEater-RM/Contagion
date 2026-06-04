@@ -50,7 +50,7 @@
     <defName>Contagion_AnimalSick</defName>
     <hediffClass>HediffWithComps</hediffClass>
     <label>sick</label>
-    <description>This animal appears unwell. A veterinarian should examine it — the cause may be serious or nothing at all.</description>
+    <description>This animal appears unwell. Have a veterinarian examine it.</description>
     <initialSeverity>0.05</initialSeverity>
     <isBad>true</isBad>
     <tendable>true</tendable>
@@ -77,7 +77,7 @@
     <defName>Contagion_AnimalDiagnosisCooldown</defName>
     <hediffClass>Contagion.Hediff_ContagionExpiry</hediffClass>
     <label>examined recently</label>
-    <description>This animal was recently examined by a veterinarian. Another examination can be requested once the cooldown expires (one week).</description>
+    <description>This animal was examined recently. It can be examined again after one week.</description>
     <initialSeverity>1.0</initialSeverity>
     <maxSeverity>1.0</maxSeverity>
     <isBad>false</isBad>

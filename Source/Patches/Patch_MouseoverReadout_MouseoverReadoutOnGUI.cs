@@ -516,13 +516,13 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
         if (breakdown?.VectorKind == ContagionDebugVectorKind.Proximity
             && IsPlagueFleaTransfer(breakdown.DiseaseDef))
         {
-            return "live flea transfer";
+            return "Contagion_DeveloperHoverVectorLiveFlea".Translate();
         }
 
         return breakdown?.VectorKind switch
         {
             ContagionDebugVectorKind.Airborne => "Contagion_DeveloperHoverVectorAirborne".Translate(),
-            ContagionDebugVectorKind.AirborneRoom => "room air",
+            ContagionDebugVectorKind.AirborneRoom => "Contagion_DeveloperHoverVectorRoomAir".Translate(),
             ContagionDebugVectorKind.Proximity => "Contagion_DeveloperHoverVectorProximity".Translate(),
             _ => "Contagion_DeveloperHoverVectorSocial".Translate()
         };
@@ -549,14 +549,14 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
 
         if (clampedChance <= 0f)
         {
-            return "0.000%";
+            return clampedChance.ToStringPercent("0.000");
         }
 
-        return "<0.001%";
+        return "Contagion_DeveloperChanceBelow".Translate(0.001f.ToStringPercent("0.000")).Resolve();
     }
 
     private static string FormatMultiplier(float value)
     {
-        return value.ToString("0.00") + "x";
+        return "Contagion_DeveloperMultiplier".Translate(value.ToString("0.00")).Resolve();
     }
 }

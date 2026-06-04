@@ -7,7 +7,7 @@
     <success>Normal</success>
     <xpath>Defs/TraitDef[defName="Immunity"]/degreeDatas/li[degree="-1"]/description</xpath>
     <value>
-      <description>NAME has an awful immune system. S/He gets sick more often than usual, frequently with illnesses that nobody in the colony has been afflicted by, and can spread them.</description>
+      <description>NAME has an awful immune system. S/He gets sick more often, can catch new illnesses without an existing outbreak, and can spread them.</description>
     </value>
   </Operation>
 

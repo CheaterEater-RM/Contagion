@@ -113,63 +113,63 @@ public static class ContagionTransmissionUtility
     {
         if (target == null)
         {
-            return "no target";
+            return "Contagion_DeveloperBlockReasonNoTarget".Translate().Resolve();
         }
 
         if (target.Dead)
         {
-            return "target is dead";
+            return "Contagion_DeveloperBlockReasonTargetDead".Translate().Resolve();
         }
 
         if (resolvedProfile?.Profile == null)
         {
-            return "no disease profile";
+            return "Contagion_DeveloperBlockReasonNoProfile".Translate().Resolve();
         }
 
         if (!resolvedProfile.Profile.CanTransmitBetween(source, target, out float speciesFactor))
         {
             return speciesFactor <= 0f
-                ? "species barrier"
-                : "profile cannot affect target";
+                ? "Contagion_DeveloperBlockReasonSpeciesBarrier".Translate().Resolve()
+                : "Contagion_DeveloperBlockReasonUnaffectedTarget".Translate().Resolve();
         }
 
         if (GetAnimalCrossSpeciesFactor(source?.Map ?? target.Map, source?.def, target, resolvedProfile) <= 0f)
         {
-            return "species barrier";
+            return "Contagion_DeveloperBlockReasonSpeciesBarrier".Translate().Resolve();
         }
 
         if (target.health?.hediffSet == null || target.health.immunity == null)
         {
-            return "no health/immunity tracker";
+            return "Contagion_DeveloperBlockReasonNoHealthTracker".Translate().Resolve();
         }
 
         HediffDef targetDef = resolvedProfile.ResolveHediffForPawn(target);
         if (target.health.hediffSet.HasHediff(targetDef))
         {
-            return "already has disease";
+            return "Contagion_DeveloperBlockReasonAlreadyInfected".Translate().Resolve();
         }
 
         if (ContagionDiseaseUtility.FindIncubation(target, targetDef) != null)
         {
-            return "already incubating";
+            return "Contagion_DeveloperBlockReasonAlreadyIncubating".Translate().Resolve();
         }
 
         if (ContagionDiseaseUtility.HasTemporaryImmunity(target, targetDef))
         {
-            return "temporary immunity";
+            return "Contagion_DeveloperBlockReasonTemporaryImmunity".Translate().Resolve();
         }
 
         float vanillaFactor = GetVanillaContractFactor(target, resolvedProfile, out HediffDef immunityCause);
         if (vanillaFactor <= 0f)
         {
             return immunityCause != null
-                ? "immune: " + immunityCause.LabelCap
-                : "vanilla contract factor is 0";
+                ? "Contagion_DeveloperBlockReasonImmune".Translate(immunityCause.LabelCap).Resolve()
+                : "Contagion_DeveloperBlockReasonVanillaImmunity".Translate().Resolve();
         }
 
         if (GetSusceptibilityFactorProduct(target, resolvedProfile.Profile) <= 0f)
         {
-            return "susceptibility factor is 0";
+            return "Contagion_DeveloperBlockReasonNoSusceptibility".Translate().Resolve();
         }
 
         return null;
