@@ -114,13 +114,16 @@ Infected animals can contaminate vanilla `Filth_AnimalFilth` in roofed or enclos
 
 ### Vector_FecalOralEating (animal-only grazing exposure)
 
-Infected outdoor animals create hidden pasture hotspots. Animals eating in those hotspots can pick up muscle parasites, with context weighting: grazing live plants is highest risk, raw outdoor ground food is lower, kibble/hay on the ground is lower still, and stored or indoor feed is near-zero risk.
+Infected outdoor animals create hidden pasture hotspots. Animals eating *near* a hotspot (within `hotspotRadius` = 8 cells, exponential distance falloff — not cell-exact) can pick up muscle parasites, with context weighting: grazing live plants is highest risk, raw outdoor ground food is lower, kibble/hay on the ground is lower still, and stored or indoor feed is near-zero risk. Sheds within `hotspotMergeRadius` (4) merge into one node (max potency, decay/expiry clock reset).
 
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerIngestion | 0.006 | Rolled when an animal eats near a hotspot |
-| hotspotShedChancePerCheck | 0.014 | Per 2500-tick environmental pass from infected outdoor animals |
+| bodySizeDropsPerDayCurve | (0.2,4) (1.2,2) (2.4,1) (4.0,1) | Deterministic nodes/day by shedder BodySize (same curve as gut worms) |
+| bodySizePotencyExponent | 1.0 | Per-node potency ×= BodySize^1.0 — large animals make stronger nodes |
 | hotspotDurationDays | 12 | Soil contamination lingers longer than gut worms |
+
+Shedding is the deterministic **waste meter** model — see [GutWorms.md](GutWorms.md) → Vector_FecalOralEating for the full description (steady body-size-driven cadence, paused while starving, drop-when-full, potency tracking infectivity).
 
 ### Vector_Environmental (direct outdoor exposure)
 
@@ -154,7 +157,14 @@ Muscle parasites peak mid-to-late illness. Food contamination is roughly proport
 
 ### Incubation infectivity
 
-None configured.
+Low pre-symptom shedding — larvae are passed before the host shows signs, ramping toward the active curve's opening value (0.2) and a touch lower than gut worms. Required mechanically so incubating animals drop pasture nodes (`GetContagiousProfiles` filters out zero-infectivity incubators). Profile-level, so it also gives other vectors a small incubation-phase chance.
+
+| Severity | Multiplier |
+|---|---|
+| 0.0 | 0.0 |
+| 0.6 | 0.04 |
+| 0.9 | 0.10 |
+| 1.0 | 0.18 |
 
 ### Seasonal variation
 
@@ -170,12 +180,12 @@ None configured.
 
 | Field | Value | Notes |
 |---|---|---|
-| useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected colony pawn in that track, floored, max 50% |
-| spreadSuppressionScale | **0** | Disabled — foodborne is not herd spread |
+| useScaledActiveCaseCap | true (default) | Colony-human, colony-animal, and wild-animal caps are calculated separately |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable pawn in that track, floored, max 50% |
+| spreadSuppressionScale | **1.0** | Cap-aware suppression **on** for every vector and every track (colony + wild) |
 | outbreakNotification | **FirstCase** | Letter fires on first human case (not animal acquisition) |
 
-Spread suppression is off for the same reason as gut worms: contaminated food can infect any eater regardless of how many are already infected. The colony-fraction model doesn't apply, though seeding still respects scaled active-case caps.
+Spread suppression is on for the same reasons as gut worms (see [GutWorms.md](GutWorms.md) → Suppression and Caps): muscle parasites spread within a population via fecal-oral pasture nodes, so as a track (colony humans, colony animals, or **wild animals**) nears its active-case cap, all transmission toward it is dampened — applied to every vector centrally in `BuildSeederChance`. The wild-animal cap scales with the wild population on the map, preventing a wild outbreak from saturating it. Set `suppressionMode` to *Let 'er rip* to disable.
 
 `outbreakNotification FirstCase` fires when the first human gets muscle parasites — this is the key discovery moment. Animal infection is silent until the sick signal fires.
 
@@ -217,4 +227,4 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 - `contaminationExpiryDays 45` is a long window that creates interesting long-memory scenarios (a stockpile from an outbreak months ago). If players find this too harsh or confusing to track, consider 30 days (same as gut worms).
 - `Seeder_Arrival arrivalChance 0.004` lets incoming groups carry muscle parasites in Contagion-driven mode. Farm-animal wander-ins are the clearest carrier story, but any eligible arrival group can technically bring it.
 - `Seeder_Environmental cooldownDays 4` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
-- `spreadSuppressionScale 0` was set because foodborne/environmental pressure is not person-to-person herd spread. A dirty kitchen, contaminated meat batch, or contaminated soil patch can expose multiple pawns regardless of colony infection fraction.
+- `spreadSuppressionScale 1.0` keeps outbreaks within the mod's active-case caps. Suppression is now applied to every vector (centrally in `BuildSeederChance`), not just person-to-person ones, and covers a dedicated **wild-animal** track so a wild fecal-oral outbreak self-limits to the wild population's capped fraction instead of saturating the map.

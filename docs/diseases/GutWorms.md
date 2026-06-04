@@ -120,13 +120,16 @@ Infected animals can contaminate vanilla `Filth_AnimalFilth` in roofed or enclos
 
 ### Vector_FecalOralEating (animal-only grazing exposure)
 
-Infected outdoor animals create hidden pasture hotspots. Animals eating in those hotspots can pick up gut worms, with context weighting: grazing live plants is highest risk, raw outdoor ground food is lower, kibble/hay on the ground is lower still, and stored or indoor feed is near-zero risk.
+Infected outdoor animals create hidden pasture hotspots. Animals eating *near* a hotspot (within `hotspotRadius` = 8 cells, exponential distance falloff — not cell-exact) can pick up gut worms, with context weighting: grazing live plants is highest risk, raw outdoor ground food is lower, kibble/hay on the ground is lower still, and stored or indoor feed is near-zero risk. Sheds within `hotspotMergeRadius` (4) merge into one node, taking the **max** potency and **resetting** the decay/expiry clock — so a herd or warren keeps shared nodes alive while present, and they fade ~`hotspotDurationDays` after the animals leave.
 
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerIngestion | 0.007 | Rolled when an animal eats near a hotspot |
-| hotspotShedChancePerCheck | 0.018 | Per 2500-tick environmental pass from infected outdoor animals |
-| hotspotDurationDays | 7 | Shorter-lived than muscle parasite pasture contamination |
+| bodySizeDropsPerDayCurve | (0.2,4) (1.2,2) (2.4,1) (4.0,1) | Deterministic nodes/day by shedder BodySize |
+| bodySizePotencyExponent | 1.0 | Per-node potency ×= BodySize^1.0 — large animals make stronger nodes |
+| hotspotDurationDays | 7 | Hard expiry (from last refresh); shorter-lived than muscle parasite pasture contamination |
+
+**Deterministic "waste meter" shedding.** Shedding is **not random**. Each infected outdoor animal fills a per-animal/per-disease waste meter at a steady rate set by `bodySizeDropsPerDayCurve` (nodes/day vs `BodySize`), and drops one node when the meter is full (the remainder carries over, capped so a backlog can't burst). The curve is **level** (~1/day) for large animals and rises for small ones — deliberately not exponential: rat (0.2) ≈ 4/day, deer (1.2) ≈ 2/day, bison (2.4) and elephant (4.0) ≈ 1/day. The meter only fills **while the animal isn't starving** (an empty gut produces no new waste); an already-full meter can still drop. Cadence is independent of disease stage — a barely-infectious animal still defecates on schedule, but the node's **potency** tracks current infectivity × `BodySize^1.0`, so early/mild cases drop weak, short-lived nodes (a near-inert node below `MinPotency` is skipped, not spawned). Partial progress persists across save-load and is removed when the animal recovers, dies, or leaves the map. Sheds within `hotspotMergeRadius` (4) still merge (max potency, decay/expiry clock reset).
 
 ### Vector_Environmental (direct outdoor exposure)
 
@@ -160,7 +163,14 @@ Gut worms infectivity rises through the illness and stays high. A chronic case t
 
 ### Incubation infectivity
 
-None configured. Gut worms does not spread during incubation.
+Low pre-symptom shedding — asymptomatic carriers pass eggs before signs appear, ramping toward the active curve's opening value (0.3). This is required mechanically: `GetContagiousProfiles` filters out incubators whose profile-level infectivity is 0, so without this curve an incubating animal drops no pasture nodes at all. Because it is profile-level (not vector-scoped), it also gives the other vectors (foodborne, fomite) a small incubation-phase chance.
+
+| Severity | Multiplier |
+|---|---|
+| 0.0 | 0.0 |
+| 0.5 | 0.05 |
+| 0.85 | 0.15 |
+| 1.0 | 0.25 |
 
 ### Seasonal variation
 
@@ -176,12 +186,12 @@ None configured.
 
 | Field | Value | Notes |
 |---|---|---|
-| useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected colony pawn in that track, floored, max 50% |
-| spreadSuppressionScale | **0** | Colony-fraction suppression **disabled** — gut worms is foodborne, not person-to-person herd spread |
+| useScaledActiveCaseCap | true (default) | Colony-human, colony-animal, and wild-animal caps are calculated separately |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable pawn in that track, floored, max 50% |
+| spreadSuppressionScale | **1.0** | Cap-aware suppression **on** for every vector and every track (colony + wild) |
 | outbreakNotification | **None** | Silent — no letter. Discovery via health tab inspection |
 
-Spread suppression is off because the foodborne vector is not herd-transmission. A dirty kitchen or infected cook can give everyone gut worms regardless of how many are already infected. The colony-fraction model does not fit, though seeding still respects scaled active-case caps.
+Spread suppression is on. Gut worms does spread within a population — vomit fomite between colonists and fecal-oral pasture nodes between animals — so as a track (colony humans, colony animals, or **wild animals**) nears its active-case cap, all transmission toward it is dampened. This is applied to every vector (including foodborne, centrally in `BuildSeederChance`), so a dirty kitchen can't push the colony past the cap, and a wild outbreak self-limits to ~the wild population's capped fraction rather than saturating the map. The wild-animal cap scales with the wild population currently on the map. Set `suppressionMode` to *Let 'er rip* to disable all caps.
 
 ---
 

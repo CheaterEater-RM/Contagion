@@ -84,9 +84,11 @@ The `permanentSummer 1.1` multiplier (above the 1.0 summer multiplier) reflects 
 
 | Field | Value | Notes |
 |---|---|---|
-| useScaledActiveCaseCap | **false** | No active case cap — environmental exposure continues regardless |
-| spreadSuppressionScale | **0** | Disabled — environmental source |
+| useScaledActiveCaseCap | **true** | Enables the colony-fraction balance cap (~30–50% of affectable colonists) |
+| spreadSuppressionScale | **1.0** | On — a game-balance guarantee, not a transmission model |
 | outbreakNotification | **None** | Silent |
+
+Suppression is on as a **balance** guarantee (see [Malaria.md](Malaria.md) → Suppression and Caps): even though sleeping sickness is map-seeded with no person-to-person spread, the colony-fraction cap dampens environmental acquisition as the colony nears ~half infected, applied to the environmental vector centrally in `BuildSeederChance`. The per-event `infectionBudget` still bounds each window. `suppressionMode` *Let 'er rip* disables the cap.
 
 ---
 

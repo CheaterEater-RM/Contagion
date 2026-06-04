@@ -9,7 +9,11 @@ public enum ContagionCaseTrack
 {
     None,
     Human,
-    Animal
+    Animal,
+    // Non-colony animals. Tracked separately so wild herds get their own suppression budget,
+    // scaled by the wild population on the map, and a wild outbreak can't infect the entire map.
+    // New value appended at the end (never reordered) — see Hard Rule #3.
+    WildAnimal
 }
 
 public static class ContagionTransmissionUtility
@@ -246,9 +250,16 @@ public static class ContagionTransmissionUtility
             return 0f;
         }
 
+        // Spread suppression is applied centrally here so every seeder-path vector (foodborne,
+        // environmental, fecal-oral, corpse, vomit fomite) respects the colony active-case cap — a
+        // vector must not circumvent the cap the pawn-to-pawn routes already honour. It only dampens
+        // colony targets (IsSuppressionTarget); wild animals return 1f, so wild->wild is untouched.
+        // Storyteller seeding also routes through here but is additionally capacity-gated, and this
+        // returns 1f at zero active-case load, so a clean map is unaffected.
         return Mathf.Max(0f, baseChance)
             * GetSeasonalMultiplier(map, resolvedProfile.Profile)
             * targetFactor
+            * GetSpreadSuppressionFactor(map, resolvedProfile, target)
             * Mathf.Max(0f, settingsMultiplier);
     }
 
@@ -263,14 +274,16 @@ public static class ContagionTransmissionUtility
     // and other transient arrivals do not consume the colony's active-case budget.
     public static bool IsSuppressionTarget(Pawn pawn)
     {
-        return IsColonyCasePawn(pawn);
+        // Colony humans/animals plus wild animals. Wild animals are throttled against their own
+        // population budget so a wild outbreak self-limits instead of saturating the map.
+        return GetCaseTrack(pawn) == ContagionCaseTrack.WildAnimal || IsColonyCasePawn(pawn);
     }
 
     public static ContagionCaseTrack GetCaseTrack(Pawn pawn)
     {
         if (pawn?.RaceProps?.Animal == true)
         {
-            return ContagionCaseTrack.Animal;
+            return pawn.Faction == Faction.OfPlayer ? ContagionCaseTrack.Animal : ContagionCaseTrack.WildAnimal;
         }
 
         if (pawn?.RaceProps?.Humanlike == true)
@@ -427,7 +440,7 @@ public static class ContagionTransmissionUtility
             return int.MaxValue;
         }
 
-        int population = CountAffectablePlayerPawns(map, resolvedProfile, track);
+        int population = CountAffectablePopulation(map, resolvedProfile, track);
         if (population <= 0)
         {
             return 0;
@@ -440,10 +453,12 @@ public static class ContagionTransmissionUtility
         return Mathf.Max(1, Mathf.FloorToInt(population * chance));
     }
 
-    // Spread suppression: as a target track approaches its active-case capacity, contagious
-    // transmission rolls TO that track are dampened by a clamped smoothstep. It applies to
-    // contagious vectors shed into shared space: airborne, social, proximity, and fomite. It is
-    // deliberately NOT applied to foodborne or environmental exposure.
+    // Spread suppression: as a target track approaches its active-case capacity, transmission rolls
+    // TO that track are dampened by a clamped smoothstep. It is applied to every vector — the
+    // pawn-to-pawn routes fold it into their breakdown, and the seeder-path routes (foodborne,
+    // environmental, fecal-oral, corpse, vomit fomite) get it centrally inside BuildSeederChance.
+    // Three tracks each carry their own budget: colony humans, colony animals, and wild animals
+    // (the wild budget scales with the wild population so a wild outbreak self-limits).
     public static float GetSpreadSuppressionFactor(Map map, ResolvedTransmissionProfile resolvedProfile, Pawn targetPawn)
     {
         if (map == null || resolvedProfile?.Profile == null || !IsSuppressionTarget(targetPawn))
@@ -595,7 +610,7 @@ public static class ContagionTransmissionUtility
         return infectedSpecies;
     }
 
-    private static int CountAffectablePlayerPawns(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
+    private static int CountAffectablePopulation(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
     {
         if (map == null || resolvedProfile?.DiseaseDef == null)
         {
@@ -609,12 +624,12 @@ public static class ContagionTransmissionUtility
             return cached;
         }
 
-        int count = CountAffectablePlayerPawnsUncached(map, resolvedProfile, track);
+        int count = CountAffectablePopulationUncached(map, resolvedProfile, track);
         _affectablePopulationCache[key] = count;
         return count;
     }
 
-    private static int CountAffectablePlayerPawnsUncached(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
+    private static int CountAffectablePopulationUncached(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
     {
         IReadOnlyList<Pawn> pawns = map?.mapPawns?.AllPawnsSpawned;
         if (pawns == null || resolvedProfile?.Profile == null)
@@ -626,11 +641,7 @@ public static class ContagionTransmissionUtility
         for (int i = 0; i < pawns.Count; i++)
         {
             Pawn pawn = pawns[i];
-            if (pawn == null
-                || pawn.Dead
-                || !IsColonyCasePawn(pawn)
-                || GetCaseTrack(pawn) != track
-                || !resolvedProfile.Profile.CanAffect(pawn))
+            if (!PawnInTrack(pawn, track) || !resolvedProfile.Profile.CanAffect(pawn))
             {
                 continue;
             }
@@ -678,7 +689,7 @@ public static class ContagionTransmissionUtility
         for (int i = 0; i < pawns.Count; i++)
         {
             Pawn pawn = pawns[i];
-            if (pawn?.health?.hediffSet == null || !IsColonyCasePawn(pawn) || GetCaseTrack(pawn) != track)
+            if (pawn?.health?.hediffSet == null || !PawnInTrack(pawn, track))
             {
                 continue;
             }
@@ -692,6 +703,19 @@ public static class ContagionTransmissionUtility
         }
 
         return count;
+    }
+
+    // Whether a pawn belongs to the population/active-case set of the given suppression track.
+    // The colony tracks (Human, Animal) are player-faction only; the WildAnimal track is non-colony
+    // animals, which GetCaseTrack already encodes, so it needs no extra faction gate.
+    private static bool PawnInTrack(Pawn pawn, ContagionCaseTrack track)
+    {
+        if (pawn == null || pawn.Dead || GetCaseTrack(pawn) != track)
+        {
+            return false;
+        }
+
+        return track == ContagionCaseTrack.WildAnimal || IsColonyCasePawn(pawn);
     }
 
     private static bool IsColonyCasePawn(Pawn pawn)

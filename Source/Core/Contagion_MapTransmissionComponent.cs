@@ -170,7 +170,7 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         {
             RunGeneralSeederPass(spawnedPawns);
             _environmentalExposureProcessor.RunEnvironmentalExposurePass(spawnedPawns);
-            _fecalOralTracker.RunFecalOralEatingSheddingPass(spawnedPawns, map);
+            _fecalOralTracker.RunFecalOralEatingSheddingPass(spawnedPawns, map, EnvironmentalCheckInterval);
             ContagionSeedingCoordinator.RunSpontaneousFalsePositives(spawnedPawns, EnvironmentalCheckInterval);
             PruneStaleOutbreaks();
         }

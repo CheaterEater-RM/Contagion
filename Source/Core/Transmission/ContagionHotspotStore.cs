@@ -72,8 +72,13 @@ internal sealed class ContagionHotspotStore
             {
                 entry.Cell = cell;
                 entry.Tick = now;
-                entry.Potency = Math.Max(entry.Potency, potency);
-                entry.SourceDef = sourceDef;
+                float clampedPotency = Math.Max(0f, potency);
+                if (clampedPotency > entry.Potency || entry.SourceDef == null)
+                {
+                    entry.Potency = clampedPotency;
+                    entry.SourceDef = sourceDef;
+                }
+
                 return;
             }
         }

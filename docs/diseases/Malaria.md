@@ -83,11 +83,11 @@ The 0.3 winter multiplier makes malaria possible but uncommon in cold winters. T
 
 | Field | Value | Notes |
 |---|---|---|
-| useScaledActiveCaseCap | **false** | No active case cap — environmental exposure continues regardless |
-| spreadSuppressionScale | **0** | Disabled — source is the map, not infected colonists |
+| useScaledActiveCaseCap | **true** | Enables the colony-fraction balance cap (~30–50% of affectable colonists) |
+| spreadSuppressionScale | **1.0** | On — a game-balance guarantee, not a transmission model |
 | outbreakNotification | **None** | Silent. No letter. Discovery via health inspection |
 
-No active case cap: the environment doesn't care how many colonists are already sick. A particularly bad location (riverside colony in summer) could in theory infect the entire colony. The `infectionBudget` on the seeder (2–5 in Mode 1) provides the event-level cap.
+Suppression is on as a **balance** guarantee, not because malaria spreads colonist-to-colonist (it doesn't — the source is the map). As the colony nears the scaled active-case cap (~half), environmental acquisition is dampened via the same suppression term (applied to the environmental vector centrally in `BuildSeederChance`), so a bad location — riverside colony in summer — can no longer creep toward infecting *everyone*. The per-event `infectionBudget` (2–5 in Mode 1) still bounds each window on top of this. `suppressionMode` *Let 'er rip* disables the cap.
 
 ---
 

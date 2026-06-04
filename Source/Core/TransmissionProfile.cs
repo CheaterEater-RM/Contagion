@@ -316,7 +316,15 @@ public sealed class Vector_FecalOralEating : TransmissionVector
 {
     public float baseChancePerIngestion = 0.006f;
 
-    public float hotspotShedChancePerCheck = 0.015f;
+    // Deterministic shedding cadence: nodes dropped per day as a function of the shedder's BodySize.
+    // The animal fills a "waste" meter at this rate (steady, while it isn't starving) and drops one
+    // node when the meter is full. Author it as a LEVEL curve (~1/day for large animals, rising for
+    // small ones) — not an exponential. If omitted, ContagionFecalOralTracker's default curve is used.
+    public SimpleCurve bodySizeDropsPerDayCurve;
+
+    // Per-node potency multiplier from BodySize (BodySize^bodySizePotencyExponent): larger animals
+    // make stronger nodes. Clamped in code. Set to 0 to make node potency body-size-independent.
+    public float bodySizePotencyExponent = 1.0f;
 
     public int hotspotRadius = 8;
 

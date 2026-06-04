@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 using RimWorld;
 using Verse;
@@ -67,12 +68,41 @@ internal static class Patch_FilthMaker_TryMakeFilth
     }
 }
 
-[HarmonyPatch(typeof(FilthMaker), nameof(FilthMaker.TryMakeFilth), new[] { typeof(IntVec3), typeof(Map), typeof(ThingDef), typeof(int), typeof(FilthSourceFlags), typeof(bool) })]
+[HarmonyPatch]
 internal static class Patch_FilthMaker_TryMakeFilth_AnimalFilth
 {
-    public static void Postfix(IntVec3 c, Map map, ThingDef filthDef, bool __result)
+    public static MethodBase TargetMethod()
     {
-        if (!__result || map == null || filthDef != ThingDefOf.Filth_AnimalFilth)
+        return AccessTools.Method(
+            typeof(FilthMaker),
+            nameof(FilthMaker.TryMakeFilth),
+            new[]
+            {
+                typeof(IntVec3),
+                typeof(Map),
+                typeof(ThingDef),
+                typeof(IEnumerable<string>),
+                typeof(bool),
+                typeof(Filth).MakeByRefType(),
+                typeof(FilthSourceFlags)
+            });
+    }
+
+    public static void Postfix(
+        IntVec3 c,
+        Map map,
+        ThingDef filthDef,
+        bool shouldPropagate,
+        ref Filth outFilth,
+        FilthSourceFlags additionalFlags,
+        bool __result)
+    {
+        if (!__result
+            || !shouldPropagate
+            || map == null
+            || outFilth == null
+            || filthDef != ThingDefOf.Filth_AnimalFilth
+            || (additionalFlags & FilthSourceFlags.Pawn) == 0)
         {
             return;
         }
@@ -83,13 +113,7 @@ internal static class Patch_FilthMaker_TryMakeFilth_AnimalFilth
             return;
         }
 
-        Filth filth = FindAnimalFilthNear(map, c);
-        if (filth == null)
-        {
-            return;
-        }
-
-        map.GetComponent<Contagion_MapTransmissionComponent>()?.NotifyAnimalFilthCreated(filth, sourcePawn);
+        map.GetComponent<Contagion_MapTransmissionComponent>()?.NotifyAnimalFilthCreated(outFilth, sourcePawn);
     }
 
     private static Pawn FindAnimalAtCell(Map map, IntVec3 cell)
@@ -100,44 +124,6 @@ internal static class Patch_FilthMaker_TryMakeFilth_AnimalFilth
             if (things[i] is Pawn pawn && pawn.RaceProps?.Animal == true && !pawn.Dead)
             {
                 return pawn;
-            }
-        }
-
-        return null;
-    }
-
-    private static Filth FindAnimalFilthNear(Map map, IntVec3 cell)
-    {
-        Filth filth = FindAnimalFilthAt(map, cell);
-        if (filth != null)
-        {
-            return filth;
-        }
-
-        for (int i = 0; i < GenAdj.AdjacentCells.Length; i++)
-        {
-            IntVec3 candidate = cell + GenAdj.AdjacentCells[i];
-            if (candidate.InBounds(map))
-            {
-                filth = FindAnimalFilthAt(map, candidate);
-                if (filth != null)
-                {
-                    return filth;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private static Filth FindAnimalFilthAt(Map map, IntVec3 cell)
-    {
-        List<Thing> things = cell.GetThingList(map);
-        for (int i = 0; i < things.Count; i++)
-        {
-            if (things[i] is Filth filth && filth.def == ThingDefOf.Filth_AnimalFilth)
-            {
-                return filth;
             }
         }
 

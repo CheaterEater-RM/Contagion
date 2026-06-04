@@ -322,7 +322,7 @@ effectiveChance = vectorBaseChance
                 × vectorContextModifiers(...)          ← distance, LOS, roofing, cleanliness, etc.
                 × respiratoryMaskFactor(source,target) ← respiratory vectors only (sealed helmet/capstone = immune; masks filter)
                 × contactProtectionFactor(target)      ← contact/surface/cooking vectors only (worn apparel seal + coverage)
-                × spreadSuppression(disease,target)    ← colonist targets, contagious vectors only
+                × spreadSuppression(disease,target)    ← colony + wild-animal targets, all vectors
                 × globalSettingsMultiplier             ← transmission-rate slider × difficulty scale
 ```
 
@@ -336,19 +336,24 @@ Each term is independently tunable via XML. The engine multiplies them; a 0 in a
 
 ## Spread Suppression
 
-A colony-scoped balancing term that prevents an outbreak from deterministically reaching 100% of the colony. For a contagious roll toward a player-faction pawn, the chance is multiplied by:
+A balancing term that prevents an outbreak from deterministically saturating a population. As a target *track* approaches its active-case capacity, transmission rolls toward that track are dampened, so the mod's active-case settings hold no matter which vector is doing the spreading.
+
+**Three independent tracks**, each with its own budget: **colony humans**, **colony animals**, and **wild animals**. The wild track exists so a wild-herd outbreak self-limits instead of infecting the entire map; its budget scales with the wild population currently on the map.
 
 ```
-suppression = (1 - infectedColonyFraction) ^ effectiveStrength
+load   = (active + incubating cases in track) / scaledCapacity(track)
+factor = clampedSmoothstep(load, mode)        ← per suppressionMode setting
+result = lerp(1, factor, spreadSuppressionScale)
 ```
 
-- `infectedColonyFraction` = player-faction pawns the profile can affect that already carry it (active or incubating) ÷ all player-faction pawns the profile can affect. Computed once per disease per pass.
-- `effectiveStrength` = difficulty suppression strength × the profile's `spreadSuppressionScale`. Strength 0 → factor 1 (disabled).
+- `scaledCapacity(track)` = `population × clamp(0.30 + population×0.01 + maxActiveCaseChanceOffset, 0, 0.50)` — i.e. ~30–50% of the track's affectable population (requires `useScaledActiveCaseCap`).
+- `population` = the track's affectable pawns: colony humans, colony animals, or **all wild animals on the map** for the wild track.
+- `spreadSuppressionScale` (per disease) scales the effect; **0 = exempt**. Suppression is a *balance* guarantee, not a transmission model — even map-seeded diseases (Malaria, SleepingSickness) keep it on so a player can rely on "no more than ~half my colony." It requires `useScaledActiveCaseCap = true`. No shipped disease currently sets the scale to 0.
+- `suppressionMode` (player setting) selects the smoothstep band; **Let 'er rip** disables suppression entirely.
 
 **Scope rules:**
-- **Target-gated:** applied only when the target is a player-faction pawn, matching the population the fraction is measured over. Visitors/raiders/other-faction pawns are neither counted nor throttled.
-- **Vectors covered:** airborne, social, proximity, fomite (spread shed by infected colonists into shared space).
-- **Vectors excluded:** foodborne (a contaminated-food source, not herd spread) and environmental seeding (sourced by the map). `spreadSuppressionScale = 0` on environmental diseases makes this explicit.
+- **Target-gated:** applied when the target is a colony pawn or a wild animal, matching the population each track is measured over. Other-faction humanlikes (visitors/raiders) are neither counted nor throttled.
+- **Vectors covered: all of them.** Pawn-to-pawn routes (airborne/social/proximity/fomite) fold suppression into their breakdown; the seeder-path routes (foodborne, environmental, fecal-oral, corpse, vomit fomite) apply it centrally inside `BuildSeederChance`. This closes the loophole where a non–person-to-person vector could push a track past its cap.
 
 ---
 
@@ -395,7 +400,7 @@ Contaminated **vomit** filth (scoped to vomit so contamination is visible and cl
 - `contaminatesVomit` (true), `baseChancePerContact` (0.03), `potencyDecayPerHour` (0.1)
 
 ### Vector_Foodborne
-Transmission through food — from infected cooks producing contaminated meals, contaminated raw meat being cooked into meals, or a pawn directly eating an infected corpse. `Comp_ContaminatedFood` sits on prepared meals, raw meat (all `MeatRaw` category items), and kibble. Contamination is baked in at production time and decays to zero after `contaminationExpiryDays` so year-old preserved food cannot start new outbreaks. Kitchen cleanliness modifies the contamination factor at cook time. Not subject to spread suppression.
+Transmission through food — from infected cooks producing contaminated meals, contaminated raw meat being cooked into meals, or a pawn directly eating an infected corpse. `Comp_ContaminatedFood` sits on prepared meals, raw meat (all `MeatRaw` category items), and kibble. Contamination is baked in at production time and decays to zero after `contaminationExpiryDays` so year-old preserved food cannot start new outbreaks. Kitchen cleanliness modifies the contamination factor at cook time. The eater's roll is cap-aware: like every vector it passes through spread suppression (via `BuildSeederChance`), so contaminated food cannot push a track past its active-case cap.
 
 **Contamination sources:**
 - *Infected cook:* `Comp_ContaminatedFood.Notify_RecipeProduced` checks the cook's active disease profiles for a foodborne vector. Infectivity × kitchen cleanliness factor is stamped onto the meal.
@@ -511,10 +516,10 @@ Vanilla disease profiles are patched onto their `HediffDef` in `1.6/Patches/Cont
 | Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival, Acausal | 1.5 d | none* | Human | Seasonal (winter-peaking); acausal is Mode 1 fallback only; scaled active-case cap offset 0 |
 | Animal_Flu | Airborne, Fomite | Storyteller, Arrival, Acausal | 1.5 d | none* | Animal | Human-isolated; animal cross-species jumps use `animalCrossSpeciesFactorCurve` (first colony race free from outside carriers, later colony races suppressed); acausal is Mode 1 fallback only; safe to butcher (no `corpseContagious`) |
 | Plague | Proximity (cleanliness) | Storyteller, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; incoming humans and animals can carry it; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; separate scaled human/animal caps, offset 0 |
-| GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 0` |
-| MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 0` |
-| Malaria | Environmental | Environmental, Acausal | 2.0 d | none* | Human | Mosquito pressure; broad warm/wet source; partial indoor penetration; `spreadSuppressionScale 0`, seasonal |
-| SleepingSickness | Environmental | Environmental, Acausal | 2.5 d | none* | Human | Tsetse habitat pressure; hotter, wetter, rarer, and more strongly blocked by deep indoor shelter; `spreadSuppressionScale 0` |
+| GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 1.0` (colony + wild caps); animal fecal-oral shedding is deterministic (per-animal waste meter, body-size drops/day curve, paused while starving) |
+| MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 1.0` (colony + wild caps); animal fecal-oral shedding is deterministic (per-animal waste meter, body-size drops/day curve, paused while starving) |
+| Malaria | Environmental | Environmental, Acausal | 2.0 d | none* | Human | Mosquito pressure; broad warm/wet source; partial indoor penetration; `spreadSuppressionScale 1.0` + `useScaledActiveCaseCap` for the colony-fraction balance cap; seasonal |
+| SleepingSickness | Environmental | Environmental, Acausal | 2.5 d | none* | Human | Tsetse habitat pressure; hotter, wetter, rarer, and more strongly blocked by deep indoor shelter; `spreadSuppressionScale 1.0` + `useScaledActiveCaseCap` for the colony-fraction balance cap |
 
 \* Diseases with a vanilla immunity race set `immunityDurationDays 0` and rely on vanilla immunity to prevent reinfection. Non-immunizable diseases (gut worms, muscle parasites) use mod-owned temporary immunity.
 

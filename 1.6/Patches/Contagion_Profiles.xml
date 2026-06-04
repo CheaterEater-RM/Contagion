@@ -399,6 +399,17 @@
         <targetBodyParts>
           <li>Stomach</li>
         </targetBodyParts>
+        <!-- Asymptomatic carriers already shed eggs before symptoms appear: low fecal-oral output
+             during incubation that ramps toward the active curve's opening value (0.3). Without this
+             curve incubating animals are filtered out of GetContagiousProfiles and drop no nodes. -->
+        <incubationInfectivityCurve>
+          <points>
+            <li>(0.0, 0.0)</li>
+            <li>(0.5, 0.05)</li>
+            <li>(0.85, 0.15)</li>
+            <li>(1.0, 0.25)</li>
+          </points>
+        </incubationInfectivityCurve>
         <activeInfectivityCurve>
           <points>
             <li>(0.00, 0.3)</li>
@@ -407,7 +418,10 @@
             <li>(1.00, 1.0)</li>
           </points>
         </activeInfectivityCurve>
-          <spreadSuppressionScale>0</spreadSuppressionScale>
+          <!-- Honour the colony/wild active-case caps: gut worms spreads person-to-person (vomit
+               fomite) and animal-to-animal (fecal-oral), so cap-aware suppression keeps outbreaks
+               from exceeding the mod's settings on every track, wild herds included. -->
+          <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <!-- Gut worms is unpleasant but rarely lethal: weight its cases below average. -->
         <dangerWeight>0.75</dangerWeight>
         <outbreakNotification>FirstCase</outbreakNotification>
@@ -504,7 +518,19 @@
                on the ground is lower still; stored or indoor feed is near-zero. -->
           <li Class="Contagion.Vector_FecalOralEating">
             <baseChancePerIngestion>0.007</baseChancePerIngestion>
-            <hotspotShedChancePerCheck>0.018</hotspotShedChancePerCheck>
+            <!-- Deterministic shedding: nodes per day by the shedder's BodySize. The animal fills a
+                 "waste" meter at this rate (while not starving) and drops a node when full. Level
+                 (~1/day) for big animals, rising toward ~4/day for tiny ones; intentionally not an
+                 exponential. Rat 0.2, deer 1.2, bison 2.4, elephant 4.0. -->
+            <bodySizeDropsPerDayCurve>
+              <points>
+                <li>(0.2, 4)</li>
+                <li>(1.2, 2)</li>
+                <li>(2.4, 1)</li>
+                <li>(4.0, 1)</li>
+              </points>
+            </bodySizeDropsPerDayCurve>
+            <bodySizePotencyExponent>1.0</bodySizePotencyExponent>
             <hotspotRadius>8</hotspotRadius>
             <hotspotMergeRadius>4</hotspotMergeRadius>
             <maxHotspotsPerDisease>24</maxHotspotsPerDisease>
@@ -603,8 +629,21 @@
           </points>
         </passiveSymptomPresentationCurve>
         <posthumousSymptomChance>0.05</posthumousSymptomChance>
-          <spreadSuppressionScale>0</spreadSuppressionScale>
+          <!-- Honour the colony/wild active-case caps (see GutWorms): muscle parasites spread via
+               fecal-oral pasture nodes and meat, so cap-aware suppression prevents map-wide outbreaks. -->
+          <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <outbreakNotification>FirstCase</outbreakNotification>
+        <!-- Low pre-symptom shedding: larvae are passed before the host shows signs. Sheds a little
+             less aggressively than gut worms. Required for incubating animals to drop pasture nodes
+             (GetContagiousProfiles filters out zero-infectivity incubators). -->
+        <incubationInfectivityCurve>
+          <points>
+            <li>(0.0, 0.0)</li>
+            <li>(0.6, 0.04)</li>
+            <li>(0.9, 0.10)</li>
+            <li>(1.0, 0.18)</li>
+          </points>
+        </incubationInfectivityCurve>
         <activeInfectivityCurve>
           <points>
             <li>(0.00, 0.2)</li>
@@ -686,7 +725,18 @@
                than gut worms. Stored or indoor animal feed remains near-zero risk. -->
           <li Class="Contagion.Vector_FecalOralEating">
             <baseChancePerIngestion>0.006</baseChancePerIngestion>
-            <hotspotShedChancePerCheck>0.014</hotspotShedChancePerCheck>
+            <!-- Deterministic shedding: nodes per day by the shedder's BodySize (see GutWorms). Same
+                 level curve — ~1/day for big animals, rising toward ~4/day for tiny ones. The animal
+                 fills a "waste" meter at this rate while not starving and drops a node when full. -->
+            <bodySizeDropsPerDayCurve>
+              <points>
+                <li>(0.2, 4)</li>
+                <li>(1.2, 2)</li>
+                <li>(2.4, 1)</li>
+                <li>(4.0, 1)</li>
+              </points>
+            </bodySizeDropsPerDayCurve>
+            <bodySizePotencyExponent>1.0</bodySizePotencyExponent>
             <hotspotRadius>8</hotspotRadius>
             <hotspotMergeRadius>4</hotspotMergeRadius>
             <maxHotspotsPerDisease>24</maxHotspotsPerDisease>
@@ -766,11 +816,15 @@
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>FirstCase</outbreakNotification>
-        <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
-        <spreadSuppressionScale>0</spreadSuppressionScale>
+        <!-- Game-balance cap: even though this is map-seeded with no person-to-person spread, players
+             still want "don't infect more than ~half my colony." Suppression delivers that, so it stays
+             on (it also requires useScaledActiveCaseCap below). -->
+        <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <!-- Dangerous environmental disease: weight active cases above average for the Mode 2 director. -->
         <dangerWeight>1.5</dangerWeight>
-        <useScaledActiveCaseCap>false</useScaledActiveCaseCap>
+        <!-- Required for the colony-fraction cap/suppression above to function (it gates the scaled
+             capacity). The event-scoped environmental infectionBudget still bounds each window on top. -->
+        <useScaledActiveCaseCap>true</useScaledActiveCaseCap>
         <seasonalInfectivity>
           <spring>0.8</spring>
           <summer>1.2</summer>
@@ -829,11 +883,15 @@
         <immunityDurationDays>0</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>FirstCase</outbreakNotification>
-        <!-- Environmental disease: seeded by the map, no person-to-person spread, so colony-fraction suppression does not apply. -->
-        <spreadSuppressionScale>0</spreadSuppressionScale>
+        <!-- Game-balance cap: even though this is map-seeded with no person-to-person spread, players
+             still want "don't infect more than ~half my colony." Suppression delivers that, so it stays
+             on (it also requires useScaledActiveCaseCap below). -->
+        <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <!-- Dangerous environmental disease: weight active cases above average for the Mode 2 director. -->
         <dangerWeight>1.5</dangerWeight>
-        <useScaledActiveCaseCap>false</useScaledActiveCaseCap>
+        <!-- Required for the colony-fraction cap/suppression above to function (it gates the scaled
+             capacity). The event-scoped environmental infectionBudget still bounds each window on top. -->
+        <useScaledActiveCaseCap>true</useScaledActiveCaseCap>
         <seasonalInfectivity>
           <spring>0.9</spring>
           <summer>1.2</summer>

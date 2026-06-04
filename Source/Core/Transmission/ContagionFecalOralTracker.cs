@@ -51,6 +51,33 @@ internal readonly struct ContagionIngestionContext
     public bool IsValid => Map != null && Cell.IsValid && FoodDef != null;
 }
 
+internal sealed class ContagionWasteMeterEntry : IExposable
+{
+    public Pawn Pawn;
+
+    public HediffDef DiseaseDef;
+
+    public float Progress;
+
+    public ContagionWasteMeterEntry()
+    {
+    }
+
+    public ContagionWasteMeterEntry(Pawn pawn, HediffDef diseaseDef, float progress)
+    {
+        Pawn = pawn;
+        DiseaseDef = diseaseDef;
+        Progress = progress;
+    }
+
+    public void ExposeData()
+    {
+        Scribe_References.Look(ref Pawn, "pawn");
+        Scribe_Defs.Look(ref DiseaseDef, "diseaseDef");
+        Scribe_Values.Look(ref Progress, "progress");
+    }
+}
+
 internal sealed class ContagionFecalOralTracker : IExposable
 {
     private const int TicksPerDay = 60000;
@@ -61,9 +88,34 @@ internal sealed class ContagionFecalOralTracker : IExposable
 
     private const float MaxCleanlinessFactor = 3f;
 
+    // Clamp range for the body-size potency factor (see Vector_FecalOralEating): a tiny critter's node
+    // isn't worthless and a modded giant doesn't mint a near-permanent super-node.
+    private const float MinBodySizePotencyFactor = 0.1f;
+
+    private const float MaxBodySizePotencyFactor = 5f;
+
+    // Fallback drop-rate curve (nodes/day vs BodySize) used when a vector omits bodySizeDropsPerDayCurve.
+    // Level ~1/day for large animals, rising toward ~4/day for tiny ones; deliberately not exponential.
+    private static readonly SimpleCurve DefaultBodySizeDropsPerDayCurve = new SimpleCurve
+    {
+        new CurvePoint(0.2f, 4f),
+        new CurvePoint(1.2f, 2f),
+        new CurvePoint(2.4f, 1f),
+        new CurvePoint(4.0f, 1f),
+    };
+
     private ContagionFilthStore _contaminatedFilth = new ContagionFilthStore();
 
     private ContagionHotspotStore _hotspots = new ContagionHotspotStore();
+
+    // Deterministic per-(animal, disease) "waste" meter for the eating route. Fills at a steady,
+    // body-size-driven rate while the animal isn't starving; when it reaches 1.0 the animal drops a
+    // contamination node and the meter carries the remainder. Progress is saved and pruned when the
+    // animal recovers, dies, or leaves the map.
+    private readonly Dictionary<(Pawn pawn, HediffDef disease), float> _wasteMeters =
+        new Dictionary<(Pawn, HediffDef), float>();
+
+    private List<ContagionWasteMeterEntry> _wasteMeterEntries;
 
     public void ExposeData()
     {
@@ -71,12 +123,31 @@ internal sealed class ContagionFecalOralTracker : IExposable
         _contaminatedFilth.ExposeData("fecalOralContaminated");
         _hotspots ??= new ContagionHotspotStore();
         _hotspots.ExposeData("fecalOralHotspot");
+
+        if (Scribe.mode == LoadSaveMode.Saving)
+        {
+            _wasteMeterEntries = BuildWasteMeterEntriesForSave();
+        }
+
+        Scribe_Collections.Look(ref _wasteMeterEntries, "fecalOralWasteMeters", LookMode.Deep);
+
+        if (Scribe.mode == LoadSaveMode.Saving)
+        {
+            _wasteMeterEntries = null;
+        }
+
+        if (Scribe.mode == LoadSaveMode.PostLoadInit)
+        {
+            RebuildWasteMetersAfterLoad();
+            _wasteMeterEntries = null;
+        }
     }
 
     public void Cleanup(Map map)
     {
         CleanupFilth(map);
         CleanupHotspots(map);
+        PruneWasteMeters(map);
     }
 
     public void RunFecalOralLivingExposurePass(IReadOnlyList<Pawn> spawnedPawns, Map map)
@@ -182,14 +253,14 @@ internal sealed class ContagionFecalOralTracker : IExposable
         }
     }
 
-    public void RunFecalOralEatingSheddingPass(IReadOnlyList<Pawn> spawnedPawns, Map map)
+    public void RunFecalOralEatingSheddingPass(IReadOnlyList<Pawn> spawnedPawns, Map map, int checkIntervalTicks)
     {
         if (spawnedPawns == null || map == null)
         {
             return;
         }
 
-        float transmissionMultiplier = Contagion_Mod.Settings?.EffectiveTransmissionMultiplier ?? 1f;
+        float dayFractionPerCheck = Mathf.Max(0f, checkIntervalTicks) / (float)TicksPerDay;
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
             Pawn pawn = spawnedPawns[pawnIndex];
@@ -202,6 +273,10 @@ internal sealed class ContagionFecalOralTracker : IExposable
             {
                 continue;
             }
+
+            // Waste only accumulates while the animal is feeding normally; a starving animal (empty
+            // gut) produces nothing new, though an already-full meter can still drop.
+            bool starving = pawn.needs?.food != null && pawn.needs.food.CurCategory == HungerCategory.Starving;
 
             foreach (ResolvedTransmissionProfile resolvedProfile in ContagionDiseaseUtility.GetContagiousProfiles(pawn))
             {
@@ -216,25 +291,42 @@ internal sealed class ContagionFecalOralTracker : IExposable
                     continue;
                 }
 
-                float chance = vector.hotspotShedChancePerCheck
-                    * sourceInfectivity
-                    * ContagionTransmissionUtility.GetSeasonalMultiplier(map, resolvedProfile.Profile)
-                    * transmissionMultiplier;
-                if (!Rand.Chance(Mathf.Clamp01(chance)))
+                // Deterministic "waste" meter: it fills at a steady, body-size-driven rate (nodes/day)
+                // independent of disease stage, and the animal drops a node when it tops out. This
+                // replaces the old per-check random roll, so a low-frequency shedder (a big animal)
+                // can no longer roll zero for days on end.
+                (Pawn pawn, HediffDef disease) key = (pawn, resolvedProfile.DiseaseDef);
+                _wasteMeters.TryGetValue(key, out float meter);
+                if (!starving)
                 {
-                    continue;
+                    meter += GetDropsPerDay(pawn, vector) * dayFractionPerCheck;
                 }
 
-                _hotspots.AddOrRefresh(
-                    pawn.Position,
-                    resolvedProfile.DiseaseDef,
-                    pawn.def,
-                    sourceInfectivity,
-                    vector.hotspotMergeRadius,
-                    vector.maxHotspotsPerDisease);
-                ContagionDiagnostics.Record(ContagionDiagnosticCounter.FecalOralEatingHotspotCreated);
-                ContagionDiagnostics.Trace($"Fecal-oral eating hotspot: {resolvedProfile.DiseaseDef.defName} near {pawn.LabelShortCap}.");
-                ContagionTrace.TransmissionToCell(pawn, pawn.PositionHeld, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.FecalOralEating);
+                if (meter >= 1f)
+                {
+                    // Cap the carry so a long-starving-then-fed animal doesn't dump a burst at once.
+                    meter = Mathf.Min(meter - 1f, 1f);
+
+                    // Node potency tracks current infectivity (and body size), so early/mild disease
+                    // still defecates on schedule but drops weak, short-lived nodes. A near-inert node
+                    // is skipped rather than spawned and immediately cleaned up.
+                    float nodePotency = sourceInfectivity * GetBodySizePotencyFactor(pawn, vector);
+                    if (nodePotency > MinPotency)
+                    {
+                        _hotspots.AddOrRefresh(
+                            pawn.Position,
+                            resolvedProfile.DiseaseDef,
+                            pawn.def,
+                            nodePotency,
+                            vector.hotspotMergeRadius,
+                            vector.maxHotspotsPerDisease);
+                        ContagionDiagnostics.Record(ContagionDiagnosticCounter.FecalOralEatingHotspotCreated);
+                        ContagionDiagnostics.Trace($"Fecal-oral eating hotspot: {resolvedProfile.DiseaseDef.defName} near {pawn.LabelShortCap}.");
+                        ContagionTrace.TransmissionToCell(pawn, pawn.PositionHeld, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.FecalOralEating);
+                    }
+                }
+
+                _wasteMeters[key] = meter;
             }
         }
     }
@@ -438,7 +530,116 @@ internal sealed class ContagionFecalOralTracker : IExposable
         return foodDef.IsProcessedFood
             || (foodType & FoodTypeFlags.Kibble) != 0
             || (foodType & FoodTypeFlags.Processed) != 0
-            || foodDef.defName == "Hay";
+            || foodDef == ThingDefOf.Hay;
+    }
+
+    // Steady drop rate (nodes/day) from body size, via the vector's authored curve (or the default).
+    // Large animals plateau near the curve's tail (~1/day); small animals rise toward its head. The
+    // curve is authored to stay level for big bodies, so this is not an exponential blow-up.
+    private static float GetDropsPerDay(Pawn pawn, Vector_FecalOralEating vector)
+    {
+        SimpleCurve curve = vector.bodySizeDropsPerDayCurve ?? DefaultBodySizeDropsPerDayCurve;
+        float bodySize = Mathf.Max(0.05f, pawn?.BodySize ?? 1f);
+        return Mathf.Max(0f, curve.Evaluate(bodySize));
+    }
+
+    private List<ContagionWasteMeterEntry> BuildWasteMeterEntriesForSave()
+    {
+        List<ContagionWasteMeterEntry> entries = new List<ContagionWasteMeterEntry>();
+        foreach (KeyValuePair<(Pawn pawn, HediffDef disease), float> kv in _wasteMeters)
+        {
+            float progress = Mathf.Clamp01(kv.Value);
+            Pawn pawn = kv.Key.pawn;
+            if (progress > 0f
+                && pawn != null
+                && !pawn.Destroyed
+                && !pawn.Dead
+                && pawn.Map != null
+                && HasActiveWasteMeterDisease(pawn, kv.Key.disease))
+            {
+                entries.Add(new ContagionWasteMeterEntry(pawn, kv.Key.disease, progress));
+            }
+        }
+
+        return entries;
+    }
+
+    private void RebuildWasteMetersAfterLoad()
+    {
+        _wasteMeters.Clear();
+        if (_wasteMeterEntries == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < _wasteMeterEntries.Count; i++)
+        {
+            ContagionWasteMeterEntry entry = _wasteMeterEntries[i];
+            float progress = Mathf.Clamp01(entry?.Progress ?? 0f);
+            if (progress > 0f && HasActiveWasteMeterDisease(entry?.Pawn, entry?.DiseaseDef))
+            {
+                _wasteMeters[(entry.Pawn, entry.DiseaseDef)] = progress;
+            }
+        }
+    }
+
+    // Drops meters as soon as their animal is gone or no longer carries the disease, so a later
+    // reinfection starts from an empty meter rather than stale progress.
+    private void PruneWasteMeters(Map map)
+    {
+        if (_wasteMeters.Count == 0)
+        {
+            return;
+        }
+
+        List<(Pawn, HediffDef)> stale = null;
+        foreach (KeyValuePair<(Pawn pawn, HediffDef disease), float> kv in _wasteMeters)
+        {
+            Pawn pawn = kv.Key.pawn;
+            if (pawn == null
+                || pawn.Destroyed
+                || pawn.Dead
+                || pawn.Map != map
+                || !HasActiveWasteMeterDisease(pawn, kv.Key.disease))
+            {
+                (stale ??= new List<(Pawn, HediffDef)>()).Add(kv.Key);
+            }
+        }
+
+        if (stale != null)
+        {
+            for (int i = 0; i < stale.Count; i++)
+            {
+                _wasteMeters.Remove(stale[i]);
+            }
+        }
+    }
+
+    private static bool HasActiveWasteMeterDisease(Pawn pawn, HediffDef diseaseDef)
+    {
+        if (pawn?.health?.hediffSet == null
+            || diseaseDef == null
+            || !DiseaseProfileCache.TryGetResolvedProfile(diseaseDef, out ResolvedTransmissionProfile resolvedProfile))
+        {
+            return false;
+        }
+
+        HediffDef pawnDiseaseDef = resolvedProfile.ResolveHediffForPawn(pawn);
+        return ContagionDiseaseUtility.HasDiseaseOrIncubation(pawn, pawnDiseaseDef);
+    }
+
+    // Per-node potency multiplier from body size: BodySize^exponent, so larger animals make stronger
+    // nodes. Anchored at BodySize 1.0 (factor 1.0) and clamped.
+    private static float GetBodySizePotencyFactor(Pawn pawn, Vector_FecalOralEating vector)
+    {
+        float exponent = Mathf.Max(0f, vector.bodySizePotencyExponent);
+        if (exponent <= 0f)
+        {
+            return 1f;
+        }
+
+        float bodySize = Mathf.Max(0.05f, pawn?.BodySize ?? 1f);
+        return Mathf.Clamp(Mathf.Pow(bodySize, exponent), MinBodySizePotencyFactor, MaxBodySizePotencyFactor);
     }
 
     private static bool IsAnimalExposureTarget(Pawn pawn, Map map)
