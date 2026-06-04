@@ -190,11 +190,11 @@ None configured.
 | useScaledActiveCaseCap | true (default) | Colony-human, colony-animal, and wild-animal caps are calculated separately |
 | maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable pawn in that track, floored, max 50% |
 | spreadSuppressionScale | **1.0** | Cap-aware suppression **on** for every vector and every track (colony + wild) |
-| outbreakNotification | **FirstCase** | Letter fires on first human case (not animal acquisition) |
+| outbreakNotification | **FirstCase** | Human cases use first-case and cluster letters; hidden animal cases use the sick-signal and diagnosis-letter flow |
 
 Spread suppression is on for the same reasons as gut worms (see [GutWorms.md](GutWorms.md) → Suppression and Caps): muscle parasites spread within a population via fecal-oral pasture nodes, so as a track (colony humans, colony animals, or **wild animals**) nears its active-case cap, all transmission toward it is dampened — applied to every vector centrally in `BuildSeederChance`. The wild-animal cap scales with the wild population on the map, preventing a wild outbreak from saturating it. Set `suppressionMode` to *Let 'er rip* to disable.
 
-`outbreakNotification FirstCase` fires when the first human gets muscle parasites — this is the key discovery moment. Animal infection is silent until the sick signal fires.
+`outbreakNotification FirstCase` makes the first visible human case a red, source-attributed outbreak letter; later visible human cases update a yellow cluster letter while the outbreak remains active. Animal infection is hidden until the sick-signal and diagnosis flow reveals it.
 
 ---
 

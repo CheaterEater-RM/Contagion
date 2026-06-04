@@ -210,7 +210,9 @@ None configured for live-host spread. Corpse flea survival is handled directly f
 | useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
 | maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected colony pawn in that track, floored, max 50% |
 | spreadSuppressionScale | 1.0 | Normal colony-fraction suppression applies |
-| outbreakNotification | FirstCase (default) | |
+| outbreakNotification | FirstCase (default) | Human cases use first-case and cluster letters; hidden animal cases use the sick-signal and diagnosis-letter flow |
+
+The first visible human case starts a red, source-attributed outbreak letter. Later visible human cases update a yellow cluster letter while the outbreak remains active. Animal plague remains hidden until detected and diagnosed, so colony animals notify through the sick-signal and successful-diagnosis letters instead of the outbreak-letter track.
 
 ---
 

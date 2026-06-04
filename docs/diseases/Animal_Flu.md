@@ -118,7 +118,9 @@ None configured.
 | useScaledActiveCaseCap | true (default) | Animal cap scales from player animal count |
 | maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per animal, floored, max 50% |
 | spreadSuppressionScale | 1.0 (default) | |
-| outbreakNotification | FirstCase (default) | |
+| outbreakNotification | FirstCase (default) | Pure-animal exception suppresses outbreak and cluster letters; visible cases still produce disease-activation messages |
+
+Although the profile inherits `FirstCase`, Animal Flu has `affectsHumans false`. The notifier deliberately suppresses outbreak letters for pure-animal diseases, so Animal Flu does not create red first-case or yellow cluster letters.
 
 ---
 

@@ -139,7 +139,7 @@ Sickly pawns catch flu more often (vanilla `randomDiseaseMtbDays`) but shed at h
 | useScaledActiveCaseCap | true (default) | Human cap scales from colonist count |
 | maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per colonist, floored, max 50% |
 | spreadSuppressionScale | 1.0 (default) | Normal colony-fraction suppression applies |
-| outbreakNotification | FirstCase | Letter fires on first active case |
+| outbreakNotification | FirstCase | Red source-attributed letter on the first visible case; later visible cases update a yellow cluster letter while the outbreak remains active |
 
 ---
 
