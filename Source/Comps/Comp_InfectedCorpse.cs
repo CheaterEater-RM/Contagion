@@ -28,7 +28,7 @@ public sealed class Comp_InfectedCorpse : ThingComp
     public bool IsInfected => _infectedDiseaseDef != null;
 
     // Suspected-infected: sick signal was present at death, but no disease has been confirmed.
-    // Cleared to false by MarkInspectedClean after a successful post-mortem inspection.
+    // Cleared to false when post-mortem inspection reports no disease.
     public bool IsSuspectedInfected => _suspectedInfected && _infectedDiseaseDef == null;
 
     public HediffDef InfectedDiseaseDef => _infectedDiseaseDef;
@@ -52,14 +52,9 @@ public sealed class Comp_InfectedCorpse : ThingComp
         (parent as Corpse)?.InnerPawn?.Drawer?.renderer?.SetAllGraphicsDirty();
     }
 
-    internal void MarkInspectedFailed()
-    {
-        _hasBeenInspected = true;
-    }
-
     // Marks the corpse as suspected infected: the animal was showing the sick signal at
     // death but carried no confirmed contagious disease. Triggers the infected-corpse
-    // appearance and filters. Clears on post-mortem inspection (MarkInspectedClean).
+    // appearance and filters. Clears when post-mortem inspection reports no disease.
     internal void SetSuspectedInfection()
     {
         _suspectedInfected = true;

@@ -230,7 +230,8 @@ public static class ContagionCorpseUtility
 
     // Post-mortem inspection at a butchery table. One attempt per corpse, forever.
     // Skill pass: reveals the truth (disease named, or clean confirmed).
-    // Skill fail: reports an inconclusive result — disease stays hidden (no false positives).
+    // Skill fail: reports no visible disease and clears the corpse for normal handling. A real
+    // hidden disease remains on the inner pawn, so a false negative can still transmit.
     public static void TryInspectCorpse(Corpse corpse, Pawn inspector)
     {
         if (corpse == null || inspector == null)
@@ -239,10 +240,7 @@ public static class ContagionCorpseUtility
         }
 
         Comp_InfectedCorpse comp = corpse.TryGetComp<Comp_InfectedCorpse>();
-        // Allow re-inspection of suspected-infected corpses until a passing roll clears the
-        // flag. The MarkInspectedFailed path sets HasBeenInspected, but a suspected corpse
-        // with no real disease should remain diagnosable so the player isn't locked out.
-        if (comp == null || (comp.HasBeenInspected && !comp.IsSuspectedInfected))
+        if (comp == null || comp.HasBeenInspected || comp.DiseaseIdentified)
         {
             return;
         }
@@ -297,14 +295,16 @@ public static class ContagionCorpseUtility
         }
         else
         {
-            comp.MarkInspectedFailed();
+            // A failed roll is a final false negative: clear visible suspicion/filtering while
+            // leaving any real hidden disease on the inner pawn for transmission.
+            comp.MarkInspectedClean();
             Messages.Message(
                 "Contagion_InspectCorpseFail".Translate(
                     inspector.LabelShortCap,
                     corpse.InnerPawn?.LabelShortCap ?? corpse.Label),
                 new LookTargets(corpse),
                 MessageTypeDefOf.NeutralEvent);
-            ContagionDiagnostics.Trace($"Corpse inspection failed: {inspector.LabelShortCap} found nothing conclusive on {corpse.InnerPawn?.LabelShortCap} (actual disease: {hasDisease}).");
+            ContagionDiagnostics.Trace($"Corpse inspection false negative: {inspector.LabelShortCap} found no sign of disease on {corpse.InnerPawn?.LabelShortCap} (actual disease: {hasDisease}).");
         }
     }
 }

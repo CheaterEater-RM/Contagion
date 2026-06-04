@@ -151,12 +151,23 @@ internal static class Program
         // Guard against regressing to the old flat 100% corpse-ingestion chance: the code must
         // derive the base chance from the foodborne vector's baseChancePerMeal, not a hardcoded 1f.
         string corpseUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionCorpseUtility.cs"));
+        string infectedCorpseComp = File.ReadAllText(Path.Combine(Root, "Source", "Comps", "Comp_InfectedCorpse.cs"));
+        string inspectCorpseJob = File.ReadAllText(Path.Combine(Root, "Source", "Jobs", "JobDriver_InspectCorpse.cs"));
         checks.Add(Check.Bool("corpse ingestion uses foodborne baseChancePerMeal", corpseUtility.Contains("foodborneVector.baseChancePerMeal"), true));
         checks.Add(Check.Bool("corpse ingestion no longer hardcodes 1f base", !corpseUtility.Contains("BuildSeederChance(\r\n            1f,") && !corpseUtility.Contains("BuildSeederChance(\n            1f,"), true));
         // Eating a raw corpse must also roll direct flea + fluid contact (butcher-level), not just
         // the foodborne meal — raw ingestion is the highest-contact corpse interaction.
         checks.Add(Check.Bool("corpse ingestion rolls fluid contact", corpseUtility.Contains("TryApplyFluidExposure"), true));
         checks.Add(Check.Bool("corpse ingestion rolls flea contact", corpseUtility.Contains("TryApplyFleaExposure"), true));
+        checks.Add(Check.Bool("corpse inspection is final after one attempt",
+            corpseUtility.Contains("if (comp == null || comp.HasBeenInspected || comp.DiseaseIdentified)"), true));
+        checks.Add(Check.Bool("failed corpse inspection clears visible suspicion",
+            corpseUtility.Contains("Corpse inspection false negative")
+            && !corpseUtility.Contains("MarkInspectedFailed")
+            && !infectedCorpseComp.Contains("MarkInspectedFailed"), true));
+        checks.Add(Check.Bool("corpse inspection job does not fail after its own diagnosis",
+            inspectCorpseJob.Contains("!_inspectionResolved &&")
+            && inspectCorpseJob.Contains("_inspectionResolved = true;"), true));
         string transmissionUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionTransmissionUtility.cs"));
         string corpseExposureProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionCorpseExposureProcessor.cs"));
         string pawnTransmissionProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionPawnTransmissionProcessor.cs"));

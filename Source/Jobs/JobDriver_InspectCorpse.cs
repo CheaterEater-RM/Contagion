@@ -9,6 +9,8 @@ public class JobDriver_InspectCorpse : JobDriver
 {
     private const int InspectDurationTicks = 400; // butcher bills are 300
 
+    private bool _inspectionResolved;
+
     private Corpse Corpse => (Corpse)job.GetTarget(TargetIndex.B).Thing;
 
     public override bool TryMakePreToilReservations(bool errorOnFailed)
@@ -25,7 +27,11 @@ public class JobDriver_InspectCorpse : JobDriver
         // picks the corpse up and carries it to the table, and a carried thing is despawned. A
         // global despawn check would fail the job the instant after pickup. The goto toil below
         // has its own scoped FailOnDespawnedNullOrForbidden, which only applies before pickup.
-        this.FailOn(() => Corpse.TryGetComp<Comp_InfectedCorpse>()?.HasBeenInspected == true);
+        this.FailOn(() =>
+        {
+            Comp_InfectedCorpse comp = Corpse.TryGetComp<Comp_InfectedCorpse>();
+            return !_inspectionResolved && (comp?.HasBeenInspected == true || comp?.DiseaseIdentified == true);
+        });
 
         // Go to the corpse.
         yield return Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.ClosestTouch)
@@ -49,6 +55,7 @@ public class JobDriver_InspectCorpse : JobDriver
         diagnose.initAction = () =>
         {
             ContagionDiagnostics.Trace($"Corpse inspection: {pawn.LabelShortCap} performing diagnosis on {Corpse?.InnerPawn?.LabelShortCap ?? Corpse?.Label}.");
+            _inspectionResolved = true;
             ContagionCorpseUtility.TryInspectCorpse(Corpse, pawn);
         };
         diagnose.defaultCompleteMode = ToilCompleteMode.Instant;

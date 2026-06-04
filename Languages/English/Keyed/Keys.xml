@@ -153,7 +153,7 @@
 
   <!-- Corpse inspection -->
   <Contagion_InspectCorpse>Inspect for disease</Contagion_InspectCorpse>
-  <Contagion_InspectCorpseFail>{0} found nothing conclusive on {1}.</Contagion_InspectCorpseFail>
+  <Contagion_InspectCorpseFail>{0} found no sign of disease in {1}.</Contagion_InspectCorpseFail>
   <Contagion_InspectCorpseSuccessDisease>{0} identified {1} in {2}.</Contagion_InspectCorpseSuccessDisease>
   <Contagion_InspectCorpseSuccessClean>{0} confirmed {1} is disease-free.</Contagion_InspectCorpseSuccessClean>
   <Contagion_InspectCorpseNoTable>Requires a butchery table.</Contagion_InspectCorpseNoTable>
