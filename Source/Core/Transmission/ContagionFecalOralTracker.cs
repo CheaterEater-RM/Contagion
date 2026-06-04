@@ -115,9 +115,10 @@ internal sealed class ContagionFecalOralTracker : IExposable
 
     private const float MaxCleanlinessFactor = 3f;
 
-    // Clamp range for the body-size potency factor (see Vector_FecalOralEating): a tiny critter's node
-    // isn't worthless and a modded giant doesn't mint a near-permanent super-node.
-    private const float MinBodySizePotencyFactor = 0.1f;
+    // Clamp range for the body-size potency factor (see Vector_FecalOralEating). The floor is high
+    // enough that small frequent shedders (squirrels, rats — BodySize ~0.1) still drop nodes that clear
+    // MinHotspotPotency once active, rather than being silently skipped; the ceiling is the cow.
+    private const float MinBodySizePotencyFactor = 0.4f;
 
     // Cow-as-ceiling: a cow's BodySize is 2.4 and the eating route is anchored so a full-potency cow
     // node reads ~30% at point-blank grazing. Clamping the body-size factor here at 2.5 keeps larger
@@ -127,9 +128,9 @@ internal sealed class ContagionFecalOralTracker : IExposable
 
     // Cap on a single cell's accumulated node potency as repeat droppings foul it. A single shed tops
     // out at ~2.5 (cow ceiling); this lets a heavily fouled latrine build toward ~100% point-blank at
-    // the current base chance (0.125 × 8 = 1.0) while bounding stored potency so a node can't linger
-    // forever against the decay/MinHotspotPotency cleanup floor.
-    private const float MaxNodePotency = 8f;
+    // the current base chance (0.25 × 4 = 1.0) while bounding stored potency so a stacked cell can't
+    // linger near a week against the decay/MinHotspotPotency cleanup floor.
+    private const float MaxNodePotency = 4f;
 
     // Fallback drop-rate curve (nodes/day vs BodySize) used when a vector omits bodySizeDropsPerDayCurve.
     // Level ~1/day for large animals, rising toward ~4/day for tiny ones; deliberately not exponential.
@@ -301,12 +302,16 @@ internal sealed class ContagionFecalOralTracker : IExposable
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
             Pawn pawn = spawnedPawns[pawnIndex];
+            // The waste meter advances for indoor animals too (gut fullness/time doesn't care about a
+            // roof), but indoor shedding does NOT mint an abstract eating node — see the node-drop block
+            // below. Indoor fecal-oral risk flows through cleanable real filth (the living route); the
+            // abstract soil-node model is outdoor-only. The split is enforced at drop time so an animal
+            // wandering indoor<->outdoor is handled by where it actually is when the meter tops out.
             if (pawn == null
                 || pawn.Dead
                 || !pawn.Spawned
                 || pawn.Map != map
-                || pawn.RaceProps?.Animal != true
-                || !IsOutdoorCell(pawn.Position, map))
+                || pawn.RaceProps?.Animal != true)
             {
                 continue;
             }
@@ -348,7 +353,11 @@ internal sealed class ContagionFecalOralTracker : IExposable
                     // still defecates on schedule but drops weak, short-lived nodes. A near-inert node
                     // is skipped rather than spawned and immediately cleaned up.
                     float nodePotency = sourceInfectivity * GetBodySizePotencyFactor(pawn, vector);
-                    if (nodePotency > MinHotspotPotency)
+                    // Indoor (enclosed-room) shedding is represented by cleanable real filth via the
+                    // living route, not an abstract node — so skip minting a node when the shedding cell
+                    // is an indoor barn cell. Outdoors (and roofed-but-open sheds) keep the soil-node model.
+                    if (nodePotency > MinHotspotPotency
+                        && !ContagionTransmissionUtility.IsIndoorBarnCell(pawn.Position, map))
                     {
                         _hotspots.AddOrRefresh(
                             pawn.Position,
@@ -361,7 +370,10 @@ internal sealed class ContagionFecalOralTracker : IExposable
                             MaxNodePotency);
                         ContagionDiagnostics.Record(ContagionDiagnosticCounter.FecalOralEatingHotspotCreated);
                         ContagionDiagnostics.Trace($"Fecal-oral eating hotspot: {resolvedProfile.DiseaseDef.defName} near {pawn.LabelShortCap}.");
-                        ContagionTrace.TransmissionToCell(pawn, pawn.PositionHeld, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.FecalOralEating);
+                        // Deliberately NOT recorded as a trace-graph cell node: a shed is not a
+                        // transmission, and one node per shed (while the shedder stays infected) piles up
+                        // history that never prunes. The actual node->grazer infection is traced in
+                        // NotifyAnimalIngested; live nodes are shown by the selected-animal eating overlay.
                     }
                 }
 
@@ -377,7 +389,7 @@ internal sealed class ContagionFecalOralTracker : IExposable
             || map == null
             || filth.def != ThingDefOf.Filth_AnimalFilth
             || sourcePawn.RaceProps?.Animal != true
-            || !IsBarnFilthCell(filth.Position, map))
+            || !ContagionTransmissionUtility.IsIndoorBarnCell(filth.Position, map))
         {
             return;
         }
@@ -417,6 +429,15 @@ internal sealed class ContagionFecalOralTracker : IExposable
     public void NotifyAnimalIngested(Pawn ingester, ContagionIngestionContext context)
     {
         if (!context.IsValid || !IsAnimalExposureTarget(ingester, context.Map) || _hotspots.Count == 0)
+        {
+            return;
+        }
+
+        // The eating (abstract soil-node) route is outdoor-only. Indoors, the living route owns exposure
+        // via cleanable real filth, so eating in an enclosed room never rolls against a node. Node
+        // suppression at shed time normally prevents indoor nodes; this guards a node whose cell became
+        // enclosed after it was minted (e.g. a player roofs over an outdoor pasture spot).
+        if (context.IsIndoor)
         {
             return;
         }
@@ -700,7 +721,11 @@ internal sealed class ContagionFecalOralTracker : IExposable
 
     private ContagionFecalOralEatingContext ClassifyEatingContext(ContagionIngestionContext context, Vector_FecalOralEating vector)
     {
-        if (!context.IsOutdoor)
+        // Food-type driven, indoor and outdoor alike (the enum/field names keep a historical "Outdoor"
+        // label, but the distinction is the food, not the roof). Order matters: food on a shelf/feeding
+        // building is cleanest and wins first; then grazed live grass is dirtiest; then prepared feed
+        // (kibble/hay) is cleaner than raw food lying on the ground.
+        if (context.IsStored)
         {
             return ContagionFecalOralEatingContext.StoredOrIndoorFood;
         }
@@ -708,11 +733,6 @@ internal sealed class ContagionFecalOralTracker : IExposable
         if (context.IsPlant)
         {
             return ContagionFecalOralEatingContext.Grazing;
-        }
-
-        if (context.IsStored)
-        {
-            return ContagionFecalOralEatingContext.StoredOrIndoorFood;
         }
 
         if (IsPreparedAnimalFeed(context.FoodDef))
@@ -865,36 +885,6 @@ internal sealed class ContagionFecalOralTracker : IExposable
             && pawn.Spawned
             && pawn.Map == map
             && pawn.RaceProps?.Animal == true;
-    }
-
-    private static bool IsBarnFilthCell(IntVec3 cell, Map map)
-    {
-        if (!cell.InBounds(map))
-        {
-            return false;
-        }
-
-        if (cell.Roofed(map))
-        {
-            return true;
-        }
-
-        Room room = cell.GetRoom(map);
-        return room != null
-            && !room.PsychologicallyOutdoors
-            && !room.TouchesMapEdge
-            && !room.UsesOutdoorTemperature;
-    }
-
-    private static bool IsOutdoorCell(IntVec3 cell, Map map)
-    {
-        if (!cell.InBounds(map) || cell.Roofed(map))
-        {
-            return false;
-        }
-
-        Room room = cell.GetRoom(map);
-        return room == null || room.PsychologicallyOutdoors || room.UsesOutdoorTemperature;
     }
 
     private static float GetRoomCleanlinessFactor(Room room, float cleanlinessImpact)

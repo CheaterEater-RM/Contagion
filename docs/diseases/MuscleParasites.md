@@ -102,9 +102,9 @@ Cooking contaminated meat can expose the cook through raw ingredient handling. O
 | lowSkillFactor | 2.0 | Cooking 0 doubles exposure risk |
 | highSkillFactor | 0.5 | Cooking 20 halves exposure risk |
 
-### Vector_FecalOralLiving (animal-only barn exposure)
+### Vector_FecalOralLiving (animal-only indoor exposure)
 
-Infected animals can contaminate vanilla `Filth_AnimalFilth` in roofed or enclosed barns. Other animals sharing that dirty room roll low ambient exposure; colonists are excluded from this route. Cleaning the filth removes the hazard.
+**This is the sole indoor fecal-oral route.** Infected animals contaminate vanilla `Filth_AnimalFilth` in **enclosed (psychologically-indoor) rooms** — a bare roof over an open shed does *not* count. Other animals sharing that dirty room roll low ambient exposure; colonists are excluded from this route. All indoor risk flows through this cleanable filth, so **a clean enclosed room prevents infection entirely**; the abstract eating route below does not operate indoors.
 
 | Parameter | Value | Notes |
 |---|---|---|
@@ -112,21 +112,23 @@ Infected animals can contaminate vanilla `Filth_AnimalFilth` in roofed or enclos
 | potencyDecayPerDay | 0.09 | Longer-lived than gut worm barn contamination |
 | roomCleanlinessImpact | 0.5 | Dirty rooms amplify exposure |
 
-### Vector_FecalOralEating (animal-only grazing exposure)
+### Vector_FecalOralEating (animal-only outdoor grazing exposure)
 
-Infected outdoor animals create hidden pasture hotspots. Animals eating *near* a hotspot (within `hotspotRadius` = 2 cells, steep exponential falloff — not cell-exact) can pick up muscle parasites, with context weighting: grazing live plants is highest risk, raw outdoor ground food is lower, kibble/hay on the ground is lower still, and stored or indoor feed is near-zero risk. The route is **point-blank** — the animal essentially has to graze on the droppings. Cross-cell merging is **off** (`hotspotMergeRadius` 0, kept as a re-enable knob); repeat sheds on the **same cell** instead accumulate additively (decay-to-now + add, capped at `MaxNodePotency` 8) so a fouled latrine builds up — see [GutWorms.md](GutWorms.md) → Vector_FecalOralEating → *Same-cell accumulation* for the shared logic.
+**This is the outdoor-only route.** Infected animals create hidden contamination nodes (the abstract "soil-mixing" model) wherever they feed **outdoors or in roofed-but-open sheds** — no node is minted in an enclosed indoor room (that risk is carried by cleanable filth via the living route above). Animals eating *near* a node (within `hotspotRadius` = 2 cells, steep exponential falloff — not cell-exact) can pick up muscle parasites, with **food-type** weighting (not roof-based): grazing live plants is highest risk, raw food on the ground lower, prepared feed (kibble/hay) cleaner still, and food in a storage building (shelf/feeding item) near-zero. The route is **point-blank** — the animal essentially has to feed on the droppings. Cross-cell merging is **off** (`hotspotMergeRadius` 0, kept as a re-enable knob); repeat sheds on the **same cell** instead accumulate additively (decay-to-now + add, capped at `MaxNodePotency` 4) so a fouled latrine builds up — see [GutWorms.md](GutWorms.md) → Vector_FecalOralEating → *Same-cell accumulation* for the shared logic.
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerIngestion | 0.125 | Rolled when an animal eats near a hotspot; cow-anchored (same as gut worms) |
+| baseChancePerIngestion | 0.25 | Rolled when an animal eats near a node; cow-anchored (same as gut worms) |
+| incubationInfectivityCurveOverride | (0,0.3) (1,0.6) | Eating-route only: incubating carriers already shed moderately |
+| activeInfectivityCurveOverride | (0,0.8) (0.1,1) (1,1) | Eating-route only: active disease sheds near-full almost immediately |
 | bodySizeDropsPerDayCurve | (0.2,4) (1.2,2) (2.4,1) (4.0,1) | Deterministic nodes/day by shedder BodySize (same curve as gut worms) |
-| bodySizePotencyExponent | 1.0 | Per-node potency ×= BodySize^1.0 (clamped to 2.5 — the cow ceiling) |
+| bodySizePotencyExponent | 1.0 | Per-node potency ×= BodySize^1.0, clamped to [0.4, 2.5] |
 | hotspotRadius | 2 | Exposure reaches only two tiles from the node |
 | distanceFalloffRate | 0.6931 (ln 2) | Chance halves per cell out |
 | hotspotDecayPerDay | 0.5 | Fraction of potency lost per day (×0.5/day); per-disease |
-| hotspotDurationDays | 7 | Hard-expiry backstop only — natural ×0.5/day decay clears nodes first (~day 5) |
+| hotspotDurationDays | 5 | Hard-expiry backstop only — natural ×0.5/day decay clears nodes first |
 
-`baseChancePerIngestion` (0.125) is **cow-anchored** exactly like gut worms: a full-potency cow node grazed point-blank reads ~30%, smaller grazers scale down with body size, larger ones are capped at the cow by `MaxBodySizePotencyFactor` (2.5). See [GutWorms.md](GutWorms.md) → Vector_FecalOralEating for the full anchoring rationale and distance-falloff numbers. The audit guards both diseases (`muscle parasites full cow point-blank grazing`).
+`baseChancePerIngestion` (0.25) is **cow-anchored** exactly like gut worms: a full-potency cow node fed on point-blank reads ~60%, body size scales it within [0.4, 2.5] (small animals floored so they still shed, larger capped at the cow). Weather no longer suppresses nodes (`rain`/`freezingPotencyFactor` = 1.0). See [GutWorms.md](GutWorms.md) → Vector_FecalOralEating for the full anchoring rationale, infectivity ramp, indoor/outdoor shedding, distance-falloff, and decay/lifespan. The audit guards both diseases (`muscle parasites full cow point-blank grazing` = 0.60).
 
 Shedding is the deterministic **waste meter** model — see [GutWorms.md](GutWorms.md) → Vector_FecalOralEating for the full description (steady body-size-driven cadence, paused while starving, drop-when-full, potency tracking infectivity).
 

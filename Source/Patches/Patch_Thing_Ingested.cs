@@ -42,9 +42,14 @@ internal static class Patch_Thing_Ingested
             return default;
         }
 
-        bool isStored = food.Spawned && food.IsInValidStorage();
-        bool isIndoor = IsIndoorCell(cell, map);
-        bool isOutdoor = IsOutdoorCell(cell, map);
+        // "Stored" means kept in a storage building (shelf, hopper, feeding item) — the cleanest case.
+        // Food loose in a stockpile zone on the floor is NOT counted here, so kibble in a zone still
+        // classifies as prepared-ground feed rather than the near-zero shelved tier.
+        bool isStored = food.Spawned && food.GetSlotGroup()?.parent is Building;
+        // Single indoor/outdoor authority shared with the shedding/filth-contamination passes: indoor =
+        // bounded enclosed room (not merely roofed). The eating route is outdoor-only; NotifyAnimalIngested
+        // uses IsIndoor to defer enclosed-room exposure to the cleanable-filth living route.
+        bool isIndoor = ContagionTransmissionUtility.IsIndoorBarnCell(cell, map);
         return new ContagionIngestionContext(
             map,
             cell,
@@ -52,18 +57,6 @@ internal static class Patch_Thing_Ingested
             food is Plant,
             isStored,
             isIndoor,
-            isOutdoor);
-    }
-
-    private static bool IsIndoorCell(IntVec3 cell, Map map)
-    {
-        Room room = cell.GetRoom(map);
-        return cell.Roofed(map)
-            || (room != null && !room.PsychologicallyOutdoors && !room.UsesOutdoorTemperature);
-    }
-
-    private static bool IsOutdoorCell(IntVec3 cell, Map map)
-    {
-        return !IsIndoorCell(cell, map);
+            !isIndoor);
     }
 }

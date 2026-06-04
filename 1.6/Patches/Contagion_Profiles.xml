@@ -518,9 +518,25 @@
                on the ground is lower still; stored or indoor feed is near-zero. -->
           <li Class="Contagion.Vector_FecalOralEating">
             <!-- Anchored so a full-potency cow (BodySize 2.4, node potency 2.4) grazing point-blank
-                 reads ~30% (0.125 x 2.4 = 0.30); smaller grazers scale down linearly with body size,
-                 larger ones are capped at the cow by MaxBodySizePotencyFactor. -->
-            <baseChancePerIngestion>0.125</baseChancePerIngestion>
+                 reads ~60% (0.25 x 2.4 = 0.60); smaller grazers scale down with body size (floored so
+                 tiny animals still matter), larger ones are capped at the cow by MaxBodySizePotencyFactor. -->
+            <baseChancePerIngestion>0.25</baseChancePerIngestion>
+            <!-- Eating-route infectivity overrides (independent of the foodborne/fomite curves): gut
+                 worms shed potently and ramp fast. Incubating carriers already shed moderately; once
+                 active the node is near-full almost immediately and then levels out. -->
+            <incubationInfectivityCurveOverride>
+              <points>
+                <li>(0.0, 0.3)</li>
+                <li>(1.0, 0.6)</li>
+              </points>
+            </incubationInfectivityCurveOverride>
+            <activeInfectivityCurveOverride>
+              <points>
+                <li>(0.0, 0.8)</li>
+                <li>(0.1, 1.0)</li>
+                <li>(1.0, 1.0)</li>
+              </points>
+            </activeInfectivityCurveOverride>
             <!-- Deterministic shedding: nodes per day by the shedder's BodySize. The animal fills a
                  "waste" meter at this rate (while not starving) and drops a node when full. Level
                  (~1/day) for big animals, rising toward ~4/day for tiny ones; intentionally not an
@@ -543,17 +559,20 @@
                  droppings, so each shed cell stays its own node. Kept as a knob to re-enable later. -->
             <hotspotMergeRadius>0</hotspotMergeRadius>
             <maxHotspotsPerDisease>24</maxHotspotsPerDisease>
-            <!-- Hard-expiry backstop only; natural decay removes nodes first. A full cow node (potency
-                 2.4) halving daily falls below the cleanup floor (~0.08) on ~day 5, so 7 just catches
-                 maxed-out fouled cells. -->
-            <hotspotDurationDays>7</hotspotDurationDays>
+            <!-- Hard-expiry backstop; natural ×0.5/day decay clears single nodes first (~day 5). 5 keeps
+                 even maxed/stacked fouled cells from lingering a week. -->
+            <hotspotDurationDays>5</hotspotDurationDays>
             <!-- Fraction of potency lost per day (daily multiplier = 1 - this). 0.5 = halves per day.
                  Per-disease, so diseases can be tuned independently later. -->
             <hotspotDecayPerDay>0.5</hotspotDecayPerDay>
             <distanceFalloffRate>0.6931</distanceFalloffRate>
-            <rainPotencyFactor>0.35</rainPotencyFactor>
-            <freezingPotencyFactor>0.35</freezingPotencyFactor>
+            <!-- Weather off: rain/freezing do not suppress fecal-oral nodes (factors 1.0). -->
+            <rainPotencyFactor>1.0</rainPotencyFactor>
+            <freezingPotencyFactor>1.0</freezingPotencyFactor>
             <freezingTemperature>0</freezingTemperature>
+            <!-- Context factors are food-type-driven (indoor or outdoor): grazing live grass is dirtiest,
+                 raw food on the ground lower, prepared feed (kibble/hay) cleaner, food on a shelf/feeding
+                 building cleanest — which incentivises feeding from a proper trough/shelf. -->
             <grazingFactor>1.0</grazingFactor>
             <rawOutdoorGroundFoodFactor>0.55</rawOutdoorGroundFoodFactor>
             <preparedOutdoorGroundFoodFactor>0.25</preparedOutdoorGroundFoodFactor>
@@ -738,9 +757,23 @@
                Muscle parasites linger longer in outdoor soil but shed a little less aggressively
                than gut worms. Stored or indoor animal feed remains near-zero risk. -->
           <li Class="Contagion.Vector_FecalOralEating">
-            <!-- Same cow-anchored grazing rate as gut worms: 0.125 x cow potency 2.4 = ~30% point-blank,
-                 scaling down with body size and capped at the cow for larger grazers. -->
-            <baseChancePerIngestion>0.125</baseChancePerIngestion>
+            <!-- Same cow-anchored grazing rate as gut worms: 0.25 x cow potency 2.4 = ~60% point-blank,
+                 scaling down with body size (floored for tiny animals) and capped at the cow. -->
+            <baseChancePerIngestion>0.25</baseChancePerIngestion>
+            <!-- Eating-route infectivity overrides (see GutWorms): potent, fast ramp, levels out. -->
+            <incubationInfectivityCurveOverride>
+              <points>
+                <li>(0.0, 0.3)</li>
+                <li>(1.0, 0.6)</li>
+              </points>
+            </incubationInfectivityCurveOverride>
+            <activeInfectivityCurveOverride>
+              <points>
+                <li>(0.0, 0.8)</li>
+                <li>(0.1, 1.0)</li>
+                <li>(1.0, 1.0)</li>
+              </points>
+            </activeInfectivityCurveOverride>
             <!-- Deterministic shedding: nodes per day by the shedder's BodySize (see GutWorms). Same
                  level curve — ~1/day for big animals, rising toward ~4/day for tiny ones. The animal
                  fills a "waste" meter at this rate while not starving and drops a node when full. -->
@@ -760,13 +793,14 @@
                  droppings, so each shed cell stays its own node. Kept as a knob to re-enable later. -->
             <hotspotMergeRadius>0</hotspotMergeRadius>
             <maxHotspotsPerDisease>24</maxHotspotsPerDisease>
-            <!-- Hard-expiry backstop only; natural ×0.5/day decay clears nodes first (~day 5). -->
-            <hotspotDurationDays>7</hotspotDurationDays>
+            <!-- Hard-expiry backstop; natural ×0.5/day decay clears single nodes first (~day 5). -->
+            <hotspotDurationDays>5</hotspotDurationDays>
             <!-- Fraction lost per day (daily multiplier = 1 - this). 0.5 = halves per day; per-disease. -->
             <hotspotDecayPerDay>0.5</hotspotDecayPerDay>
             <distanceFalloffRate>0.6931</distanceFalloffRate>
-            <rainPotencyFactor>0.45</rainPotencyFactor>
-            <freezingPotencyFactor>0.55</freezingPotencyFactor>
+            <!-- Weather off: rain/freezing do not suppress fecal-oral nodes (factors 1.0). -->
+            <rainPotencyFactor>1.0</rainPotencyFactor>
+            <freezingPotencyFactor>1.0</freezingPotencyFactor>
             <freezingTemperature>-5</freezingTemperature>
             <grazingFactor>1.0</grazingFactor>
             <rawOutdoorGroundFoodFactor>0.55</rawOutdoorGroundFoodFactor>

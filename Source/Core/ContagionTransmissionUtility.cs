@@ -971,6 +971,21 @@ public static class ContagionTransmissionUtility
         return room == null || room.PsychologicallyOutdoors;
     }
 
+    // Single indoor/outdoor authority for the fecal-oral split: a cell counts as "indoor barn" only
+    // when it sits in a bounded, psychologically-indoor room. A bare roof is NOT enough — a roofed-but-
+    // open shed is psychologically outdoors and has no contained living space to keep clean, so it falls
+    // to the outdoor abstract-node model. Indoors, contamination flows through cleanable real filth (the
+    // living route); a clean enclosed room therefore prevents infection.
+    public static bool IsIndoorBarnCell(IntVec3 cell, Map map)
+    {
+        if (map == null || !cell.InBounds(map))
+        {
+            return false;
+        }
+
+        return !IsOutdoors(cell.GetRoom(map));
+    }
+
     public static float GetLocalCleanlinessFactor(IntVec3 position, Room room, Map map, float cleanlinessImpact, int outdoorFilthRadius)
     {
         if (cleanlinessImpact <= 0f)

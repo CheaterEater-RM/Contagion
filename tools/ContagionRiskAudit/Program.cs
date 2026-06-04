@@ -40,7 +40,7 @@ internal static class Program
 
         // Cow-anchored fecal-oral grazing: a full-potency node (peak active infectivity 1.0) made by a
         // cow (BodySize 2.4) grazed point-blank (distance 0 -> factor 1) on a clean map (seeder factor 1)
-        // should read ~30%. Larger grazers are capped at the cow by MaxBodySizePotencyFactor (2.5, a C#
+        // should read ~60%. Larger grazers are capped at the cow by MaxBodySizePotencyFactor (2.5, a C#
         // const mirrored here and guarded by a source check below).
         const float CowBodySize = 2.4f;
         const float MaxBodySizePotencyFactor = 2.5f;
@@ -75,23 +75,23 @@ internal static class Program
             Check.Close("muscle parasites strong-stomach raw meat ingestion", ContagionRiskMath.ApplyIngestionResistance(Field(muscleFood, "baseChancePerMeal"), 0.1f), 0.085f, 0.001f),
             Check.Close("muscle parasites bionic stomach raw meat ingestion", ContagionRiskMath.ApplyIngestionResistance(Field(muscleFood, "baseChancePerMeal"), 0f), 0f, 0.001f),
             Check.Close("muscle parasites ordinary cooked meal ingestion", Field(muscleFood, "baseChancePerMeal") * ordinaryMealFactor, 0.077626f, 0.002f),
-            Check.Close("gut worms full cow point-blank grazing", GrazingPointBlank(gutEating, CowBodySize, MaxBodySizePotencyFactor), 0.30f, 0.005f),
-            Check.Close("muscle parasites full cow point-blank grazing", GrazingPointBlank(muscleEating, CowBodySize, MaxBodySizePotencyFactor), 0.30f, 0.005f),
-            Check.Close("gut worms large grazer capped at cow", GrazingPointBlank(gutEating, 4.0f, MaxBodySizePotencyFactor), 0.3125f, 0.005f),
+            Check.Close("gut worms full cow point-blank grazing", GrazingPointBlank(gutEating, CowBodySize, MaxBodySizePotencyFactor), 0.60f, 0.005f),
+            Check.Close("muscle parasites full cow point-blank grazing", GrazingPointBlank(muscleEating, CowBodySize, MaxBodySizePotencyFactor), 0.60f, 0.005f),
+            Check.Close("gut worms large grazer capped at cow", GrazingPointBlank(gutEating, 4.0f, MaxBodySizePotencyFactor), 0.625f, 0.005f),
             // Tight point-blank shape: chance halves per cell (distanceFalloffRate = ln 2) and the node
-            // reaches only two tiles. A full cow node reads ~30% on the tile, ~15% one cell out.
+            // reaches only two tiles. A full cow node reads ~60% on the tile, ~30% one cell out.
             Check.Close("gut worms grazing halves per cell", (float)Math.Exp(-Field(gutEating, "distanceFalloffRate")), 0.5f, 0.01f),
-            Check.Close("gut worms full cow grazing one cell out", GrazingPointBlank(gutEating, CowBodySize, MaxBodySizePotencyFactor) * (float)Math.Exp(-Field(gutEating, "distanceFalloffRate")), 0.15f, 0.005f),
+            Check.Close("gut worms full cow grazing one cell out", GrazingPointBlank(gutEating, CowBodySize, MaxBodySizePotencyFactor) * (float)Math.Exp(-Field(gutEating, "distanceFalloffRate")), 0.30f, 0.005f),
             Check.Close("gut worms grazing range capped at two tiles", Field(gutEating, "hotspotRadius"), 2f, 0.001f),
             Check.Close("gut worms node halves per day", Field(gutEating, "hotspotDecayPerDay"), 0.5f, 0.001f),
-            Check.Close("gut worms grazing node hard-expiry backstop", Field(gutEating, "hotspotDurationDays"), 7f, 0.001f),
+            Check.Close("gut worms grazing node hard-expiry backstop", Field(gutEating, "hotspotDurationDays"), 5f, 0.001f),
             Check.Close("fecal-oral node decay executes as fraction-per-day",
                 ContagionRiskMath.HotspotPotencyAfterDecay(2.4f, 0.5f, 1f), 1.2f, 0.0001f),
             Check.Close("fecal-oral repeat shed decays then adds",
                 ContagionRiskMath.AddHotspotPotency(
-                    ContagionRiskMath.HotspotPotencyAfterDecay(2.4f, 0.5f, 1f), 0.2f, 8f), 1.4f, 0.0001f),
+                    ContagionRiskMath.HotspotPotencyAfterDecay(2.4f, 0.5f, 1f), 0.2f, 4f), 1.4f, 0.0001f),
             Check.Close("fecal-oral stacked node respects potency cap",
-                ContagionRiskMath.AddHotspotPotency(8f, 2.4f, 8f), 8f, 0.0001f),
+                ContagionRiskMath.AddHotspotPotency(4f, 2.4f, 4f), 4f, 0.0001f),
             Check.Bool("temporary rain suppresses but does not clean up viable node",
                 ContagionRiskMath.HotspotEffectivePotency(0.2f, true, 0.35f, false, 1f) < 0.08f
                 && !ContagionRiskMath.ShouldCleanupHotspot(0.2f, 0.5f, 0f, 0.08f), true),
@@ -103,15 +103,24 @@ internal static class Program
                     0.00005f),
                 0.2f,
                 0.0001f),
-            // Natural ×0.5/day decay must drop a full cow node below the cleanup floor (~0.08 potency =
-            // ~1% point-blank chance) well before the 7-day hard cap, so decay does the real removal.
-            Check.Bool("cow grazing node self-expires before the hard cap",
-                ContagionRiskMath.ShouldCleanupHotspot(CowBodySize, Field(gutEating, "hotspotDecayPerDay"), 5f, 0.08f)
-                && 5f < Field(gutEating, "hotspotDurationDays"), true),
+            // Natural ×0.5/day decay must drop a full cow node below the cleanup floor (0.08 potency =
+            // ~2% point-blank chance at base 0.25) by the hard-cap day, so decay does the real removal
+            // and nothing lingers past the backstop.
+            Check.Bool("cow grazing node self-expires by the hard cap",
+                ContagionRiskMath.ShouldCleanupHotspot(CowBodySize, Field(gutEating, "hotspotDecayPerDay"), Field(gutEating, "hotspotDurationDays"), 0.08f), true),
             Check.Close("muscle parasites grazing halves per cell", (float)Math.Exp(-Field(muscleEating, "distanceFalloffRate")), 0.5f, 0.01f),
             Check.Close("muscle parasites grazing range capped at two tiles", Field(muscleEating, "hotspotRadius"), 2f, 0.001f),
             Check.Close("muscle parasites node halves per day", Field(muscleEating, "hotspotDecayPerDay"), 0.5f, 0.001f),
-            Check.Close("muscle parasites grazing node hard-expiry backstop", Field(muscleEating, "hotspotDurationDays"), 7f, 0.001f),
+            Check.Close("muscle parasites grazing node hard-expiry backstop", Field(muscleEating, "hotspotDurationDays"), 5f, 0.001f),
+            // Weather off: rain/freezing no longer suppress fecal-oral nodes (factors 1.0).
+            Check.Close("gut worms grazing ignores rain", Field(gutEating, "rainPotencyFactor"), 1f, 0.001f),
+            Check.Close("gut worms grazing ignores freezing", Field(gutEating, "freezingPotencyFactor"), 1f, 0.001f),
+            Check.Close("muscle parasites grazing ignores rain", Field(muscleEating, "rainPotencyFactor"), 1f, 0.001f),
+            Check.Close("muscle parasites grazing ignores freezing", Field(muscleEating, "freezingPotencyFactor"), 1f, 0.001f),
+            // Eating route ramps fast: active disease sheds near-full from the start (override at 0.8),
+            // incubating carriers shed moderately (override at 0.3) so even fresh nodes can transmit.
+            Check.Close("gut worms eating active infectivity ramps high", Curve(Child(gutEating, "activeInfectivityCurveOverride"), 0f), 0.8f, 0.001f),
+            Check.Close("gut worms eating incubation infectivity is moderate", Curve(Child(gutEating, "incubationInfectivityCurveOverride"), 0f), 0.3f, 0.001f),
             // Eating a raw infected corpse now transmits via the foodborne vector's baseChancePerMeal
             // run through the ingester's stomach resistance (NotifyCorpseIngested →
             // ApplyTaintedFoodInfectionFactor), identical to eating raw contaminated meat — not a flat
@@ -195,7 +204,8 @@ internal static class Program
         checks.Add(Check.Bool("environmental applies contact protection", environmentalProcessor.Contains("GetContactProtectionFactor"), true));
         checks.Add(Check.Bool("fecal-oral living applies contact protection", fecalOralTracker.Contains("GetContactProtectionFactor"), true));
         checks.Add(Check.Bool("fecal-oral eating caps body-size potency at the cow", fecalOralTracker.Contains("MaxBodySizePotencyFactor = 2.5f"), true));
-        checks.Add(Check.Bool("fecal-oral eating caps accumulated node potency", fecalOralTracker.Contains("MaxNodePotency = 8f"), true));
+        checks.Add(Check.Bool("fecal-oral eating floors body-size potency so small animals shed", fecalOralTracker.Contains("MinBodySizePotencyFactor = 0.4f"), true));
+        checks.Add(Check.Bool("fecal-oral eating caps accumulated node potency", fecalOralTracker.Contains("MaxNodePotency = 4f"), true));
         checks.Add(Check.Bool("fecal-oral cleanup uses weather-independent tested math", fecalOralTracker.Contains("ShouldCleanupHotspot"), true));
         checks.Add(Check.Bool("fecal-oral stacking uses tested additive math", hotspotStore.Contains("AddHotspotPotency"), true));
         checks.Add(Check.Bool("eating overlay uses tested visible-cell scale", developerOverlay.Contains("VisibleChanceMaximum"), true));
