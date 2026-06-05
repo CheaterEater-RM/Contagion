@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using RimWorld;
 using Verse;
 using Verse.AI;
@@ -42,39 +41,17 @@ public class FloatMenuOptionProvider_InspectCorpse : FloatMenuOptionProvider
 
         Pawn pawn = context.FirstSelectedPawn;
 
-        // Find the nearest reachable butchery table (a worktable that can butcher corpses).
-        RecipeDef butcherRecipe = DefDatabase<RecipeDef>.GetNamedSilentFail("ButcherCorpseFlesh");
-        Building_WorkTable table = (Building_WorkTable)GenClosest.ClosestThingReachable(
-            pawn.Position,
-            pawn.Map,
-            ThingRequest.ForGroup(ThingRequestGroup.PotentialBillGiver),
-            PathEndMode.InteractionCell,
-            TraverseParms.For(pawn),
-            validator: t => t is Building_WorkTable wt
-                && butcherRecipe != null
-                && wt.def.AllRecipes != null
-                && wt.def.AllRecipes.Contains(butcherRecipe)
-                && !t.IsForbidden(pawn)
-                && pawn.CanReserve(t));
-
-        if (table == null)
-        {
-            yield return new FloatMenuOption(
-                "Contagion_InspectCorpseNoTable".Translate(),
-                null)
-            {
-                Disabled = true
-            };
-            yield break;
-        }
-
         FloatMenuOption option = FloatMenuUtility.DecoratePrioritizedTask(
             new FloatMenuOption("Contagion_InspectCorpse".Translate(), () =>
             {
-                Job job = JobMaker.MakeJob(DefDatabase<JobDef>.GetNamed("Contagion_InspectCorpse"), table, corpse);
-                // The driver carries a single corpse via Toils_Haul.StartCarryThing(TargetIndex.B),
-                // which reads job.count. Without this it defaults to -1 and logs "Invalid count: -1".
-                job.count = 1;
+                // Drive the vanilla interaction job against the corpse's Comp_CorpseInspectable.
+                // The diagnosis runs in Comp_CorpseInspectable.OnInteracted. Using the vanilla
+                // JobDriver_InteractThing keeps the in-flight save free of custom job/driver
+                // classes, so dropping Contagion mid-inspection can't lock the pawn.
+                Job job = JobMaker.MakeJob(JobDefOf.InteractThing, corpse);
+                // Corpses carry exactly one CompInteractable; force the single-comp lookup path
+                // (TryGetComp) rather than a possibly-stale pooled index.
+                job.interactableIndex = -1;
                 pawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
             }),
             pawn,

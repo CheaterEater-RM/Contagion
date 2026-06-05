@@ -156,11 +156,14 @@
   <Contagion_InspectCorpseFail>{0} found no sign of disease in {1}.</Contagion_InspectCorpseFail>
   <Contagion_InspectCorpseSuccessDisease>{0} identified {1} in {2}.</Contagion_InspectCorpseSuccessDisease>
   <Contagion_InspectCorpseSuccessClean>{0} confirmed {1} is disease-free.</Contagion_InspectCorpseSuccessClean>
-  <Contagion_InspectCorpseNoTable>Requires a butchery table.</Contagion_InspectCorpseNoTable>
+  <!-- Job report shown while a colonist is examining a corpse. {0} = corpse label. -->
+  <Contagion_InspectCorpseReportJob>inspecting corpse</Contagion_InspectCorpseReportJob>
+  <Contagion_InspectCorpseReportActive>Inspecting {0}.</Contagion_InspectCorpseReportActive>
 
-  <!-- Animal proactive examination (JobDriver_DiagnoseAnimal / FloatMenuOptionProvider_DiagnoseAnimal) -->
+  <!-- Animal proactive examination (FloatMenuOptionProvider_DiagnoseAnimal + Contagion_PendingExam) -->
   <Contagion_ExamineAnimal>Examine for illness</Contagion_ExamineAnimal>
   <Contagion_ExamineAnimalCooldown>Examined recently</Contagion_ExamineAnimalCooldown>
+  <Contagion_ExamineAnimalFlagged>{0} has been flagged for examination. A vet will examine it for hidden illness when it next rests.</Contagion_ExamineAnimalFlagged>
 
   <!-- Apparel disease protection (Gear tab + item info card) -->
   <Contagion_DiseaseProtectionHeader>Disease protection</Contagion_DiseaseProtectionHeader>

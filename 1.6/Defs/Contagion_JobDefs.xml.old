@@ -1,16 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Defs>
   <JobDef>
-    <defName>Contagion_InspectCorpse</defName>
-    <driverClass>Contagion.JobDriver_InspectCorpse</driverClass>
-    <reportString>Inspecting corpse.</reportString>
-    <playerInterruptible>true</playerInterruptible>
-    <suspendable>false</suspendable>
-    <casualInterruptible>false</casualInterruptible>
-    <allowOpportunisticPrefix>false</allowOpportunisticPrefix>
-  </JobDef>
-
-  <JobDef>
     <defName>Contagion_DiagnoseAnimal</defName>
     <driverClass>Contagion.JobDriver_DiagnoseAnimal</driverClass>
     <reportString>Examining {0} for illness.</reportString>

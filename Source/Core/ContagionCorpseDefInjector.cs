@@ -15,21 +15,26 @@ public static class ContagionCorpseDefInjector
             }
 
             thingDef.comps ??= new List<CompProperties>();
-            if (HasInfectedCorpseComp(thingDef.comps))
+
+            if (!HasComp<Comp_InfectedCorpse>(thingDef.comps))
             {
-                continue;
+                thingDef.comps.Add(new CompProperties_InfectedCorpse());
             }
 
-            thingDef.comps.Add(new CompProperties_InfectedCorpse());
+            // Adds the vanilla-interaction inspection surface (Comp_CorpseInspectable). Driven by
+            // FloatMenuOptionProvider_InspectCorpse via JobDefOf.InteractThing.
+            if (!HasComp<Comp_CorpseInspectable>(thingDef.comps))
+            {
+                thingDef.comps.Add(new CompProperties_CorpseInspectable());
+            }
         }
     }
 
-    private static bool HasInfectedCorpseComp(List<CompProperties> comps)
+    private static bool HasComp<TComp>(List<CompProperties> comps) where TComp : ThingComp
     {
         for (int i = 0; i < comps.Count; i++)
         {
-            CompProperties comp = comps[i];
-            if (comp is CompProperties_InfectedCorpse || comp?.compClass == typeof(Comp_InfectedCorpse))
+            if (comps[i]?.compClass == typeof(TComp))
             {
                 return true;
             }

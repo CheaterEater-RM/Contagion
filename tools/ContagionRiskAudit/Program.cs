@@ -152,7 +152,8 @@ internal static class Program
         // derive the base chance from the foodborne vector's baseChancePerMeal, not a hardcoded 1f.
         string corpseUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionCorpseUtility.cs"));
         string infectedCorpseComp = File.ReadAllText(Path.Combine(Root, "Source", "Comps", "Comp_InfectedCorpse.cs"));
-        string inspectCorpseJob = File.ReadAllText(Path.Combine(Root, "Source", "Jobs", "JobDriver_InspectCorpse.cs"));
+        string corpseInspectableComp = File.ReadAllText(Path.Combine(Root, "Source", "Comps", "Comp_CorpseInspectable.cs"));
+        string inspectCorpseProvider = File.ReadAllText(Path.Combine(Root, "Source", "Jobs", "FloatMenuOptionProvider_InspectCorpse.cs"));
         checks.Add(Check.Bool("corpse ingestion uses foodborne baseChancePerMeal", corpseUtility.Contains("foodborneVector.baseChancePerMeal"), true));
         checks.Add(Check.Bool("corpse ingestion no longer hardcodes 1f base", !corpseUtility.Contains("BuildSeederChance(\r\n            1f,") && !corpseUtility.Contains("BuildSeederChance(\n            1f,"), true));
         // Eating a raw corpse must also roll direct flea + fluid contact (butcher-level), not just
@@ -165,9 +166,15 @@ internal static class Program
             corpseUtility.Contains("Corpse inspection false negative")
             && !corpseUtility.Contains("MarkInspectedFailed")
             && !infectedCorpseComp.Contains("MarkInspectedFailed"), true));
-        checks.Add(Check.Bool("corpse inspection job does not fail after its own diagnosis",
-            inspectCorpseJob.Contains("!_inspectionResolved &&")
-            && inspectCorpseJob.Contains("_inspectionResolved = true;"), true));
+        // Corpse inspection runs on the vanilla interaction job (JobDriver_InteractThing) so a save
+        // made mid-inspection survives Contagion's removal (no custom job/driver class in the save).
+        // The Contagion-specific diagnosis runs in Comp_CorpseInspectable.OnInteracted, and the
+        // float-menu issues the vanilla job.
+        checks.Add(Check.Bool("corpse inspection runs in the interaction comp callback",
+            corpseInspectableComp.Contains("OnInteracted")
+            && corpseInspectableComp.Contains("ContagionCorpseUtility.TryInspectCorpse"), true));
+        checks.Add(Check.Bool("corpse inspection uses the vanilla InteractThing job (removal-safe)",
+            inspectCorpseProvider.Contains("JobDefOf.InteractThing"), true));
         string transmissionUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionTransmissionUtility.cs"));
         string corpseExposureProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionCorpseExposureProcessor.cs"));
         string pawnTransmissionProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionPawnTransmissionProcessor.cs"));

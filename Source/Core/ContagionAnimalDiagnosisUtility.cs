@@ -7,10 +7,10 @@ namespace Contagion;
 
 // Shared logic for live-animal vet examination.
 //
-// Two paths call this:
-//   1. HediffComp_AnimalSickDiagnosis fires through vanilla HediffWithComps.CompTended.
-//   2. Proactive examination job (JobDriver_DiagnoseAnimal) — fires when the player manually
-//      assigns a colonist to examine a domestic animal, even when no sick signal is visible.
+// Two paths call this, both through vanilla tending (HediffWithComps.CompTended):
+//   1. Visible sickness — HediffComp_AnimalSickDiagnosis on Contagion_AnimalSick.
+//   2. Proactive screening — HediffComp_PendingExamDiagnosis on Contagion_PendingExam, applied
+//      when the player flags a not-visibly-sick domestic animal for examination.
 //
 // After any examination (pass or fail, both paths) the animal receives
 // Contagion_AnimalDiagnosisCooldown (1 week) so the player cannot spam attempts to
@@ -29,6 +29,22 @@ internal static class ContagionAnimalDiagnosisUtility
     internal static bool HasDiagnosisCooldown(Pawn animal)
     {
         return animal?.health?.hediffSet?.HasHediff(ContagionDefOf.Contagion_AnimalDiagnosisCooldown) == true;
+    }
+
+    // True when the animal already shows the visible sick signal. The proactive exam defers to the
+    // vanilla tend/diagnosis path in that case (no duplicate work), and the pending-exam marker
+    // self-removes if this becomes true while it is still flagged.
+    internal static bool HasVisibleSickSignal(Pawn animal)
+    {
+        return animal?.health?.hediffSet?.HasHediff(ContagionDefOf.Contagion_AnimalSick) == true;
+    }
+
+    // The two diagnostic signals tended through the vanilla tend path: the visible sick signal and
+    // the proactive examination flag. Both are no-medicine treatments (see the medicine-suppression
+    // patches) and both resolve a diagnosis attempt on CompTended.
+    internal static bool IsDiagnosticSignalDef(HediffDef def)
+    {
+        return def == ContagionDefOf.Contagion_AnimalSick || def == ContagionDefOf.Contagion_PendingExam;
     }
 
     // Applies (or resets) the 1-week cooldown on the examined animal.
@@ -81,8 +97,9 @@ internal static class ContagionAnimalDiagnosisUtility
     }
 
     // Vanilla uses this count for medicine selection, reservations, pickup, and replenishment.
-    // The diagnostic signal is a no-medicine treatment, so it must not contribute to that count.
-    internal static int CountTendableAnimalSickSignals(Pawn patient)
+    // Diagnostic signals (sick signal + proactive exam flag) are no-medicine treatments, so they
+    // must not contribute to that count.
+    internal static int CountTendableDiagnosticSignals(Pawn patient)
     {
         if (patient?.health?.hediffSet == null)
         {
@@ -93,7 +110,7 @@ internal static class ContagionAnimalDiagnosisUtility
         List<Hediff> hediffs = patient.health.hediffSet.hediffs;
         for (int i = 0; i < hediffs.Count; i++)
         {
-            if (hediffs[i].def == ContagionDefOf.Contagion_AnimalSick && hediffs[i].TendableNow())
+            if (IsDiagnosticSignalDef(hediffs[i].def) && hediffs[i].TendableNow())
             {
                 count++;
             }
@@ -103,8 +120,8 @@ internal static class ContagionAnimalDiagnosisUtility
     }
 
     // A mixed tend job may already be carrying medicine for a real injury or disease. Suppress
-    // that medicine only when vanilla has selected the diagnostic signal as this treatment.
-    internal static bool IsNextTreatmentOnlyAnimalSick(Pawn patient, bool usingMedicine)
+    // that medicine only when vanilla has selected a diagnostic signal as this treatment.
+    internal static bool IsNextTreatmentOnlyDiagnosticSignal(Pawn patient, bool usingMedicine)
     {
         if (patient?.health?.hediffSet == null)
         {
@@ -122,7 +139,7 @@ internal static class ContagionAnimalDiagnosisUtility
 
             for (int i = 0; i < _nextTreatment.Count; i++)
             {
-                if (_nextTreatment[i].def != ContagionDefOf.Contagion_AnimalSick)
+                if (!IsDiagnosticSignalDef(_nextTreatment[i].def))
                 {
                     return false;
                 }

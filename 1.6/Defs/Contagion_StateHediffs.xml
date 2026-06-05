@@ -69,7 +69,41 @@
       <!-- Must remain last so vanilla marks the signal tended before diagnosis resolves it. -->
       <li Class="Contagion.HediffCompProperties_AnimalSickDiagnosis" />
     </comps>
-  </HediffDef>  <!-- Per-animal cooldown applied after any examination (tending-path or proactive job).
+  </HediffDef>
+
+  <!-- Visible, self-clearing flag applied by the proactive right-click "Examine for illness".
+       A vet tends it through the vanilla tend path (JobDriver_TendPatient), which fires the
+       diagnosis via HediffComp_PendingExamDiagnosis. Modeled on Contagion_AnimalSick but labeled
+       as an examination request (isBad false) so a healthy-looking animal isn't shown as sick.
+       Guaranteed to clear: tended (comp removes it), auto-expires after a day (Disappears), or
+       superseded if the animal becomes visibly sick (comp yields to Contagion_AnimalSick) — so an
+       animal is never left silently flagged. -->
+  <HediffDef>
+    <defName>Contagion_PendingExam</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>flagged for examination</label>
+    <description>A handler flagged this animal for a veterinary examination. A vet will examine it for hidden illness when it next rests. The flag clears once examined, or on its own after a day.</description>
+    <initialSeverity>0.05</initialSeverity>
+    <isBad>false</isBad>
+    <tendable>true</tendable>
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <comps>
+      <!-- Anti-loop: vanilla marks the flag tended before diagnosis resolves it, so TendPatient
+           won't re-loop. Mirrors Contagion_AnimalSick. -->
+      <li Class="HediffCompProperties_TendDuration">
+        <showTendQuality>false</showTendQuality>
+      </li>
+      <!-- Guaranteed removal if it is never tended (no doctor available, never rests). 1 game-day. -->
+      <li Class="HediffCompProperties_Disappears">
+        <disappearsAfterTicks>60000</disappearsAfterTicks>
+        <showRemainingTime>false</showRemainingTime>
+      </li>
+      <!-- Must remain last so vanilla marks the flag tended before diagnosis resolves it. -->
+      <li Class="Contagion.HediffCompProperties_PendingExamDiagnosis" />
+    </comps>
+  </HediffDef>
+
+  <!-- Per-animal cooldown applied after any examination (tending-path or proactive job).
        Prevents spamming exam attempts to statistically guarantee finding a hidden disease.
        Duration: 1 game-week (7 × 60,000 ticks). Uses the same timed-hediff class as the
        trait-seed cooldown but is scoped to animal diagnosis. -->

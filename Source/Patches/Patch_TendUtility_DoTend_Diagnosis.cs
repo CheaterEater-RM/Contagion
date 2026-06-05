@@ -37,7 +37,7 @@ internal static class Patch_TendUtility_DoTend_NoMedicineForDiagnosis
     public static void Prefix(Pawn patient, ref Medicine medicine)
     {
         if (medicine != null
-            && ContagionAnimalDiagnosisUtility.IsNextTreatmentOnlyAnimalSick(patient, usingMedicine: true))
+            && ContagionAnimalDiagnosisUtility.IsNextTreatmentOnlyDiagnosticSignal(patient, usingMedicine: true))
         {
             medicine = null;
         }
@@ -49,7 +49,7 @@ internal static class Patch_Medicine_GetMedicineCountToFullyHeal_AnimalDiagnosis
 {
     public static void Postfix(Pawn pawn, ref int __result)
     {
-        int diagnosisTreatments = ContagionAnimalDiagnosisUtility.CountTendableAnimalSickSignals(pawn);
+        int diagnosisTreatments = ContagionAnimalDiagnosisUtility.CountTendableDiagnosticSignals(pawn);
         if (diagnosisTreatments > 0)
         {
             __result = System.Math.Max(0, __result - diagnosisTreatments);
@@ -63,7 +63,7 @@ internal static class Patch_JobDriver_TendPatient_NoStaleDiagnosisMedicineReserv
     public static void Prefix(JobDriver_TendPatient __instance)
     {
         Pawn patient = __instance.job?.targetA.Pawn;
-        if (ContagionAnimalDiagnosisUtility.CountTendableAnimalSickSignals(patient) > 0
+        if (ContagionAnimalDiagnosisUtility.CountTendableDiagnosticSignals(patient) > 0
             && Medicine.GetMedicineCountToFullyHeal(patient) == 0)
         {
             __instance.job.SetTarget(TargetIndex.B, LocalTargetInfo.Invalid);

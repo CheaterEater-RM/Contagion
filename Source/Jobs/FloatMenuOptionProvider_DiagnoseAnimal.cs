@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using RimWorld;
 using Verse;
-using Verse.AI;
 
 namespace Contagion;
 
@@ -10,9 +9,14 @@ namespace Contagion;
 // Registered automatically: FloatMenuMakerMap.Init() discovers all FloatMenuOptionProvider
 // subclasses via reflection — no XML registration needed.
 //
-// Shows for: any living, spawned domestic animal without a diagnosis cooldown.
-// Disabled with reason when a cooldown is active (player knows the mechanic exists).
-// Wild animals are excluded — colonists cannot safely approach them for an exam.
+// Proactive screening flags the animal with the tendable Contagion_PendingExam hediff; a vet then
+// examines it through the vanilla tend path (JobDriver_TendPatient), which fires the diagnosis in
+// HediffComp_PendingExamDiagnosis. There is no custom job, so an in-flight exam saved with this mod
+// survives Contagion's removal.
+//
+// Shows for: any living, spawned domestic animal without a diagnosis cooldown that is not already
+// flagged and not already visibly sick. A visibly-sick animal (Contagion_AnimalSick) is left to the
+// vanilla tend/diagnosis path, so screening defers and the option is hidden.
 public class FloatMenuOptionProvider_DiagnoseAnimal : FloatMenuOptionProvider
 {
     protected override bool Drafted => false;
@@ -34,6 +38,18 @@ public class FloatMenuOptionProvider_DiagnoseAnimal : FloatMenuOptionProvider
             yield break;
         }
 
+        // Already visibly sick → the vanilla Tend Animal workflow diagnoses it; don't duplicate.
+        if (ContagionAnimalDiagnosisUtility.HasVisibleSickSignal(clickedPawn))
+        {
+            yield break;
+        }
+
+        // Already flagged → the marker is visible on the animal; nothing to add.
+        if (clickedPawn.health?.hediffSet?.HasHediff(ContagionDefOf.Contagion_PendingExam) == true)
+        {
+            yield break;
+        }
+
         // Show a disabled option so the player knows the mechanic exists and can anticipate reset.
         if (ContagionAnimalDiagnosisUtility.HasDiagnosisCooldown(clickedPawn))
         {
@@ -44,17 +60,29 @@ public class FloatMenuOptionProvider_DiagnoseAnimal : FloatMenuOptionProvider
             yield break;
         }
 
-        Pawn selectedPawn = context.FirstSelectedPawn;
+        Pawn animal = clickedPawn;
 
-        yield return FloatMenuUtility.DecoratePrioritizedTask(
-            new FloatMenuOption("Contagion_ExamineAnimal".Translate(), () =>
+        // Flag the animal for examination. A vet tends it through the vanilla tend path when it is
+        // resting; no colonist job is reserved here, so this is a plain (non-prioritized) option.
+        yield return new FloatMenuOption("Contagion_ExamineAnimal".Translate(), () =>
+        {
+            if (animal.health == null
+                || animal.health.hediffSet.HasHediff(ContagionDefOf.Contagion_PendingExam)
+                || ContagionAnimalDiagnosisUtility.HasVisibleSickSignal(animal))
             {
-                Job job = JobMaker.MakeJob(
-                    DefDatabase<JobDef>.GetNamed("Contagion_DiagnoseAnimal"),
-                    clickedPawn);
-                selectedPawn.jobs.TryTakeOrderedJob(job, JobTag.Misc);
-            }),
-            selectedPawn,
-            new LocalTargetInfo(clickedPawn));
+                return;
+            }
+
+            animal.health.AddHediff(HediffMaker.MakeHediff(ContagionDefOf.Contagion_PendingExam, animal));
+
+            // Tending needs the animal lying down (WorkGiver_Tend.GoodLayingStatusForTend), so the
+            // exam happens when it next rests rather than immediately. Tell the player so the delay
+            // isn't mistaken for the order being lost; the flag also auto-clears after a day.
+            Messages.Message(
+                "Contagion_ExamineAnimalFlagged".Translate(animal.LabelShortCap),
+                animal,
+                MessageTypeDefOf.NeutralEvent,
+                historical: false);
+        });
     }
 }

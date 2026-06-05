@@ -18,6 +18,8 @@ public static class ContagionDefOf
 
     public static HediffDef Contagion_AnimalSick;
 
+    public static HediffDef Contagion_PendingExam;
+
     public static SpecialThingFilterDef AllowInfectedCorpses;
 
     public static SpecialThingFilterDef AllowUninfectedCorpses;
