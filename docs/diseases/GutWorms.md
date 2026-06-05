@@ -38,11 +38,11 @@ Storyteller fires `Disease_GutWorms` → pending event created. Unlike most dise
 1. **Environmental window** — `Vector_Environmental` runs continuously for up to 14 days (`windowDays 14`) with an infection budget of 2–4 cases. Pawns and animals with outdoor access near water accumulate exposure until the budget is spent or the window closes.
 2. **Acausal fallback** — if the 14-day window closes without spending the full budget, any remaining unfulfilled cases resolve via silent incubation on eligible humans or animals. The fallback preserves the human hygiene reduction instead of forcing humans as equal targets.
 
-Storyteller fulfillment stays environmental. Incoming groups do not resolve a storyteller gut-worms event, even though arrivals can carry gut worms in Contagion-driven mode.
+Storyteller fulfillment stays environmental. Incoming groups never carry gut worms — it is a fecal-oral / contaminated-food disease, not something a visiting trader plausibly hands to the colony.
 
 ### Mode 2 (Contagion-driven)
 - **Environmental exposure** runs continuously (same `Vector_Environmental` as Mode 1, just always on rather than window-bounded).
-- **Arrival exposure** can seed incoming carriers, especially farm animals and other animal-heavy groups.
+- **No arrival exposure** — gut worms has no `Seeder_Arrival`. Visitors and traders do not bring it; it enters through the environment (contaminated water / infected meat) and the animal track.
 - **Successful environmental seeds apply a short environmental cooldown** (`cooldownDays 3`) so one contaminated river check does not make everyone sick at once.
 - No acausal backstop. Colonies fully sheltered from environmental exposure can avoid gut worm introductions.
 - Storyteller incident cancelled; Mode 2 owns pacing.
@@ -188,9 +188,9 @@ Low pre-symptom shedding — asymptomatic carriers pass eggs before signs appear
 | 0.85 | 0.15 |
 | 1.0 | 0.25 |
 
-### Seasonal variation
+### Seasonal introduction pressure
 
-None configured (worm eggs have broad temperature tolerance).
+None configured (worm eggs have broad temperature tolerance). Contagion-mode environmental pressure is flat year-round.
 
 ### Source/susceptibility factors
 
@@ -244,7 +244,7 @@ This mechanic is especially important for gut worms: undetected infected animals
 ## Tuning Notes
 
 - `baseChancePerCheck 0.002` for environmental exposure is very low per tick but runs every 2500 ticks. The total per-day probability depends heavily on water proximity. May need field testing across different biomes — desert colonies near no water may never naturally acquire gut worms from the environment.
-- `Seeder_Arrival arrivalChance 0.006` lets incoming groups carry gut worms in Contagion-driven mode. Farm-animal wander-ins are the clearest carrier story, but any eligible arrival group can technically bring it.
+- No `Seeder_Arrival`: gut worms is not carried in by visitors or traders. It enters only through the environmental window (contaminated water / infected meat) and the animal track, which keeps the arrival pool focused on the diseases that are actually contagious between people (flu, plague).
 - `Seeder_Environmental cooldownDays 3` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
 - Fomite `potencyDecayPerHour 0.08` gives gut-worm vomit a ~12 h half-life. This means a single vomit event from a severe case contaminates an area for half a day. If cleaning is poor, this can become a significant secondary spread path. Intentional: it rewards keeping sick pawns isolated and areas clean.
 - `outbreakNotification FirstCase` makes the first visible human case a red, source-attributed outbreak letter; later visible human cases update a yellow cluster letter while the outbreak remains active. Animal acquisition remains hidden until the sick-signal and diagnosis flow reveals it.

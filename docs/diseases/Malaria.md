@@ -63,9 +63,9 @@ The map environment is the source. Pawns with outdoor access near water accumula
 
 There is no source infectivity — malaria does not spread person-to-person. No active infectivity curve, no source factors, no incubation infectivity.
 
-### Seasonal variation
+### Seasonal environmental pressure
 
-Malaria is strongly summer-weighted.
+Malaria's Contagion-mode environmental seeding pressure is strongly summer-weighted. There is no person-to-person spread, and the seasonal multiplier is not part of any ongoing transmission equation.
 
 | Season | Multiplier |
 |---|---|
@@ -76,7 +76,7 @@ Malaria is strongly summer-weighted.
 | Permanent summer | 1.0 |
 | Permanent winter | 0.1 |
 
-The 0.3 winter multiplier makes malaria possible but uncommon in cold winters. The 0.1 permanent winter multiplier means arctic colonies see essentially no malaria. Tropical colonies (permanent summer) have sustained malaria risk year-round.
+The 0.3 winter multiplier makes Contagion-mode malaria introduction possible but uncommon in cold winters. The 0.1 permanent winter multiplier means arctic colonies see essentially no organic malaria pressure. Tropical colonies (permanent summer) have sustained malaria risk year-round.
 
 ---
 

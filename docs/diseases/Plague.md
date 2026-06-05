@@ -196,9 +196,9 @@ The 2-day incubation window means an infected pawn can spread plague silently fo
 
 Corpse fleas are temperature-sensitive even though ordinary live-host plague has no seasonal multiplier. A frozen plague corpse becomes much safer from fleas, but not instantly safe from fluids.
 
-### Seasonal variation
+### Seasonal introduction pressure
 
-None configured for live-host spread. Corpse flea survival is handled directly from corpse temperature instead.
+None configured for live-host spread or Contagion-mode arrival pressure. Corpse flea survival is handled directly from corpse temperature instead.
 
 ---
 
@@ -276,7 +276,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - `crossSpeciesTransmissionFactor 0.5` is a first-pass value. Plague in real life crosses species very readily via flea vectors — 0.5 may be too conservative. Consider 0.6–0.7 after playtesting.
 - Plague no longer uses `Seeder_AnimalLinked`; incoming humans and animals are the primary introduction route. If playtesting shows too little resident animal pressure, add a new explicit animal-reservoir seeder rather than reusing the old handler-biased path.
 - Plague uses separate scaled caps for humans and animals. A colony with 10 colonists and 10 animals has a human plague cap of 4 and an animal plague cap of 4, rather than one shared mixed-species pool.
-- Live-host plague has no seasonal variation. Corpse fleas already have temperature-based suppression through `Vector_CorpseFlea`.
+- Live-host plague has no seasonal introduction variation, and ongoing spread is not season-weighted. Corpse fleas already have temperature-based suppression through `Vector_CorpseFlea`.
 - Incubation infectivity is set to a flat-ish curve (0.3 → 0.6). If playtesting shows plague outbreaks feel too fast or uncontainable, dial the starting value down toward 0.15–0.2 first; even the 2-day window amplifies moderate incubation infectivity.
 - Passive symptom presentation peaks at 5% per half-day at severity 1.0, giving ~25% cumulative over a typical untreated course. If wild animal plague feels too invisible, raise the peak toward 0.08; if messages are too noisy, lower it or raise the severity threshold.
 - Posthumous symptom chance (10%) is the probability an animal that died with hidden plague shows as an infected corpse. Raise toward 0.3 for diseases with obvious post-mortem lesions; lower toward 0 for truly occult infections.

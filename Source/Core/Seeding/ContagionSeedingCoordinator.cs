@@ -92,6 +92,13 @@ public static class ContagionSeedingCoordinator
 
     public static ContagionSeedingMode CurrentMode => Contagion_Mod.Settings?.seedingMode ?? ContagionSeedingMode.Storyteller;
 
+    // Player-facing incidence scalar for Contagion mode (settings slider). All call sites that read
+    // this are Contagion-mode-only, so it does not affect storyteller-driven seeding.
+    private static float ContagionIncidenceMultiplier => Mathf.Clamp(
+        Contagion_Mod.Settings?.contagionIncidenceMultiplier ?? 1f,
+        Contagion_Settings.MinContagionIncidenceMultiplier,
+        Contagion_Settings.MaxContagionIncidenceMultiplier);
+
     public static List<ResolvedTransmissionProfile> GetDeveloperArrivalProfiles()
     {
         List<ResolvedTransmissionProfile> profiles = new List<ResolvedTransmissionProfile>();
@@ -334,6 +341,7 @@ public static class ContagionSeedingCoordinator
         }
 
         chanceMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile)
+            * ContagionIncidenceMultiplier
             * ContagionTransmissionUtility.GetSeasonalMultiplier(component.Map, resolvedProfile.Profile);
         return true;
     }
@@ -552,6 +560,7 @@ public static class ContagionSeedingCoordinator
                 arrivalCandidate.Seeder.arrivalChance
                 * policy.ExposureMultiplier
                 * directorMultiplier
+                * ContagionIncidenceMultiplier
                 * ContagionTransmissionUtility.GetSeasonalMultiplier(map, arrivalCandidate.ResolvedProfile.Profile));
             if (exposureChance <= 0f)
             {
@@ -1232,6 +1241,7 @@ public static class ContagionSeedingCoordinator
         }
 
         float seedingMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile)
+            * ContagionIncidenceMultiplier
             * ContagionTransmissionUtility.GetSeasonalMultiplier(component.Map, resolvedProfile.Profile);
         if (seedingMultiplier <= 0f)
         {

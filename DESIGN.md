@@ -203,7 +203,7 @@ The entire modder-facing contract, attached to any `HediffDef` to make it contag
 | `targetBodyParts` | List\<BodyPartDef\> | null | Part-targeted application (gut worms → stomach) |
 | `incubationInfectivityCurve` | SimpleCurve | null (= flat 0.0) | Infectivity during incubation, keyed on progress |
 | `activeInfectivityCurve` | SimpleCurve | null (= default bell) | Infectivity during active disease, keyed on severity |
-| `seasonalInfectivity` | SeasonalInfectivity | null (= all 1.0) | Per-season transmission multiplier weights |
+| `seasonalInfectivity` | SeasonalInfectivity | null (= all 1.0) | Per-season introduction/seeding multiplier weights; legacy XML name |
 | `susceptibilityFactors` | List\<SusceptibilityFactor\> | null (= all equal) | Target-side resistance/vulnerability modifiers |
 | `sourceInfectivityFactors` | List\<SourceInfectivityFactor\> | null (= all equal) | Source-side infectivity modifiers |
 | `affectsHumans` | bool | true | Species scope |
@@ -234,7 +234,7 @@ The visual implementation follows vanilla corpse rendering rather than drawing a
 
 ### SeasonalInfectivity
 
-Six per-season weights, all defaulting to 1.0 (no seasonal variation).
+Six per-season weights, all defaulting to 1.0 (no seasonal variation). Despite the legacy field name, this is **not** an infectivity or ongoing-spread multiplier. It modifies Contagion-driven disease introduction pressure: continuous arrival exposure, continuous environmental seeding, and other continuous seeders. Once a disease is present, normal transmission is governed by pawn behavior, rooms, vectors, PPE, cleanliness, suppression, and source/target factors.
 
 | Field | Type | Default |
 |---|---|---|
@@ -254,15 +254,17 @@ This lets a disease be slightly contagious pre-symptom, peak mid-illness, and ta
 
 ---
 
-## Seasonal Infectivity
+## Seasonal Introduction Pressure
 
-Rather than a raw calendar curve (which ignores hemisphere inversion and equatorial/polar tiles), the engine uses vanilla `SeasonUtility.GetSeason(yearPct, latitude, …)`, which outputs six continuous weights summing to 1.0 and already handles hemisphere flip and smooth ~5-day cross-fades at season transitions. The profile defines a multiplier per season; the engine computes the weighted sum:
+Rather than a raw calendar curve (which ignores hemisphere inversion and equatorial/polar tiles), the engine uses vanilla `SeasonUtility.GetSeason(yearPct, latitude, …)`, which outputs six continuous weights summing to 1.0 and already handles hemisphere flip and smooth ~5-day cross-fades at season transitions. The profile defines an introduction-pressure multiplier per season; the engine computes the weighted sum:
 
 ```
 multiplier = Σ (seasonWeightᵢ × profile.seasonalInfectivityᵢ)
 ```
 
 All weights default to 1.0, so omitting `seasonalInfectivity` means no seasonal variation.
+
+This multiplier must not be applied to ongoing pawn-to-pawn, fomite, foodborne, corpse, fecal-oral, or already-open environmental exposure math. Flu, for example, may be introduced more often by arrivals in winter in Contagion mode, but a sealed indoor colony does not get an extra winter spread bonus after the disease is already inside.
 
 ---
 
@@ -316,7 +318,6 @@ The per-candidate probability for any vector:
 effectiveChance = vectorBaseChance
                 × infectivityMultiplier(source)        ← incubation or active curve (or per-vector override)
                 × sourceInfectivityProduct(source)     ← source factor list
-                × seasonalMultiplier(map tile)         ← seasonal weight blend
                 × susceptibilityProduct(target)        ← target factor list
                 × vanillaContractFactor(target)        ← DiseaseContractChanceFactor
                 × vectorContextModifiers(...)          ← distance, LOS, roofing, cleanliness, etc.
@@ -515,12 +516,12 @@ Vanilla disease profiles are patched onto their `HediffDef` in `1.6/Patches/Cont
 
 | Disease | Vectors | Seeders | Incubation | Immunity | Species | Notes |
 |---|---|---|---|---|---|---|
-| Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival, Acausal | 1.5 d | none* | Human | Seasonal (winter-peaking); acausal is Mode 1 fallback only; scaled active-case cap offset 0 |
+| Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival, Acausal | 1.5 d | none* | Human | Winter-peaking Contagion-mode introduction pressure; no seasonal spread multiplier; acausal is Mode 1 fallback only; scaled active-case cap offset 0 |
 | Animal_Flu | Airborne, Fomite | Storyteller, Arrival, Acausal | 1.5 d | none* | Animal | Human-isolated; animal cross-species jumps use `animalCrossSpeciesFactorCurve` (first colony race free from outside carriers, later colony races suppressed); acausal is Mode 1 fallback only; safe to butcher (no `corpseContagious`) |
 | Plague | Proximity (cleanliness) | Storyteller, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; incoming humans and animals can carry it; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; separate scaled human/animal caps, offset 0 |
 | GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 1.0` (colony + wild caps); animal fecal-oral shedding is deterministic (per-animal waste meter, body-size drops/day curve, paused while starving) |
 | MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 1.0` (colony + wild caps); animal fecal-oral shedding is deterministic (per-animal waste meter, body-size drops/day curve, paused while starving) |
-| Malaria | Environmental | Environmental, Acausal | 2.0 d | none* | Human | Mosquito pressure; broad warm/wet source; partial indoor penetration; `spreadSuppressionScale 1.0` + `useScaledActiveCaseCap` for the colony-fraction balance cap; seasonal |
+| Malaria | Environmental | Environmental, Acausal | 2.0 d | none* | Human | Mosquito pressure; broad warm/wet source; partial indoor penetration; `spreadSuppressionScale 1.0` + `useScaledActiveCaseCap` for the colony-fraction balance cap; seasonal introduction/environmental pressure |
 | SleepingSickness | Environmental | Environmental, Acausal | 2.5 d | none* | Human | Tsetse habitat pressure; hotter, wetter, rarer, and more strongly blocked by deep indoor shelter; `spreadSuppressionScale 1.0` + `useScaledActiveCaseCap` for the colony-fraction balance cap |
 
 \* Diseases with a vanilla immunity race set `immunityDurationDays 0` and rely on vanilla immunity to prevent reinfection. Non-immunizable diseases (gut worms, muscle parasites) use mod-owned temporary immunity.
@@ -667,7 +668,7 @@ When a contagious pawn is selected and the cursor is over another pawn, the deve
 - This should be a `MouseoverReadout.MouseoverReadoutOnGUI()` postfix so it extends the existing bottom-left readout instead of creating a separate debug window.
 - The numbers should come from the same helper stack the simulation uses now (`GetSourceInfectivity`, `GetTargetEligibilityFactor`, `BuildSourceTargetChance`), not from a parallel approximation.
 - The readout should be **per disease and per vector**, not one synthetic aggregate. Airborne and proximity are true current-tick chances; social should either be shown separately as an **on interaction** chance or omitted from the hover readout to avoid implying it rolls every tick.
-- The tooltip should include the major factors explicitly: base chance, source infectivity, seasonal multiplier, target eligibility, distance/context multiplier, mask factor, cleanliness or enclosure factor where relevant, and spread suppression when applicable.
+- The tooltip should include the major factors explicitly: base chance, source infectivity, target eligibility, distance/context multiplier, mask factor, cleanliness or enclosure factor where relevant, and spread suppression when applicable. It must not show season as a spread factor.
 - A short world-space line between the selected source pawn and the hovered target pawn should accompany the tooltip while the mouseover readout is active. `GenDraw.DrawLineBetween(...)`, as used in LOS-Check's CE diagnostic overlay, is the right fit for this rather than a custom mesh system.
 - This UI runs every repaint, so the calculation must stay narrowly scoped to the selected source pawn and the hovered target pawn. Dev-only gating keeps the cost low, but the implementation should still avoid broad map scans beyond the disease-specific suppression factor already required for the displayed pair.
 
@@ -678,7 +679,7 @@ When a contagious pawn is selected, Developer diagnostics also draw a local rang
 - This is a selection overlay, not a permanent map overlay. A postfix on `Pawn.DrawExtraSelectionOverlays()` is the clean vanilla hook.
 - The overlay should use the same instanced-cell rendering pattern as Lookouts and LOS-Check: batch `MeshPool.plane10` quads at `AltitudeLayer.MetaOverlays` with a small set of color bands rather than drawing a unique material per cell.
 - "Nominal" means the overlay is target-agnostic: it assumes a typical susceptible pawn rather than the exact pawn standing in each cell. The intended reading is falloff and geometry, not the full contract chance for a specific pawn.
-- The overlay still benefits from current source-side state such as infectivity stage and seasonal multiplier, but it should not depend on per-target immunity, apparel, or trait modifiers.
+- The overlay still benefits from current source-side state such as infectivity stage, but it should not depend on per-target immunity, apparel, trait modifiers, or seasonal introduction pressure.
 - Because social transmission is event-driven and fomite/foodborne are not radial space vectors, the nominal overlay should be limited to the vectors that have a meaningful spatial falloff surface, chiefly airborne and proximity.
 
 ### Infection trace lines

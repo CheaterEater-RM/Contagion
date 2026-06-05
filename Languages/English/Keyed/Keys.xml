@@ -23,6 +23,8 @@
   <Contagion_SeedingModeStorytellerTooltip>Storyteller incidents begin outbreaks through arrivals, animals, or the environment.</Contagion_SeedingModeStorytellerTooltip>
   <Contagion_SeedingModeContagion>Contagion-driven</Contagion_SeedingModeContagion>
   <Contagion_SeedingModeContagionTooltip>Contagion controls when outbreaks begin instead of the storyteller.</Contagion_SeedingModeContagionTooltip>
+  <Contagion_SettingContagionIncidence>Disease incidence: x{0}</Contagion_SettingContagionIncidence>
+  <Contagion_SettingContagionIncidenceTooltip>Scales how often Contagion-driven outbreaks begin — arrivals, environmental exposure, and continuous seeding. x1.0 is the default rate; lower for a quieter colony, higher for relentless outbreaks.</Contagion_SettingContagionIncidenceTooltip>
   <Contagion_SettingSuppressAnimalClusterNotifications>Only notify for the first infected animal</Contagion_SettingSuppressAnimalClusterNotifications>
   <Contagion_SettingSuppressAnimalClusterNotificationsTooltip>Only the first animal case in each outbreak sends a letter. Later cases show messages only.</Contagion_SettingSuppressAnimalClusterNotificationsTooltip>
   <Contagion_SettingsDiagnosticsHeader>Diagnostics</Contagion_SettingsDiagnosticsHeader>

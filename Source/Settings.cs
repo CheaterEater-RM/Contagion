@@ -47,6 +47,12 @@ public sealed class Contagion_Settings : ModSettings
 
     private const bool DefaultSuppressAnimalClusterNotifications = true;
 
+    private const float DefaultContagionIncidenceMultiplier = 1f;
+
+    public const float MinContagionIncidenceMultiplier = 0.1f;
+
+    public const float MaxContagionIncidenceMultiplier = 3f;
+
     public ContagionDifficulty difficulty = DefaultDifficulty;
 
     public ContagionSuppressionMode suppressionMode = DefaultSuppressionMode;
@@ -60,6 +66,10 @@ public sealed class Contagion_Settings : ModSettings
     public bool suppressLowProbabilityLogs = DefaultSuppressLowProbabilityLogs;
 
     public bool suppressAnimalClusterNotifications = DefaultSuppressAnimalClusterNotifications;
+
+    // Player-facing scalar on how often Contagion-driven outbreaks begin (arrivals, environmental,
+    // and continuous seeding). Only applies in Contagion seeding mode. 1.0 = default rate.
+    public float contagionIncidenceMultiplier = DefaultContagionIncidenceMultiplier;
 
     public bool LoggingEnabled => enableLogging;
 
@@ -84,6 +94,7 @@ public sealed class Contagion_Settings : ModSettings
         developerMode = DefaultDeveloperMode;
         suppressLowProbabilityLogs = DefaultSuppressLowProbabilityLogs;
         suppressAnimalClusterNotifications = DefaultSuppressAnimalClusterNotifications;
+        contagionIncidenceMultiplier = DefaultContagionIncidenceMultiplier;
     }
 
     public override void ExposeData()
@@ -96,6 +107,7 @@ public sealed class Contagion_Settings : ModSettings
         Scribe_Values.Look(ref developerMode, "developerMode", DefaultDeveloperMode);
         Scribe_Values.Look(ref suppressLowProbabilityLogs, "suppressLowProbabilityLogs", DefaultSuppressLowProbabilityLogs);
         Scribe_Values.Look(ref suppressAnimalClusterNotifications, "suppressAnimalClusterNotifications", DefaultSuppressAnimalClusterNotifications);
+        Scribe_Values.Look(ref contagionIncidenceMultiplier, "contagionIncidenceMultiplier", DefaultContagionIncidenceMultiplier);
     }
 }
 
@@ -198,6 +210,23 @@ public sealed class Contagion_Mod : Mod
             tooltip: "Contagion_SeedingModeContagionTooltip".Translate().Resolve()))
         {
             settings.seedingMode = ContagionSeedingMode.Contagion;
+        }
+
+        if (settings.seedingMode == ContagionSeedingMode.Contagion)
+        {
+            listing.Gap(6f);
+            listing.Label(
+                "Contagion_SettingContagionIncidence".Translate(settings.contagionIncidenceMultiplier.ToString("0.0")),
+                tooltip: "Contagion_SettingContagionIncidenceTooltip".Translate().Resolve());
+            float incidence = listing.Slider(
+                settings.contagionIncidenceMultiplier,
+                Contagion_Settings.MinContagionIncidenceMultiplier,
+                Contagion_Settings.MaxContagionIncidenceMultiplier);
+            // Snap to 10% steps.
+            settings.contagionIncidenceMultiplier = Mathf.Clamp(
+                Mathf.Round(incidence * 10f) / 10f,
+                Contagion_Settings.MinContagionIncidenceMultiplier,
+                Contagion_Settings.MaxContagionIncidenceMultiplier);
         }
 
         listing.Gap(6f);

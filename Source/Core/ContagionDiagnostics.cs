@@ -224,7 +224,28 @@ public static class ContagionDiagnostics
             return;
         }
 
-        Log.Message($"[Contagion] {message}");
+        EmitLogMessage($"[Contagion] {message}");
+    }
+
+    // Emits a Contagion log line without triggering RimWorld's "open log on message" popup.
+    // LudeonTK.DebugTabMenu.ListOptions sets Log.openOnMessage = true while a debug-menu action runs,
+    // so any diagnostic fired synchronously from a dev action — e.g. force-executing the trader caravan
+    // arrival incident — would otherwise force the log window open and expand its stack-trace pane,
+    // unlike the identical diagnostics fired during normal ticking (where openOnMessage is false).
+    // Suppressing it here keeps every Contagion diagnostic quiet and consistent: the line still lands
+    // in the in-game log window and Player.log, it just never pops the window open.
+    private static void EmitLogMessage(string text)
+    {
+        bool previousOpenOnMessage = Log.openOnMessage;
+        Log.openOnMessage = false;
+        try
+        {
+            Log.Message(text);
+        }
+        finally
+        {
+            Log.openOnMessage = previousOpenOnMessage;
+        }
     }
 
     // Structured per-roll log line. Always emits passes; suppresses sub-10% failures when the
@@ -249,7 +270,7 @@ public static class ContagionDiagnostics
             return;
         }
 
-        Log.Message(
+        EmitLogMessage(
             $"[Contagion] ROLL {vector} {(disease != null ? disease.defName : "?")} "
             + $"{DescribeThing(source)}→{DescribeThing(target)}: "
             + $"chance={chance:P2} → {(passed ? "PASS" : "fail")}");
@@ -276,7 +297,7 @@ public static class ContagionDiagnostics
             return;
         }
 
-        Log.Message(
+        EmitLogMessage(
             $"[Contagion] ROLL {breakdown.VectorKind} {(breakdown.DiseaseDef != null ? breakdown.DiseaseDef.defName : "?")} "
             + $"{DescribeThing(source)}→{DescribeThing(target)}: chance={chance:P2} → {(passed ? "PASS" : "fail")} "
             + $"[base={breakdown.BaseChance:0.###} infectivity={breakdown.Infectivity:0.###} "

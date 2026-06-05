@@ -64,9 +64,9 @@ Sleeping sickness represents tsetse habitat pressure rather than generic mosquit
 
 No source infectivity. No person-to-person spread. No infectivity curves or source factors.
 
-### Seasonal variation
+### Seasonal environmental pressure
 
-Sleeping sickness is the most tropics-locked disease in the profile.
+Sleeping sickness has the most tropics-locked Contagion-mode environmental seeding pressure in the profile. There is no person-to-person spread, and the seasonal multiplier is not part of any ongoing transmission equation.
 
 | Season | Multiplier |
 |---|---|
@@ -77,7 +77,7 @@ Sleeping sickness is the most tropics-locked disease in the profile.
 | Permanent summer | **1.1** |
 | Permanent winter | 0.1 |
 
-The `permanentSummer 1.1` multiplier (above the 1.0 summer multiplier) reflects that constant tropical heat creates ideal conditions year-round, even slightly better than a temperate summer. The 0.2 winter multiplier means sleeping sickness is extremely rare in cold seasons at any latitude.
+The `permanentSummer 1.1` multiplier (above the 1.0 summer multiplier) reflects that constant tropical heat creates ideal introduction pressure year-round, even slightly better than a temperate summer. The 0.2 winter multiplier means sleeping sickness is extremely rare in cold seasons at any latitude.
 
 ---
 

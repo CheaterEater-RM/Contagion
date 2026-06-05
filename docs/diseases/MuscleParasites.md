@@ -41,11 +41,11 @@ Storyteller fires `Disease_MuscleParasites` → pending event created. Resolves 
 1. **Environmental window** — `Vector_Environmental` runs for up to 14 days. Infection budget 1–3 cases. Outdoor grazing animals and humans working through contaminated soil accumulate exposure.
 2. **Acausal fallback** — if the 14-day window closes with unfulfilled budget, remaining cases resolve via silent incubation on eligible humans or animals. The fallback preserves the human hygiene reduction instead of forcing humans as equal targets.
 
-Storyteller fulfillment stays environmental. Incoming groups do not resolve a storyteller muscle-parasites event, even though arrivals can carry muscle parasites in Contagion-driven mode.
+Storyteller fulfillment stays environmental. Incoming groups never carry muscle parasites — it is contracted by eating infected meat, not handed over by a visiting trader.
 
 ### Mode 2 (Contagion-driven)
 - **Environmental exposure** runs continuously.
-- **Arrival exposure** can seed incoming carriers, especially farm animals and other animal-heavy groups.
+- **No arrival exposure** — muscle parasites has no `Seeder_Arrival`. It enters through the environment and the animal/butchery chain, never on a visitor or trader.
 - **Successful environmental seeds apply a short environmental cooldown** (`cooldownDays 4`) so one contaminated-soil check does not make everyone sick at once.
 - No acausal backstop. Colonies that keep humans and animals out of contaminated outdoor exposure can avoid muscle parasite introductions.
 - Storyteller incident cancelled; Mode 2 owns pacing.
@@ -172,7 +172,7 @@ Low pre-symptom shedding — larvae are passed before the host shows signs, ramp
 | 0.9 | 0.10 |
 | 1.0 | 0.18 |
 
-### Seasonal variation
+### Seasonal introduction pressure
 
 None configured. The mild-peak temperature profile means arctic-biome colonies get less environmental pressure than temperate ones, but this isn't season-gated directly.
 
@@ -231,6 +231,6 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 
 - `baseChancePerCheck 0.0015` is lower than gut worms (0.002). Muscle parasites should feel slightly rarer but more impactful per outbreak. May need adjusting upward if playtesting shows muscle parasites are too infrequent on temperate maps.
 - `contaminationExpiryDays 30` matches gut worms so both parasite food chains have the same persistence window.
-- `Seeder_Arrival arrivalChance 0.004` lets incoming groups carry muscle parasites in Contagion-driven mode. Farm-animal wander-ins are the clearest carrier story, but any eligible arrival group can technically bring it.
+- No `Seeder_Arrival`: muscle parasites is not carried in by visitors or traders. It enters only through the environmental window and the animal/butchery chain, keeping the arrival pool focused on the diseases that are actually contagious between people (flu, plague).
 - `Seeder_Environmental cooldownDays 4` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
 - `spreadSuppressionScale 1.0` keeps outbreaks within the mod's active-case caps. Suppression is now applied to every vector (centrally in `BuildSeederChance`), not just person-to-person ones, and covers a dedicated **wild-animal** track so a wild fecal-oral outbreak self-limits to the wild population's capped fraction instead of saturating the map.

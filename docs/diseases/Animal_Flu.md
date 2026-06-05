@@ -100,9 +100,9 @@ Pre-symptomatic spread mirrors human Flu.
 | 0.7 | 0.45 |
 | 1.0 | 0.5 |
 
-### Seasonal variation
+### Seasonal introduction pressure
 
-None configured. Animal flu is not currently season-weighted; it runs at flat infectivity year-round. This differs from human flu and may need revisiting.
+None configured. Animal flu is not currently season-weighted; Contagion-mode arrival pressure is flat year-round. Ongoing spread is never season-weighted.
 
 ### Source/susceptibility factors
 
@@ -153,7 +153,7 @@ This makes the first spillover into a colony's animal population free if the dis
 
 ## Tuning Notes
 
-- No seasonal variation is currently configured. A mild winter peak or a flat year-round profile may both be defensible (animal flu outbreaks in real farming are year-round), but it is worth making a deliberate choice.
+- No seasonal introduction variation is currently configured. A mild winter peak or a flat year-round arrival profile may both be defensible (animal flu outbreaks in real farming are year-round), but it is worth making a deliberate choice.
 - The fomite vector intentionally does not use the human flu high-severity override. Animal flu progresses and tends differently, and animals sharing dirty barns should remain a plausible fomite risk.
 - Scaled caps replace the old flat herd cap. A 10-animal herd has an animal-flu cap of 4 active+incubating cases, and a 20-animal herd caps at 10.
 - `animalCrossSpeciesFactorCurve` is a first-pass tuning pass. If Animal Flu still spreads too widely through mixed herds, lower the 1-race and 2-race factors; if it fails to establish from absent-species carriers, keep the 0-race factor at 1.0.

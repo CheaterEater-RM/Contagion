@@ -1,6 +1,6 @@
 # Flu — Contagion Profile
 
-Seasonal respiratory illness. Spreads person-to-person through the air and via contaminated vomit. Highly contagious in winter, largely quiet in summer. No animal crossover.
+Seasonally introduced respiratory illness. Spreads person-to-person through the air and via contaminated vomit. Winter raises Contagion-mode arrival pressure, but ongoing spread is driven by indoor crowding, exposure routes, and counterplay rather than a calendar multiplier. No animal crossover.
 
 ---
 
@@ -31,11 +31,11 @@ Flu is usually survivable with treatment, but the untended immunity race is clos
 Storyteller fires `Disease_Flu` → pending event created with a 15-day window.
 
 **Fulfillment chain:**
-1. **Arrival** — the next qualifying arriving group carries a capped carrier payload. Low per-group chance (`arrivalChance 0.01`); in practice most flu events resolve via arrival within the window.
+1. **Arrival** — the next qualifying arriving group carries a capped carrier payload. Low per-group chance (`arrivalChance 0.015`); in practice most flu events resolve via arrival within the window.
 2. **Acausal fallback** — if 15 days pass with no arrival, a silent incubation is stamped on a random eligible pawn.
 
 ### Mode 2 (Contagion-driven)
-- Arrivals roll continuous exposure (`arrivalChance 0.01` per qualifying group, `cooldownDays 3`).
+- Arrivals roll continuous exposure (`arrivalChance 0.015` per qualifying group, `cooldownDays 3`), season-weighted by the profile's winter/fall-peaking introduction multiplier, and scaled by the player's Contagion-mode **disease incidence** slider (x0.1–x3.0).
 - No acausal backstop. Isolated colonies with no infected arrivals can avoid flu introductions.
 - Storyteller `Disease_Flu` incident is cancelled outright; Mode 2 owns pacing.
 
@@ -54,7 +54,7 @@ Flu is primarily airborne. It has two airborne components: a direct cough/sneeze
 | baseChancePerCheck | 0.02 | Per 250-tick pass |
 | maxRange | 10 | Direct plume range, in cells |
 | distanceFalloffRate | 0.25 | Exponential; moderate falloff |
-| outdoorFactor | 0.15 | Outdoor dispersal sharply cuts risk |
+| outdoorFactor | 0.5 | Outdoor dispersal cuts risk, but not so sharply that outdoor caravans/visitors can't seed the colony |
 | obstructedFactor | 0.0 | Walls and closed doors fully block the direct plume |
 | roomAirBaseChanceFactor | 0.25 | Same-room aerosol base chance is 25% of direct plume |
 | roomAirMaxRange | 10 | Same-room aerosol does not affect pawns farther than 10 cells apart |
@@ -68,7 +68,7 @@ Face-to-face conversations are a contact booster on top of airborne, regardless 
 | Parameter | Value | Notes |
 |---|---|---|
 | baseChancePerInteraction | 0.1 | Per social interaction |
-| outdoorFactor | 0.5 | Half effect for outdoor conversations |
+| outdoorFactor | 0.8 | Barely reduced — face-to-face trading and chatting happen at conversational range regardless of a roof |
 | airwayImmunityFactor | 1.0 (default) | |
 
 ### Vector_Fomite (escalation)
@@ -103,10 +103,12 @@ Pre-symptomatic spread is real but modest. A pawn with hidden incubation is mild
 
 | Incubation progress | Multiplier |
 |---|---|
-| 0.0 | 0.0 |
-| 0.3 | 0.15 |
+| 0.0 | 0.1 |
+| 0.3 | 0.2 |
 | 0.7 | 0.45 |
 | 1.0 | 0.5 |
+
+The 0.1 floor at the start of incubation ensures a carrier that arrives mid-incubation (e.g. on a trade caravan) still sheds a minimal amount before symptom onset, rather than ~0.
 
 ### Source infectivity factors
 
@@ -116,7 +118,9 @@ Pre-symptomatic spread is real but modest. A pawn with hidden incubation is mild
 
 Sickly pawns catch flu more often (vanilla `randomDiseaseMtbDays`) but shed at half rate, keeping them from being a constant outbreak engine.
 
-### Seasonal variation
+### Seasonal introduction pressure
+
+These weights apply to Contagion-mode arrival/seeding pressure only. They do **not** multiply airborne, social, or fomite spread after flu is present.
 
 | Season | Multiplier |
 |---|---|
@@ -152,8 +156,8 @@ Sickly pawns catch flu more often (vanilla `randomDiseaseMtbDays`) but shed at h
 
 ## Tuning Notes
 
-- Seasonal multipliers are first-pass. Flu should feel like a winter/fall disease with near-silence in summer. The 0.3 summer multiplier may still be too high for tropical biomes — `permanentSummer 0.4` needs field testing.
-- Incubation infectivity (pre-symptomatic spread) is intentional but capped at 0.5 at full incubation so it hands off smoothly into active flu.
+- Seasonal introduction multipliers are first-pass. Flu should enter colonies more often in winter/fall and much less often in summer. The 0.3 summer multiplier may still be too high for tropical biomes — `permanentSummer 0.4` needs field testing.
+- Incubation infectivity (pre-symptomatic spread) runs from a 0.1 floor up to 0.5 at full incubation, so it hands off smoothly into active flu while guaranteeing an incubating arrival carrier is never effectively non-infectious.
 - Scaled caps mean a 10-colonist colony has a flu cap of 4 active+incubating human cases before new seeding is suppressed. Strong suppression reaches zero direct spread at that cap.
 
 
