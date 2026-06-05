@@ -8,10 +8,9 @@ namespace Contagion;
 // tuned without recompiling and overridden by modpacks via PatchOperationReplace.
 public sealed class ContagionTransmissionTuningDef : Def
 {
-    // Ticks between live pawn-to-pawn transmission passes (and the corpse-exposure pass, which scales
-    // its per-pass chance by this interval). 60000 ticks = 1 day, so 500 = 120 passes/day. Raising it
-    // slows pawn-to-pawn spread proportionally AND cuts CPU (fewer passes/day); it was raised from the
-    // original 250 to 500 to take the edge off dense-group "wildfire" spread (see tools/ContagionSpreadSim).
+    // Ticks between live transmission checks for a given source/target bucket. The work is staggered
+    // across the interval, but each bucket still gets one per-pass chance per window. 60000 ticks = 1
+    // day, so 500 = 120 checks/day per bucket. Raising it slows spread proportionally and cuts CPU.
     public int transmissionCheckIntervalTicks = 500;
 
     public static ContagionTransmissionTuningDef Active =>

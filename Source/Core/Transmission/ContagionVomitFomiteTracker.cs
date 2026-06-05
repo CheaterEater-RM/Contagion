@@ -67,7 +67,10 @@ internal sealed class ContagionVomitFomiteTracker : IExposable
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
             Pawn pawn = spawnedPawns[pawnIndex];
-            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != map)
+            if (pawn == null
+                || pawn.Dead
+                || !pawn.Spawned
+                || pawn.Map != map)
             {
                 continue;
             }

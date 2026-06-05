@@ -27,6 +27,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
     private readonly ContagionCorpseExposureProcessor _corpseExposureProcessor;
 
+    private readonly List<Pawn> _transmissionDuePawns = new List<Pawn>();
+
     private ContagionVomitFomiteTracker _vomitFomiteTracker = new();
 
     private ContagionFecalOralTracker _fecalOralTracker = new();
@@ -144,14 +146,9 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         base.MapComponentTick();
 
         int ticksGame = Find.TickManager.TicksGame;
-        bool runTransmission = ticksGame % TransmissionCheckInterval == 0;
         bool runEnvironmental = ticksGame % EnvironmentalCheckInterval == 0;
         bool runDirector = ContagionSeedingCoordinator.CurrentMode == ContagionSeedingMode.Contagion
             && ticksGame % DirectorUpdateInterval == 0;
-        if (!runTransmission && !runEnvironmental && !runDirector)
-        {
-            return;
-        }
 
         IReadOnlyList<Pawn> spawnedPawns = map?.mapPawns?.AllPawnsSpawned;
         if (spawnedPawns == null || spawnedPawns.Count == 0)
@@ -164,8 +161,10 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             _seedingState.DailyTick(map);
         }
 
-        if (!runTransmission && !runEnvironmental)
+        if (!runEnvironmental)
         {
+            int transmissionBucket = ticksGame % TransmissionCheckInterval;
+            RunStaggeredTransmissionPass(spawnedPawns, transmissionBucket);
             return;
         }
 
@@ -181,18 +180,35 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             PruneStaleOutbreaks();
         }
 
-        if (!runTransmission)
+        int bucket = ticksGame % TransmissionCheckInterval;
+        RunStaggeredTransmissionPass(spawnedPawns, bucket);
+    }
+
+    private void RunStaggeredTransmissionPass(IReadOnlyList<Pawn> spawnedPawns, int bucket)
+    {
+        BuildDuePawnList(spawnedPawns, bucket);
+
+        _vomitFomiteTracker.RunFomiteExposurePass(_transmissionDuePawns, map);
+        _fecalOralTracker.RunFecalOralLivingExposurePass(_transmissionDuePawns, map);
+        _corpseExposureProcessor.RunCorpseExposurePass(spawnedPawns, _transmissionDuePawns, TransmissionCheckInterval, bucket);
+
+        if (spawnedPawns.Count >= 2 && _transmissionDuePawns.Count > 0)
         {
-            return;
+            _pawnTransmissionProcessor.RunPawnTransmissionPass(spawnedPawns, _transmissionDuePawns);
         }
+    }
 
-        _vomitFomiteTracker.RunFomiteExposurePass(spawnedPawns, map);
-        _fecalOralTracker.RunFecalOralLivingExposurePass(spawnedPawns, map);
-        _corpseExposureProcessor.RunCorpseExposurePass(spawnedPawns, TransmissionCheckInterval);
+    private void BuildDuePawnList(IReadOnlyList<Pawn> spawnedPawns, int bucket)
+    {
+        _transmissionDuePawns.Clear();
 
-        if (spawnedPawns.Count >= 2)
+        for (int i = 0; i < spawnedPawns.Count; i++)
         {
-            _pawnTransmissionProcessor.RunPawnTransmissionPass(spawnedPawns);
+            Pawn pawn = spawnedPawns[i];
+            if (ContagionTransmissionStaggerUtility.IsDueThisTick(pawn, map, TransmissionCheckInterval, bucket))
+            {
+                _transmissionDuePawns.Add(pawn);
+            }
         }
     }
 

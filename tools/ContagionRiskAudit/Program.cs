@@ -202,11 +202,38 @@ internal static class Program
             inspectCorpseProvider.Contains("JobDefOf.InteractThing"), true));
         string transmissionUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionTransmissionUtility.cs"));
         string seedingCoordinator = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Seeding", "ContagionSeedingCoordinator.cs"));
+        string mapTransmissionComponent = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Contagion_MapTransmissionComponent.cs"));
+        string staggerUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionTransmissionStaggerUtility.cs"));
         string corpseExposureProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionCorpseExposureProcessor.cs"));
         string pawnTransmissionProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionPawnTransmissionProcessor.cs"));
+        string fomiteTrackerForStagger = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionVomitFomiteTracker.cs"));
+        string fecalOralTrackerForStagger = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionFecalOralTracker.cs"));
         checks.Add(Check.Bool("shared path-walk helper exists", transmissionUtility.Contains("CollectReachablePathDistances"), true));
         checks.Add(Check.Bool("corpse fleas use path-walk distances", corpseExposureProcessor.Contains("CollectReachablePathDistances"), true));
         checks.Add(Check.Bool("live proximity uses path-walk distances", pawnTransmissionProcessor.Contains("CollectReachablePathDistances"), true));
+        checks.Add(Check.Bool("live transmission no longer uses full-interval modulo gate",
+            !mapTransmissionComponent.Contains("bool runTransmission = ticksGame % TransmissionCheckInterval == 0")
+            && !mapTransmissionComponent.Contains("if (!runTransmission)"), true));
+        checks.Add(Check.Bool("transmission staggering uses map and thing stable buckets",
+            staggerUtility.Contains("map.uniqueID")
+            && staggerUtility.Contains("thing.thingIDNumber")
+            && staggerUtility.Contains("% intervalTicks"), true));
+        checks.Add(Check.Bool("pawn-to-pawn spread is source-bucket staggered",
+            mapTransmissionComponent.Contains("BuildDuePawnList(spawnedPawns, bucket)")
+            && mapTransmissionComponent.Contains("_pawnTransmissionProcessor.RunPawnTransmissionPass(spawnedPawns, _transmissionDuePawns)")
+            && pawnTransmissionProcessor.Contains("RunPawnTransmissionPass(IReadOnlyList<Pawn> spawnedPawns, IReadOnlyList<Pawn> sourcePawns)")
+            && pawnTransmissionProcessor.Contains("List<TransmissionSource> sources = GatherTransmissionSources(sourcePawns)"), true));
+        checks.Add(Check.Bool("fomite spread is target-bucket staggered",
+            mapTransmissionComponent.Contains("_vomitFomiteTracker.RunFomiteExposurePass(_transmissionDuePawns, map)")
+            && fomiteTrackerForStagger.Contains("RunFomiteExposurePass(IReadOnlyList<Pawn> spawnedPawns, Map map)"), true));
+        checks.Add(Check.Bool("fecal-oral living spread is target-bucket staggered",
+            mapTransmissionComponent.Contains("_fecalOralTracker.RunFecalOralLivingExposurePass(_transmissionDuePawns, map)")
+            && fecalOralTrackerForStagger.Contains("RunFecalOralLivingExposurePass(IReadOnlyList<Pawn> spawnedPawns, Map map)"), true));
+        checks.Add(Check.Bool("corpse exposure is source-bucket staggered with full delta",
+            corpseExposureProcessor.Contains("RunCorpseExposurePass(IReadOnlyList<Pawn> spawnedPawns, IReadOnlyList<Pawn> duePawns, int deltaTicks, int bucket)")
+            && corpseExposureProcessor.Contains("ContagionTransmissionStaggerUtility.IsDueThisTick(corpse, _map, deltaTicks, bucket)")
+            && corpseExposureProcessor.Contains("ProcessCarriedCorpses(spawnedPawns, duePawns, deltaTicks)")
+            && mapTransmissionComponent.Contains("_corpseExposureProcessor.RunCorpseExposurePass(spawnedPawns, _transmissionDuePawns, TransmissionCheckInterval, bucket)"), true));
         checks.Add(Check.Bool("lord-group suppression resolves through pawn lord",
             transmissionUtility.Contains("TryResolveSuppressionScope")
             && transmissionUtility.Contains("pawn.GetLord()")

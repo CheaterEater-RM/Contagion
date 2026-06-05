@@ -43,9 +43,9 @@ internal sealed class ContagionPawnTransmissionProcessor
         _developerDiagnosticsController = developerDiagnosticsController;
     }
 
-    public void RunPawnTransmissionPass(IReadOnlyList<Pawn> spawnedPawns)
+    public void RunPawnTransmissionPass(IReadOnlyList<Pawn> spawnedPawns, IReadOnlyList<Pawn> sourcePawns)
     {
-        List<TransmissionSource> sources = GatherTransmissionSources(spawnedPawns);
+        List<TransmissionSource> sources = GatherTransmissionSources(sourcePawns);
         if (sources.Count == 0)
         {
             return;
@@ -95,7 +95,10 @@ internal sealed class ContagionPawnTransmissionProcessor
         for (int pawnIndex = 0; pawnIndex < spawnedPawns.Count; pawnIndex++)
         {
             Pawn pawn = spawnedPawns[pawnIndex];
-            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.health?.hediffSet == null)
+            if (pawn == null
+                || pawn.Dead
+                || !pawn.Spawned
+                || pawn.health?.hediffSet == null)
             {
                 continue;
             }

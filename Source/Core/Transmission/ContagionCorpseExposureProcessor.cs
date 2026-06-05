@@ -16,18 +16,18 @@ internal sealed class ContagionCorpseExposureProcessor
         _map = map;
     }
 
-    public void RunCorpseExposurePass(IReadOnlyList<Pawn> spawnedPawns, int deltaTicks)
+    public void RunCorpseExposurePass(IReadOnlyList<Pawn> spawnedPawns, IReadOnlyList<Pawn> duePawns, int deltaTicks, int bucket)
     {
         if (_map == null || spawnedPawns == null || spawnedPawns.Count == 0)
         {
             return;
         }
 
-        ProcessSpawnedCorpses(spawnedPawns, deltaTicks);
-        ProcessCarriedCorpses(spawnedPawns, deltaTicks);
+        ProcessSpawnedCorpses(spawnedPawns, deltaTicks, bucket);
+        ProcessCarriedCorpses(spawnedPawns, duePawns, deltaTicks);
     }
 
-    private void ProcessSpawnedCorpses(IReadOnlyList<Pawn> spawnedPawns, int deltaTicks)
+    private void ProcessSpawnedCorpses(IReadOnlyList<Pawn> spawnedPawns, int deltaTicks, int bucket)
     {
         List<Thing> corpses = _map.listerThings?.ThingsInGroup(ThingRequestGroup.Corpse);
         if (corpses == null || corpses.Count == 0)
@@ -37,7 +37,10 @@ internal sealed class ContagionCorpseExposureProcessor
 
         for (int corpseIndex = 0; corpseIndex < corpses.Count; corpseIndex++)
         {
-            if (corpses[corpseIndex] is not Corpse corpse || !corpse.Spawned || corpse.Map != _map)
+            if (corpses[corpseIndex] is not Corpse corpse
+                || !corpse.Spawned
+                || corpse.Map != _map
+                || !ContagionTransmissionStaggerUtility.IsDueThisTick(corpse, _map, deltaTicks, bucket))
             {
                 continue;
             }
@@ -88,12 +91,13 @@ internal sealed class ContagionCorpseExposureProcessor
         }
     }
 
-    private void ProcessCarriedCorpses(IReadOnlyList<Pawn> spawnedPawns, int deltaTicks)
+    private void ProcessCarriedCorpses(IReadOnlyList<Pawn> spawnedPawns, IReadOnlyList<Pawn> duePawns, int deltaTicks)
     {
-        for (int carrierIndex = 0; carrierIndex < spawnedPawns.Count; carrierIndex++)
+        for (int carrierIndex = 0; carrierIndex < duePawns.Count; carrierIndex++)
         {
-            Pawn carrier = spawnedPawns[carrierIndex];
-            if (!CanExpose(carrier) || carrier.carryTracker?.CarriedThing is not Corpse corpse)
+            Pawn carrier = duePawns[carrierIndex];
+            if (!CanExpose(carrier)
+                || carrier.carryTracker?.CarriedThing is not Corpse corpse)
             {
                 continue;
             }
