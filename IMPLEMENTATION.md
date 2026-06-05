@@ -291,7 +291,7 @@ Design implication:
 |---|---|---|---|
 | Convert storyteller disease into incubation | `IncidentWorker_Disease.ApplyToPawns` | Shared path for human incidents, animal incidents, and trait-driven disease events | If victim count or letter text must change, patching only `ApplyToPawns` is not enough |
 | Rework storyteller disease frequency or disease choice | `StorytellerComp_Disease.MakeIntervalIncidents` | Vanilla already handles biome weighting and target type selection here | This is a broader patch surface than simple disease conversion |
-| Airborne, proximity, and environmental spread | `MapComponent` tick | These vectors are map-state driven, not event driven | Must define caravan behavior explicitly because this only covers maps |
+| Airborne, proximity, and environmental spread | `MapComponent` tick | These vectors are map-state driven, not event driven | Covers spawned pawns on maps, including trade caravans and other lord groups while present; off-map caravan behavior remains separate |
 | Social spread | postfix on `Pawn_InteractionsTracker.TryInteractWith` when the interaction succeeds | Central successful social interaction callback | Runs often; keep logic narrow and cheap |
 | Arrival seeding — neutral groups | postfix on concrete neutral `TryExecuteWorker` methods | Diffs newly spawned pawns after a successful visitor/traveler/trader incident | Failed incidents do not consume pending events |
 | Arrival seeding — wanderer joins | postfix on `IncidentWorker_WandererJoin.TryExecuteWorker` | Diffs the newly spawned joiner after the incident succeeds | Failed joins do not consume pending events |
@@ -346,9 +346,10 @@ Vanilla storyteller disease targets caravans as well as maps.
 
 Required design response:
 
-- either leave caravan disease vanilla for v1
-- or design a world/caravan transmission model explicitly
-- do not accidentally imply caravan support through a map-only transmission engine
+- on-map caravans and other transient lord groups use the normal map transmission engine while spawned
+- spawned non-colony lord groups have their own suppression budget so group outbreaks self-limit without consuming colony capacity
+- off-map caravan disease still requires a world/caravan transmission model explicitly
+- do not accidentally imply off-map caravan support through a map-only transmission engine
 
 ## Suggested Implementation Order
 
@@ -358,7 +359,7 @@ Required design response:
 4. Add the map transmission engine for airborne, proximity, and environmental vectors.
 5. Add meal and vomit contamination using comp-based hooks.
 6. Add social spread through `Pawn_InteractionsTracker.TryInteractWith`.
-7. Leave lovin and caravan contagion for a later pass unless a concrete requirement demands them.
+7. Leave lovin and off-map caravan contagion for a later pass unless a concrete requirement demands them.
 
 ## Practical Conclusions
 

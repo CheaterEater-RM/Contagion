@@ -202,12 +202,12 @@ None configured.
 
 | Field | Value | Notes |
 |---|---|---|
-| useScaledActiveCaseCap | true (default) | Colony-human, colony-animal, and wild-animal caps are calculated separately |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable pawn in that track, floored, max 50% |
-| spreadSuppressionScale | **1.0** | Cap-aware suppression **on** for every vector and every track (colony + wild) |
+| useScaledActiveCaseCap | true (default) | Colony-human, colony-animal, lord-group, and wild-animal caps are calculated separately |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable pawn in the target scope, floored, max 50% |
+| spreadSuppressionScale | **1.0** | Cap-aware suppression **on** for every vector and every scope |
 | outbreakNotification | **FirstCase** | Human cases use first-case and cluster letters; hidden animal cases use the sick-signal and diagnosis-letter flow |
 
-Spread suppression is on. Gut worms does spread within a population — vomit fomite between colonists and fecal-oral pasture nodes between animals — so as a track (colony humans, colony animals, or **wild animals**) nears its active-case cap, all transmission toward it is dampened. This is applied to every vector (including foodborne, centrally in `BuildSeederChance`), so a dirty kitchen can't push the colony past the cap, and a wild outbreak self-limits to ~the wild population's capped fraction rather than saturating the map. The wild-animal cap scales with the wild population currently on the map. Set `suppressionMode` to *Let 'er rip* to disable all caps.
+Spread suppression is on. Gut worms does spread within a population — vomit fomite between colonists and fecal-oral pasture nodes between animals — so as a target scope (colony humans, colony animals, a non-colony lord group, or **wild animals**) nears its active-case cap, all transmission toward it is dampened. This is applied to every vector (including foodborne, centrally in `BuildSeederChance`), so a dirty kitchen can't push the colony past the cap, a visiting/raiding group self-limits against its own pawns, and a wild outbreak self-limits to ~the wild population's capped fraction rather than saturating the map. The wild-animal cap scales with the wild population currently on the map. Set `suppressionMode` to *Let 'er rip* to disable all caps.
 
 ---
 
@@ -248,4 +248,4 @@ This mechanic is especially important for gut worms: undetected infected animals
 - `Seeder_Environmental cooldownDays 3` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
 - Fomite `potencyDecayPerHour 0.08` gives gut-worm vomit a ~12 h half-life. This means a single vomit event from a severe case contaminates an area for half a day. If cleaning is poor, this can become a significant secondary spread path. Intentional: it rewards keeping sick pawns isolated and areas clean.
 - `outbreakNotification FirstCase` makes the first visible human case a red, source-attributed outbreak letter; later visible human cases update a yellow cluster letter while the outbreak remains active. Animal acquisition remains hidden until the sick-signal and diagnosis flow reveals it.
-- Scaled caps avoid the old problem where a fixed cap of 3 was too tight for large herds. Animals and humans now each use their own population-scaled cap.
+- Scaled caps avoid the old problem where a fixed cap of 3 was too tight for large herds. Colony animals and humans each use their own population-scaled cap; spawned non-colony lord groups use a mixed group cap while they remain on the map.

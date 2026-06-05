@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI.Group;
 
 namespace Contagion;
 
@@ -19,6 +20,36 @@ public enum ContagionCaseTrack
 public static class ContagionTransmissionUtility
 {
     private static readonly SimpleCurve DefaultActiveInfectivityCurve = CreateDefaultActiveInfectivityCurve();
+
+    private enum SuppressionScopeKind
+    {
+        None,
+        Track,
+        LordGroup
+    }
+
+    private readonly struct SuppressionScope
+    {
+        public SuppressionScope(ContagionCaseTrack track)
+        {
+            Kind = SuppressionScopeKind.Track;
+            Track = track;
+            Lord = null;
+        }
+
+        public SuppressionScope(Lord lord)
+        {
+            Kind = SuppressionScopeKind.LordGroup;
+            Track = ContagionCaseTrack.None;
+            Lord = lord;
+        }
+
+        public SuppressionScopeKind Kind { get; }
+
+        public ContagionCaseTrack Track { get; }
+
+        public Lord Lord { get; }
+    }
 
     public static float GetSourceInfectivity(Pawn source, ResolvedTransmissionProfile resolvedProfile, TransmissionVector vector = null)
     {
@@ -261,20 +292,11 @@ public static class ContagionTransmissionUtility
             * Mathf.Max(0f, settingsMultiplier);
     }
 
-    private const float BaseActiveCaseChance = 0.30f;
-
-    private const float ActiveCaseChancePerPawn = 0.01f;
-
-    private const float MaxActiveCaseChance = 0.50f;
-
-    // True for pawns the spread-suppression mechanic treats as part of "the colony". This is
-    // deliberately narrower than Faction.OfPlayer for humanlike pawns so guest groups, visitors,
-    // and other transient arrivals do not consume the colony's active-case budget.
+    // True for pawns the spread-suppression mechanic can place in a target-side budget: colony
+    // humans/animals, non-colony lord groups, and wild animals without a lord.
     public static bool IsSuppressionTarget(Pawn pawn)
     {
-        // Colony humans/animals plus wild animals. Wild animals are throttled against their own
-        // population budget so a wild outbreak self-limits instead of saturating the map.
-        return GetCaseTrack(pawn) == ContagionCaseTrack.WildAnimal || IsColonyCasePawn(pawn);
+        return TryResolveSuppressionScope(pawn, out SuppressionScope _);
     }
 
     public static bool ShouldApplySeederBonus(Map map, Pawn source, Pawn target, ResolvedTransmissionProfile resolvedProfile)
@@ -361,14 +383,13 @@ public static class ContagionTransmissionUtility
 
     public static bool IsAtActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile, Pawn targetPawn)
     {
-        ContagionCaseTrack track = GetCaseTrack(targetPawn);
-        if (track == ContagionCaseTrack.None)
+        if (!TryResolveSuppressionScope(targetPawn, out SuppressionScope scope))
         {
             return false;
         }
 
-        int capacity = GetActiveCaseCapacity(map, resolvedProfile, track);
-        return capacity > 0 && CountActiveCases(map, resolvedProfile, track) >= capacity;
+        int capacity = GetActiveCaseCapacity(map, resolvedProfile, scope);
+        return capacity > 0 && CountActiveCases(map, resolvedProfile, scope) >= capacity;
     }
 
     public static bool IsAnyTrackAtActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile)
@@ -455,6 +476,23 @@ public static class ContagionTransmissionUtility
         return Mathf.Max(0, capacity - CountActiveCases(map, resolvedProfile, track));
     }
 
+    public static int GetRemainingActiveCaseCapacityForGroup(IReadOnlyList<Pawn> groupPawns, ResolvedTransmissionProfile resolvedProfile)
+    {
+        if (resolvedProfile?.Profile == null || !resolvedProfile.Profile.useScaledActiveCaseCap)
+        {
+            return int.MaxValue;
+        }
+
+        int population = CountAffectablePopulationInGroup(groupPawns, resolvedProfile);
+        if (population <= 0)
+        {
+            return int.MaxValue;
+        }
+
+        int capacity = ContagionRiskMath.ActiveCaseCapacity(population, resolvedProfile.Profile.maxActiveCaseChanceOffset);
+        return Mathf.Max(0, capacity - CountActiveCasesInGroup(groupPawns, resolvedProfile));
+    }
+
     public static int GetActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)
     {
         if (map == null || resolvedProfile?.Profile == null || !resolvedProfile.Profile.useScaledActiveCaseCap)
@@ -468,22 +506,19 @@ public static class ContagionTransmissionUtility
             return 0;
         }
 
-        float chance = Mathf.Clamp(
-            BaseActiveCaseChance + population * ActiveCaseChancePerPawn + resolvedProfile.Profile.maxActiveCaseChanceOffset,
-            0f,
-            MaxActiveCaseChance);
-        return Mathf.Max(1, Mathf.FloorToInt(population * chance));
+        return ContagionRiskMath.ActiveCaseCapacity(population, resolvedProfile.Profile.maxActiveCaseChanceOffset);
     }
 
     // Spread suppression: as a target track approaches its active-case capacity, transmission rolls
     // TO that track are dampened by a clamped smoothstep. It is applied to every vector — the
     // pawn-to-pawn routes fold it into their breakdown, and the seeder-path routes (foodborne,
     // environmental, fecal-oral, corpse, vomit fomite) get it centrally inside BuildSeederChance.
-    // Three tracks each carry their own budget: colony humans, colony animals, and wild animals
-    // (the wild budget scales with the wild population so a wild outbreak self-limits).
+    // Colony humans, colony animals, non-colony lord groups, and wild animals each carry their own
+    // budget. Lord groups combine their affectable humans and animals so caravans, raids, allies,
+    // and similar transient groups self-limit without consuming the colony budget.
     public static float GetSpreadSuppressionFactor(Map map, ResolvedTransmissionProfile resolvedProfile, Pawn targetPawn)
     {
-        if (map == null || resolvedProfile?.Profile == null || !IsSuppressionTarget(targetPawn))
+        if (map == null || resolvedProfile?.Profile == null || !TryResolveSuppressionScope(targetPawn, out SuppressionScope scope))
         {
             return 1f;
         }
@@ -499,45 +534,21 @@ public static class ContagionTransmissionUtility
             return 1f;
         }
 
-        ContagionCaseTrack track = GetCaseTrack(targetPawn);
-        int capacity = GetActiveCaseCapacity(map, resolvedProfile, track);
+        int capacity = GetActiveCaseCapacity(map, resolvedProfile, scope);
         if (capacity <= 0 || capacity == int.MaxValue)
         {
             return 1f;
         }
 
-        int activeCases = CountActiveCases(map, resolvedProfile, track);
+        int activeCases = CountActiveCases(map, resolvedProfile, scope);
         if (activeCases <= 0)
         {
             return 1f;
         }
 
         float load = activeCases / (float)capacity;
-        float factor = mode switch
-        {
-            ContagionSuppressionMode.Strong => EvaluateSuppressionSmoothstep(load, 0.50f, 1.00f, 0f),
-            ContagionSuppressionMode.Weak => EvaluateSuppressionSmoothstep(load, 0.98f, 2.00f, 0.15f),
-            _ => EvaluateSuppressionSmoothstep(load, 0.90f, 1.10f, 0.05f)
-        };
-
+        float factor = ContagionRiskMath.SpreadSuppressionFactor(mode, load);
         return Mathf.Lerp(1f, factor, Mathf.Clamp01(resolvedProfile.Profile.spreadSuppressionScale));
-    }
-
-    private static float EvaluateSuppressionSmoothstep(float load, float startLoad, float stopLoad, float floor)
-    {
-        if (load <= startLoad)
-        {
-            return 1f;
-        }
-
-        if (load >= stopLoad)
-        {
-            return Mathf.Clamp01(floor);
-        }
-
-        float t = Mathf.InverseLerp(startLoad, stopLoad, load);
-        float drop = t * t * (3f - 2f * t);
-        return Mathf.Lerp(1f, Mathf.Clamp01(floor), drop);
     }
 
     // ── Per-tick count memoization ───────────────────────────────────────────────────────────
@@ -560,6 +571,12 @@ public static class ContagionTransmissionUtility
     private static readonly Dictionary<(int map, HediffDef disease, ContagionCaseTrack track), int> _affectablePopulationCache =
         new Dictionary<(int, HediffDef, ContagionCaseTrack), int>();
 
+    private static readonly Dictionary<(int map, HediffDef disease, int lord), int> _activeLordGroupCaseCountCache =
+        new Dictionary<(int, HediffDef, int), int>();
+
+    private static readonly Dictionary<(int map, HediffDef disease, int lord), int> _affectableLordGroupPopulationCache =
+        new Dictionary<(int, HediffDef, int), int>();
+
     private static readonly Dictionary<(int map, HediffDef disease), HashSet<ThingDef>> _infectedColonyAnimalSpeciesCache =
         new Dictionary<(int, HediffDef), HashSet<ThingDef>>();
 
@@ -574,6 +591,8 @@ public static class ContagionTransmissionUtility
         _countCacheTick = tick;
         _activeCaseCountCache.Clear();
         _affectablePopulationCache.Clear();
+        _activeLordGroupCaseCountCache.Clear();
+        _affectableLordGroupPopulationCache.Clear();
         _infectedColonyAnimalSpeciesCache.Clear();
     }
 
@@ -583,6 +602,7 @@ public static class ContagionTransmissionUtility
     public static void NotifyCaseAdded()
     {
         _activeCaseCountCache.Clear();
+        _activeLordGroupCaseCountCache.Clear();
         _infectedColonyAnimalSpeciesCache.Clear();
     }
 
@@ -630,6 +650,201 @@ public static class ContagionTransmissionUtility
         }
 
         return infectedSpecies;
+    }
+
+    private static bool TryResolveSuppressionScope(Pawn pawn, out SuppressionScope scope)
+    {
+        scope = default;
+        if (pawn == null || pawn.Dead)
+        {
+            return false;
+        }
+
+        if (IsColonyCasePawn(pawn))
+        {
+            ContagionCaseTrack track = GetCaseTrack(pawn);
+            if (track != ContagionCaseTrack.None)
+            {
+                scope = new SuppressionScope(track);
+                return true;
+            }
+        }
+
+        if (IsLordGroupCasePawn(pawn))
+        {
+            Lord lord = pawn.GetLord();
+            if (lord?.ownedPawns != null)
+            {
+                scope = new SuppressionScope(lord);
+                return true;
+            }
+        }
+
+        // Resolve lord groups before the wild-animal track so caravan/raid/ally animals use their
+        // group's mixed human+animal budget instead of the map-wide wild-animal budget.
+        if (GetCaseTrack(pawn) == ContagionCaseTrack.WildAnimal)
+        {
+            scope = new SuppressionScope(ContagionCaseTrack.WildAnimal);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static int GetActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile, SuppressionScope scope)
+    {
+        return scope.Kind == SuppressionScopeKind.LordGroup
+            ? GetLordGroupActiveCaseCapacity(map, resolvedProfile, scope.Lord)
+            : GetActiveCaseCapacity(map, resolvedProfile, scope.Track);
+    }
+
+    private static int GetLordGroupActiveCaseCapacity(Map map, ResolvedTransmissionProfile resolvedProfile, Lord lord)
+    {
+        if (map == null || resolvedProfile?.Profile == null || !resolvedProfile.Profile.useScaledActiveCaseCap)
+        {
+            return int.MaxValue;
+        }
+
+        int population = CountAffectableLordGroupPopulation(map, resolvedProfile, lord);
+        return population <= 0
+            ? 0
+            : ContagionRiskMath.ActiveCaseCapacity(population, resolvedProfile.Profile.maxActiveCaseChanceOffset);
+    }
+
+    private static int CountActiveCases(Map map, ResolvedTransmissionProfile resolvedProfile, SuppressionScope scope)
+    {
+        return scope.Kind == SuppressionScopeKind.LordGroup
+            ? CountActiveLordGroupCases(map, resolvedProfile, scope.Lord)
+            : CountActiveCases(map, resolvedProfile, scope.Track);
+    }
+
+    private static int CountAffectableLordGroupPopulation(Map map, ResolvedTransmissionProfile resolvedProfile, Lord lord)
+    {
+        if (map == null || resolvedProfile?.DiseaseDef == null || lord?.ownedPawns == null)
+        {
+            return 0;
+        }
+
+        EnsureCountCacheFresh();
+        int lordId = lord.loadID;
+        if (lordId >= 0)
+        {
+            (int, HediffDef, int) key = (map.uniqueID, resolvedProfile.DiseaseDef, lordId);
+            if (_affectableLordGroupPopulationCache.TryGetValue(key, out int cached))
+            {
+                return cached;
+            }
+
+            int count = CountAffectablePopulationInGroup(lord.ownedPawns, resolvedProfile, map, requireLordGroupPawn: true);
+            _affectableLordGroupPopulationCache[key] = count;
+            return count;
+        }
+
+        return CountAffectablePopulationInGroup(lord.ownedPawns, resolvedProfile, map, requireLordGroupPawn: true);
+    }
+
+    private static int CountActiveLordGroupCases(Map map, ResolvedTransmissionProfile resolvedProfile, Lord lord)
+    {
+        if (map == null || resolvedProfile?.DiseaseDef == null || lord?.ownedPawns == null)
+        {
+            return 0;
+        }
+
+        EnsureCountCacheFresh();
+        int lordId = lord.loadID;
+        if (lordId >= 0)
+        {
+            (int, HediffDef, int) key = (map.uniqueID, resolvedProfile.DiseaseDef, lordId);
+            if (_activeLordGroupCaseCountCache.TryGetValue(key, out int cached))
+            {
+                return cached;
+            }
+
+            int count = CountActiveCasesInGroup(lord.ownedPawns, resolvedProfile, map, requireLordGroupPawn: true);
+            _activeLordGroupCaseCountCache[key] = count;
+            return count;
+        }
+
+        return CountActiveCasesInGroup(lord.ownedPawns, resolvedProfile, map, requireLordGroupPawn: true);
+    }
+
+    private static int CountAffectablePopulationInGroup(
+        IReadOnlyList<Pawn> groupPawns,
+        ResolvedTransmissionProfile resolvedProfile,
+        Map map = null,
+        bool requireLordGroupPawn = false)
+    {
+        if (groupPawns == null || resolvedProfile?.Profile == null)
+        {
+            return 0;
+        }
+
+        int count = 0;
+        for (int i = 0; i < groupPawns.Count; i++)
+        {
+            Pawn pawn = groupPawns[i];
+            if (!PawnInSuppressionGroup(pawn, map, requireLordGroupPawn) || !resolvedProfile.Profile.CanAffect(pawn))
+            {
+                continue;
+            }
+
+            count++;
+        }
+
+        return count;
+    }
+
+    private static int CountActiveCasesInGroup(
+        IReadOnlyList<Pawn> groupPawns,
+        ResolvedTransmissionProfile resolvedProfile,
+        Map map = null,
+        bool requireLordGroupPawn = false)
+    {
+        if (groupPawns == null || resolvedProfile?.DiseaseDef == null || resolvedProfile.Profile == null)
+        {
+            return 0;
+        }
+
+        int count = 0;
+        for (int i = 0; i < groupPawns.Count; i++)
+        {
+            Pawn pawn = groupPawns[i];
+            if (pawn?.health?.hediffSet == null
+                || !PawnInSuppressionGroup(pawn, map, requireLordGroupPawn)
+                || !resolvedProfile.Profile.CanAffect(pawn))
+            {
+                continue;
+            }
+
+            HediffDef pawnDef = resolvedProfile.ResolveHediffForPawn(pawn);
+            if (pawn.health.hediffSet.HasHediff(pawnDef)
+                || ContagionDiseaseUtility.FindIncubation(pawn, pawnDef) != null)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static bool PawnInSuppressionGroup(Pawn pawn, Map map, bool requireLordGroupPawn)
+    {
+        if (pawn == null || pawn.Dead || (map != null && (!pawn.Spawned || pawn.Map != map)))
+        {
+            return false;
+        }
+
+        return !requireLordGroupPawn || IsLordGroupCasePawn(pawn);
+    }
+
+    private static bool IsLordGroupCasePawn(Pawn pawn)
+    {
+        if (pawn == null || pawn.Dead || IsColonyCasePawn(pawn))
+        {
+            return false;
+        }
+
+        return pawn.RaceProps?.Humanlike == true || pawn.RaceProps?.Animal == true;
     }
 
     private static int CountAffectablePopulation(Map map, ResolvedTransmissionProfile resolvedProfile, ContagionCaseTrack track)

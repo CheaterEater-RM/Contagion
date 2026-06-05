@@ -57,7 +57,7 @@ Vanilla `Disease_Plague` and `Disease_AnimalPlague` are both interpreted as unif
 
 ### Arrival seeding
 
-Raiders, caravan members, and wanderers may arrive already carrying `Plague`. This is the main path for plague arriving on maps with no animals (arctic, toxic fallout, etc.).
+Raiders, caravan members, and wanderers may arrive already carrying `Plague`. The carrier payload is capped against the arriving group's own affectable humans and animals, so a large caravan can bring multiple cases without arriving pre-saturated. This is the main path for plague arriving on maps with no animals (arctic, toxic fallout, etc.).
 
 ---
 
@@ -206,10 +206,12 @@ None configured for live-host spread or Contagion-mode arrival pressure. Corpse 
 
 | Field | Value | Notes |
 |---|---|---|
-| useScaledActiveCaseCap | true (default) | Human and animal caps are calculated separately |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affected colony pawn in that track, floored, max 50% |
-| spreadSuppressionScale | 1.0 | Normal colony-fraction suppression applies |
+| useScaledActiveCaseCap | true (default) | Colony humans, colony animals, non-colony lord groups, and wild animals use separate suppression budgets |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable pawn in the target scope, floored, max 50% |
+| spreadSuppressionScale | 1.0 | Normal suppression applies to colony, lord-group, and wild-animal scopes |
 | outbreakNotification | FirstCase (default) | Human cases use first-case and cluster letters; hidden animal cases use the sick-signal and diagnosis-letter flow |
+
+Spread suppression is target-scope based. Colony humans and colony animals keep separate budgets; wild animals without a lord use the map-wide wild budget; and non-colony lord groups (trade caravans, visitors, allies, raids, sieges, beggars, quest groups) use one mixed human+animal budget keyed to that group. This prevents an infected plague caravan from infecting every member before it leaves while also preventing that caravan from consuming the colony's active-case capacity.
 
 The first visible human case starts a red, source-attributed outbreak letter. Later visible human cases update a yellow cluster letter while the outbreak remains active. Animal plague remains hidden until detected and diagnosed, so colony animals notify through the sick-signal and successful-diagnosis letters instead of the outbreak-letter track.
 
@@ -275,7 +277,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 
 - `crossSpeciesTransmissionFactor 0.5` is a first-pass value. Plague in real life crosses species very readily via flea vectors — 0.5 may be too conservative. Consider 0.6–0.7 after playtesting.
 - Plague no longer uses `Seeder_AnimalLinked`; incoming humans and animals are the primary introduction route. If playtesting shows too little resident animal pressure, add a new explicit animal-reservoir seeder rather than reusing the old handler-biased path.
-- Plague uses separate scaled caps for humans and animals. A colony with 10 colonists and 10 animals has a human plague cap of 4 and an animal plague cap of 4, rather than one shared mixed-species pool.
+- Plague uses separate scaled caps for colony humans and colony animals. A colony with 10 colonists and 10 animals has a human plague cap of 4 and an animal plague cap of 4, rather than one shared mixed-species pool. Non-colony lord groups intentionally use one mixed group budget, so a 20-pawn caravan with humans and animals trends toward a 10-case cap instead of separate human/animal saturation.
 - Live-host plague has no seasonal introduction variation, and ongoing spread is not season-weighted. Corpse fleas already have temperature-based suppression through `Vector_CorpseFlea`.
 - Incubation infectivity is set to a flat-ish curve (0.3 → 0.6). If playtesting shows plague outbreaks feel too fast or uncontainable, dial the starting value down toward 0.15–0.2 first; even the 2-day window amplifies moderate incubation infectivity.
 - Passive symptom presentation peaks at 5% per half-day at severity 1.0, giving ~25% cumulative over a typical untreated course. If wild animal plague feels too invisible, raise the peak toward 0.08; if messages are too noisy, lower it or raise the severity threshold.

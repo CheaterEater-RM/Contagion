@@ -4,10 +4,40 @@ namespace Contagion;
 
 public static class ContagionRiskMath
 {
+    private const float BaseActiveCaseChance = 0.30f;
+
+    private const float ActiveCaseChancePerPawn = 0.01f;
+
+    private const float MaxActiveCaseChance = 0.50f;
+
     public static float BiomeDiseaseCommonalityFactor(float commonality)
     {
         // RimWorld authors biome disease commonality around 100 as the neutral baseline.
         return Math.Max(0f, commonality) / 100f;
+    }
+
+    public static int ActiveCaseCapacity(int population, float maxActiveCaseChanceOffset)
+    {
+        if (population <= 0)
+        {
+            return 0;
+        }
+
+        float chance = Clamp(
+            BaseActiveCaseChance + population * ActiveCaseChancePerPawn + maxActiveCaseChanceOffset,
+            0f,
+            MaxActiveCaseChance);
+        return Math.Max(1, (int)Math.Floor(population * chance));
+    }
+
+    public static float SpreadSuppressionFactor(ContagionSuppressionMode mode, float load)
+    {
+        return mode switch
+        {
+            ContagionSuppressionMode.Strong => EvaluateSuppressionSmoothstep(load, 0.50f, 1.00f, 0f),
+            ContagionSuppressionMode.Weak => EvaluateSuppressionSmoothstep(load, 0.98f, 2.00f, 0.15f),
+            _ => EvaluateSuppressionSmoothstep(load, 0.90f, 1.10f, 0.05f)
+        };
     }
 
     public static float SeederBonusChance(float chance)
@@ -175,6 +205,23 @@ public static class ContagionRiskMath
     private static float Clamp01(float value)
     {
         return Clamp(value, 0f, 1f);
+    }
+
+    private static float EvaluateSuppressionSmoothstep(float load, float startLoad, float stopLoad, float floor)
+    {
+        if (load <= startLoad)
+        {
+            return 1f;
+        }
+
+        if (load >= stopLoad)
+        {
+            return Clamp01(floor);
+        }
+
+        float t = (load - startLoad) / (stopLoad - startLoad);
+        float drop = t * t * (3f - 2f * t);
+        return Lerp(1f, Clamp01(floor), drop);
     }
 
     private static float Lerp(float from, float to, float t)

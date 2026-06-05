@@ -137,10 +137,12 @@ These weights apply to Contagion-mode arrival/seeding pressure only. They do **n
 
 | Field | Value | Notes |
 |---|---|---|
-| useScaledActiveCaseCap | true (default) | Human cap scales from colonist count |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per colonist, floored, max 50% |
-| spreadSuppressionScale | 1.0 (default) | Normal colony-fraction suppression applies |
+| useScaledActiveCaseCap | true (default) | Colony-human, lord-group, and other applicable human scopes calculate capacity separately |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable pawn in the target scope, floored, max 50% |
+| spreadSuppressionScale | 1.0 (default) | Normal suppression applies |
 | outbreakNotification | FirstCase | Red source-attributed letter on the first visible case; later visible cases update a yellow cluster letter while the outbreak remains active |
+
+Arrival groups and other on-map non-colony lord groups self-limit against their own human carrier population. A trade caravan, visitor group, ally group, or raid with flu no longer uses the colony cap and no longer spreads unchecked through its members; transmission into a pawn is dampened by that pawn's own scope.
 
 ---
 
@@ -158,7 +160,7 @@ These weights apply to Contagion-mode arrival/seeding pressure only. They do **n
 
 - Seasonal introduction multipliers are first-pass. Flu should enter colonies more often in winter/fall and much less often in summer. The 0.3 summer multiplier may still be too high for tropical biomes — `permanentSummer 0.4` needs field testing.
 - Incubation infectivity (pre-symptomatic spread) runs from a 0.1 floor up to 0.5 at full incubation, so it hands off smoothly into active flu while guaranteeing an incubating arrival carrier is never effectively non-infectious.
-- Scaled caps mean a 10-colonist colony has a flu cap of 4 active+incubating human cases before new seeding is suppressed. Strong suppression reaches zero direct spread at that cap.
+- Scaled caps mean a 10-colonist colony has a flu cap of 4 active+incubating human cases before new seeding is suppressed. A 10-pawn visiting lord group uses the same cap for its own members while it is spawned. Strong suppression reaches zero direct spread at that cap.
 
 
 https://pubmed.ncbi.nlm.nih.gov/15172341/

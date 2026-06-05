@@ -323,7 +323,7 @@ effectiveChance = vectorBaseChance
                 × vectorContextModifiers(...)          ← distance, LOS, roofing, cleanliness, etc.
                 × respiratoryMaskFactor(source,target) ← respiratory vectors only (sealed helmet/capstone = immune; masks filter)
                 × contactProtectionFactor(target)      ← contact/surface/cooking vectors only (worn apparel seal + coverage)
-                × spreadSuppression(disease,target)    ← colony + wild-animal targets, all vectors
+                × spreadSuppression(disease,target)    ← colony, lord-group, and wild-animal targets, all vectors
                 × globalSettingsMultiplier             ← transmission-rate slider × difficulty scale
 ```
 
@@ -357,7 +357,7 @@ Scope is deliberately narrow:
 
 A balancing term that prevents an outbreak from deterministically saturating a population. As a target *track* approaches its active-case capacity, transmission rolls toward that track are dampened, so the mod's active-case settings hold no matter which vector is doing the spreading.
 
-**Three independent tracks**, each with its own budget: **colony humans**, **colony animals**, and **wild animals**. The wild track exists so a wild-herd outbreak self-limits instead of infecting the entire map; its budget scales with the wild population currently on the map.
+**Suppression scopes**, each with its own budget: **colony humans**, **colony animals**, **non-colony lord groups**, and **wild animals without a lord**. A lord group is any on-map group owned by a RimWorld `Lord` (trade caravans, visitors, allies, raids, sieges, beggars, quest groups, and similar modded groups). Lord groups use one mixed human+animal budget for the group, so a plague caravan's animals and humans suppress together without consuming the colony budget. The wild track exists so a wild-herd outbreak self-limits instead of infecting the entire map; its budget scales with the wild population currently on the map.
 
 ```
 load   = (active + incubating cases in track) / scaledCapacity(track)
@@ -365,13 +365,13 @@ factor = clampedSmoothstep(load, mode)        ← per suppressionMode setting
 result = lerp(1, factor, spreadSuppressionScale)
 ```
 
-- `scaledCapacity(track)` = `population × clamp(0.30 + population×0.01 + maxActiveCaseChanceOffset, 0, 0.50)` — i.e. ~30–50% of the track's affectable population (requires `useScaledActiveCaseCap`).
-- `population` = the track's affectable pawns: colony humans, colony animals, or **all wild animals on the map** for the wild track.
+- `scaledCapacity(scope)` = `population × clamp(0.30 + population×0.01 + maxActiveCaseChanceOffset, 0, 0.50)` — i.e. ~30–50% of the scope's affectable population (requires `useScaledActiveCaseCap`).
+- `population` = the scope's affectable pawns: colony humans, colony animals, all affectable pawns in the target's lord group, or **all wild animals on the map** for the wild track.
 - `spreadSuppressionScale` (per disease) scales the effect; **0 = exempt**. Suppression is a *balance* guarantee, not a transmission model — even map-seeded diseases (Malaria, SleepingSickness) keep it on so a player can rely on "no more than ~half my colony." It requires `useScaledActiveCaseCap = true`. No shipped disease currently sets the scale to 0.
 - `suppressionMode` (player setting) selects the smoothstep band; **Let 'er rip** disables suppression entirely.
 
 **Scope rules:**
-- **Target-gated:** applied when the target is a colony pawn or a wild animal, matching the population each track is measured over. Other-faction humanlikes (visitors/raiders) are neither counted nor throttled.
+- **Target-gated:** applied to the target's own scope. Colony humans, colony animals, lord-owned non-colony groups, and wild animals each suppress against their own population. Non-colony humanlikes without a lord are not counted or throttled. Lord groups are resolved before wild animals, so caravan/raid/ally animals use their group's mixed budget rather than the map-wide wild-animal budget.
 - **Vectors covered: all of them.** Pawn-to-pawn routes (airborne/social/proximity/fomite) fold suppression into their breakdown; the seeder-path routes (foodborne, environmental, fecal-oral, corpse, vomit fomite) apply it centrally inside `BuildSeederChance`. This closes the loophole where a non–person-to-person vector could push a track past its cap.
 
 ---
@@ -536,9 +536,9 @@ Vanilla disease profiles are patched onto their `HediffDef` in `1.6/Patches/Cont
 |---|---|---|---|---|---|---|
 | Flu | Airborne, Social, Fomite (vomit) | Storyteller, Arrival, Acausal | 1.5 d | none* | Human | Winter-peaking Contagion-mode introduction pressure; no seasonal spread multiplier; acausal is Mode 1 fallback only; scaled active-case cap offset 0 |
 | Animal_Flu | Airborne, Fomite | Storyteller, Arrival, Acausal | 1.5 d | none* | Animal | Human-isolated; animal cross-species jumps use `animalCrossSpeciesFactorCurve` (first colony race free from outside carriers, later colony races suppressed); acausal is Mode 1 fallback only; safe to butcher (no `corpseContagious`) |
-| Plague | Proximity (cleanliness) | Storyteller, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; incoming humans and animals can carry it; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; separate scaled human/animal caps, offset 0 |
-| GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 1.0` (colony + wild caps); animal fecal-oral shedding is deterministic (per-animal waste meter, body-size drops/day curve, paused while starving) |
-| MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 1.0` (colony + wild caps); animal fecal-oral shedding is deterministic (per-animal waste meter, body-size drops/day curve, paused while starving) |
+| Plague | Proximity (cleanliness) | Storyteller, Arrival, Acausal | 1.0 d | none* | Human + Animal | Unified cluster: `animalVariantDef Animal_Plague` (48 h tend); `crossSpeciesTransmissionFactor 0.5`; incoming humans and animals can carry it; `airwayImmunityFactor` 0; `corpseContagious`; `showsSickSignal`; separate colony human/animal caps plus mixed lord-group caps, offset 0 |
+| GutWorms | Foodborne, Fomite (vomit), Environmental (water) | Storyteller, Environmental, Arrival, Acausal | 3.0 d | 15 d | Human + Animal | `corpseContagious`; `showsSickSignal`; `targetBodyParts: Stomach`; water-primary environmental; humans use `humanExposureFactor 0.50`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 1.0` (colony, lord-group, and wild caps); animal fecal-oral shedding is deterministic (per-animal waste meter, body-size drops/day curve, paused while starving) |
+| MuscleParasites | Foodborne, Environmental (soil) | Storyteller, Environmental, Arrival, Acausal | 5.0 d | 20 d | Human + Animal | Vanilla Core hediff (`Disease_MuscleParasites` incident); `corpseContagious`; `showsSickSignal`; no vomiting; soil-biased outdoor exposure; humans use `humanExposureFactor 0.45`; Mode 2 uses environmental + arrival; scaled active-case cap offset 0; `spreadSuppressionScale 1.0` (colony, lord-group, and wild caps); animal fecal-oral shedding is deterministic (per-animal waste meter, body-size drops/day curve, paused while starving) |
 | Malaria | Environmental | Environmental, Acausal | 2.0 d | none* | Human | Mosquito pressure; broad warm/wet source; partial indoor penetration; `spreadSuppressionScale 1.0` + `useScaledActiveCaseCap` for the colony-fraction balance cap; seasonal introduction/environmental pressure |
 | SleepingSickness | Environmental | Environmental, Acausal | 2.5 d | none* | Human | Tsetse habitat pressure; hotter, wetter, rarer, and more strongly blocked by deep indoor shelter; `spreadSuppressionScale 1.0` + `useScaledActiveCaseCap` for the colony-fraction balance cap |
 
@@ -721,7 +721,7 @@ Consumed/destroyed food (`Item`) nodes splice out of the chain (predecessor → 
 
 ## Scope Boundary For First Implementation
 
-The first implementation is **map-scoped:** colony maps are fully supported; visitors and other spawned pawns are valid sources/targets; caravans keep vanilla disease behavior. Vanilla storyteller disease still targets caravans, and the map-only transmission engine deliberately does not extend there. Caravan contagion is deferred until a world/caravan transmission model exists.
+The first implementation is **map-scoped:** colony maps are fully supported; visitors, trade caravans, raids, allies, and other spawned lord groups are valid sources/targets while present on a map. Off-map caravan disease still keeps vanilla/world behavior, and the map-only transmission engine deliberately does not extend there. Off-map caravan contagion is deferred until a world/caravan transmission model exists.
 
 ---
 
@@ -778,7 +778,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 ## Implementation Status & Known Gaps
 
-*As of 2026-06-02. All vectors — including the animal fecal-oral living/eating parasite vectors — seeding orchestration, arrival hooks, infected-corpse food-chain rules, and the animal disease chain are complete and stable; the build is clean (0 warnings, 0 errors). Recent passes: contagion map state and contamination stores refactored; seeder cooldowns and outbreak cluster letters moved to robust per-entry/per-ID serialization; the Mode 2 director's per-disease danger weight moved from a hardcoded table to the `dangerWeight` profile field; and active-case/population counts are now memoized per tick to cut suppression CPU during outbreaks.*
+*As of 2026-06-05. All vectors — including the animal fecal-oral living/eating parasite vectors — seeding orchestration, arrival hooks, infected-corpse food-chain rules, and the animal disease chain are complete and stable; the build is clean (0 warnings, 0 errors). Recent passes: contagion map state and contamination stores refactored; seeder cooldowns and outbreak cluster letters moved to robust per-entry/per-ID serialization; the Mode 2 director's per-disease danger weight moved from a hardcoded table to the `dangerWeight` profile field; active-case/population counts are memoized per tick; and on-map non-colony lord groups now get their own suppression budget so caravans, visitors, allies, raids, and similar groups self-limit without consuming colony capacity.*
 
 **Implemented and stable:** all six active vectors (airborne, social, proximity, environmental, fomite, foodborne); incubation + temporary/custom immunity with a recovery hook; spread suppression; respiratory/mask protection with the gene whitelist; difficulty presets, sliders, and diagnostics; map-component save state (contaminated vomit, seeder cooldowns, pending events, director state) and contaminated-meal/raw-meat/corpse comp state; arrival hooks for neutral groups, wanderer joins, quest arrivals, hostile raids, and farm-animal wander-ins; the storyteller intercept patches (`IncidentWorker_Disease.ApplyToPawns` + `TryExecuteWorker`); Mode 1 and Mode 2 seeding orchestration; environmental windows for gut worms and muscle parasites even though those profiles also have Mode 2 arrival seeders; `selfSchedules` auto-incident generation; the full animal disease chain — `corpseContagious` death hook (`Comp_InfectedCorpse` on fresh animal and humanlike corpses), `showsSickSignal` detection via `AnimalChat` interaction (Animals skill roll), `Contagion_AnimalSick` hediff, hidden active animal disease display until diagnosis, diagnosis via `TendUtility.DoTend` (Medical skill roll, true/false positive/negative outcomes), auto-slaughter exclusion for sick animals, infected/uninfected corpse filters, butcher bills excluding infected corpses by default with old-save migration, human auto-food rejection with manual ingest warning, corpse ingestion exposure, infected corpse inspect text and green corpse tint, `Patch_Corpse_ButcherProducts` (Animals/Medicine + Cooking notice check, contaminated raw meat), `Patch_GenRecipe_MakeRecipeProducts` (ingredient contamination with cooking reduction factors), `CookingContaminationExtension` on RecipeDefs, `Comp_ContaminatedFood` extended to raw meat and kibble with timestamp + expiry; gut worms redesigned to water-environmental + affectsAnimals + fomite + foodborne; muscle parasites (vanilla Core `MuscleParasites`, patched with `TransmissionProfile`) given soil-environmental + foodborne chain, `corpseContagious`, `showsSickSignal`.
 
@@ -792,7 +792,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 
 - **Corpse as active contagion source** (`corpseInfectivityDecayPerDay`) — `corpseContagious` already marks animal and humanlike corpses with `Comp_InfectedCorpse` for filters, visuals, butchery, and ingestion exposure. The next step — corpses acting as proximity/fomite sources while they decay — is still reserved. This would extend the existing corpse comp with decay-aware passive emission and cleanup hooks for cremation/burial.
 - **Carrier state** — Typhoid-Mary dynamics: a chance on recovery to become an asymptomatic contagious carrier with its own (flat, low) infectivity curve. Removed from the profile schema until it has an engine implementation.
-- **Caravan spread** — requires a world/caravan transmission model, deliberately deferred. Removed from the profile schema until that model exists.
+- **Off-map caravan spread** — requires a world/caravan transmission model, deliberately deferred. On-map trade caravans and other lord groups are covered by normal map transmission plus lord-group suppression while they are spawned.
 - **`Vector_Lovin`** — STD-style transmission; needs a `JobDriver_Lovin` completion hook.
 - *(Unified plague — completed. `Plague` now owns both species via `animalVariantDef Animal_Plague`. Cross-species transmission factor 0.5. Corpse contagious. Sick signal enabled.)*
 - **Future vector types** (need their own design pass): `Vector_Combat`/`Vector_MeleeDamage` (bites/melee — rage viruses, scaria, zombies) and `Vector_Pregnancy` (mother-to-child, Biotech).
@@ -816,7 +816,7 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | `crossSpeciesTransmissionFactor 0.5` for plague | Plague crosses species fairly readily (flea vector doesn't care about species), but with a 50% barrier. First-pass value; needs tuning. |
 | Penoxycyline via `DiseaseContractChanceFactor` / `Factor_Hediff` | Stays vanilla-compatible; no hardcoded list |
 | Susceptibility/source factors as polymorphic XML lists | New modifiers need no C#; enables the sister-mod soft API |
-| Suppression target-gated to colony pawns | A fully-infected colony must not throttle unrelated visitors/raiders or arriving non-colony carriers |
+| Suppression target-gated by population scope | A fully-infected colony must not throttle unrelated visitors/raiders, and an infected visitor/raid/caravan group must self-limit against its own lord-owned pawns rather than saturating before it leaves |
 | Contagious food poisoning cut from v1 | Vanilla food safety already works; changing it adds churn without benefit |
 | Reserved fields shipped in schema | Modders can plan for corpse/carrier/caravan without waiting on the engine |
 | Two seeding modes (storyteller-driven default, Contagion-driven opt-in) | Vanilla cadence preserved as default; opt-in continuous pressure for sim-leaning players; mode toggle keeps the mental model clear per player |
@@ -824,11 +824,11 @@ Contagion answers "how does a pawn get sick?" A planned sister mod (working titl
 | Mode 1 plague window 5 days | Tight windows preserve storyteller event-spacing — a long pending window would let a disease event collide with raids the storyteller deliberately spaced apart |
 | Gut worms and muscle parasites use Seeder_Environmental as primary Mode 1 trigger | Storyteller pick opens a water/soil environmental window rather than seeding a carrier directly. Mode 2 can also seed them through arrivals, especially farm-animal wander-ins. Acausal seeder is retained only as the Mode 1 expiry fallback |
 | Malaria and sleeping sickness keep acausal only as a Mode 1 environmental expiry fallback | Storyteller mode is allowed to say "someone gets sick somehow" if the environmental window fails to spend its budget. Mode 2 still has no acausal backstop, so environmental prevention stands. |
-| Mode 1 arrival fulfillment = next eligible group (deterministic exposure) | Avoids unbounded pending-event growth on low-traffic maps while allowing large groups to carry a capped, sublinear payload |
+| Mode 1 arrival fulfillment = next eligible group (deterministic exposure) | Avoids unbounded pending-event growth on low-traffic maps while allowing large groups to carry a capped, sublinear payload; carrier capacity is measured against the arriving group, not the colony |
 | Mode 1 environmental: time-bounded window with infection budget | Event-scoped budget is distinct from colony-wide scaled active-case caps — matches vanilla's "outbreak happens then ends" feel rather than turning environmental disease into a permanent biome hazard |
 | Mode 2: storyteller incidents cancelled for profiled diseases | Mode 2 owns pacing; letting the storyteller inject extra events would undermine the director cadence the player is learning to read |
 | Mode 2: map-level disease director | Quiet periods raise pressure, active sickness and recent successful seeding suppress new introductions. Good quarantine still buys breathing room because an attempted threat counts even if colonists avoid infection |
-| Group arrival exposure | Per-pawn chance on large groups would saturate arrivals with disease. Exposure is incident-level, carrier count is group-size-aware but capped, and director pressure is spent once per exposed group |
+| Group arrival exposure | Per-pawn chance on large groups would saturate arrivals with disease. Exposure is incident-level, carrier count is group-size-aware but capped by that group's active-case budget, and director pressure is spent once per exposed group |
 | Developer diagnostics are UI-only and non-persistent | Debug helpers must not add save-state churn or mod-removal hazards; runtime-only overrides and caches are sufficient |
 | Mode 2 arrival testing uses a one-shot forced disease override | Lets testers exercise the real arrival pipeline without adding a parallel fake seeding path or permanently mutating the director |
 | Hover diagnostics show vector breakdown, not one aggregate spread percent | Airborne/proximity are current-tick rolls; social is event-driven. A single combined percentage would be misleading |

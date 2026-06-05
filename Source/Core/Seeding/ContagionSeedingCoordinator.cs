@@ -471,7 +471,7 @@ public static class ContagionSeedingCoordinator
             }
 
             List<CarrierCandidate> carrierCandidates = BuildCarrierCandidates(groupPawns, resolvedProfile, map);
-            int remainingCapacity = GetRemainingActiveCaseCapacity(component, resolvedProfile, arrivalSeeder);
+            int remainingCapacity = GetRemainingActiveCaseCapacity(component, resolvedProfile, arrivalSeeder, groupPawns);
             int carrierCount = DetermineCarrierCount(carrierCandidates.Count, resolvedProfile.Profile, policy, remainingCapacity);
             int seededCount = SeedCarrierPayload(carrierCandidates, resolvedProfile, policy, carrierCount);
             if (seededCount <= 0)
@@ -541,7 +541,7 @@ public static class ContagionSeedingCoordinator
                 continue;
             }
 
-            int remainingCapacity = GetRemainingActiveCaseCapacity(component, arrivalCandidate.ResolvedProfile, arrivalCandidate.Seeder);
+            int remainingCapacity = GetRemainingActiveCaseCapacity(component, arrivalCandidate.ResolvedProfile, arrivalCandidate.Seeder, groupPawns);
             if (remainingCapacity <= 0)
             {
                 continue;
@@ -618,7 +618,8 @@ public static class ContagionSeedingCoordinator
         int selectedRemainingCapacity = GetRemainingActiveCaseCapacity(
             component,
             selectedExposure.ArrivalCandidate.ResolvedProfile,
-            selectedExposure.ArrivalCandidate.Seeder);
+            selectedExposure.ArrivalCandidate.Seeder,
+            groupPawns);
         int carrierCount = DetermineCarrierCount(
             selectedExposure.CarrierCandidates.Count,
             selectedExposure.ArrivalCandidate.ResolvedProfile.Profile,
@@ -919,6 +920,15 @@ public static class ContagionSeedingCoordinator
         while (product > threshold && sample < 100);
 
         return sample - 1;
+    }
+
+    private static int GetRemainingActiveCaseCapacity(
+        Contagion_MapTransmissionComponent component,
+        ResolvedTransmissionProfile resolvedProfile,
+        TransmissionSeeder seeder,
+        IReadOnlyList<Pawn> groupPawns)
+    {
+        return ContagionTransmissionUtility.GetRemainingActiveCaseCapacityForGroup(groupPawns, resolvedProfile);
     }
 
     private static int GetRemainingActiveCaseCapacity(

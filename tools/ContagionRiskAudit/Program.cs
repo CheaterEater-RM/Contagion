@@ -65,6 +65,17 @@ internal static class Program
             Check.Close("seeder bonus leaves one at one", ContagionRiskMath.SeederBonusChance(1f), 1f, 0.0001f),
             Check.Close("seeder bonus cuberoots tiny chance", ContagionRiskMath.SeederBonusChance(0.001f), 0.1f, 0.0001f),
             Check.Close("seeder bonus cuberoots low chance", ContagionRiskMath.SeederBonusChance(0.027f), 0.3f, 0.0001f),
+            Check.Close("active-case capacity floors small groups", ContagionRiskMath.ActiveCaseCapacity(1, 0f), 1f, 0.0001f),
+            Check.Close("active-case capacity mid-size group", ContagionRiskMath.ActiveCaseCapacity(10, 0f), 4f, 0.0001f),
+            Check.Close("active-case capacity approaches fifty percent", ContagionRiskMath.ActiveCaseCapacity(20, 0f), 10f, 0.0001f),
+            Check.Close("medium suppression starts at ninety percent load",
+                ContagionRiskMath.SpreadSuppressionFactor(ContagionSuppressionMode.Medium, 0.90f), 1f, 0.0001f),
+            Check.Close("medium suppression floor at over-capacity",
+                ContagionRiskMath.SpreadSuppressionFactor(ContagionSuppressionMode.Medium, 1.10f), 0.05f, 0.0001f),
+            Check.Close("strong suppression starts at fifty percent load",
+                ContagionRiskMath.SpreadSuppressionFactor(ContagionSuppressionMode.Strong, 0.50f), 1f, 0.0001f),
+            Check.Close("weak suppression floor is unchanged",
+                ContagionRiskMath.SpreadSuppressionFactor(ContagionSuppressionMode.Weak, 2.00f), 0.15f, 0.0001f),
             Check.Close("skill10 butchery factor", butcherFactor, 0.5875f, 0.0001f),
             Check.Close("skill10 cooked meal survival factor", ordinaryMealFactor, 0.091325f, 0.0005f),
             Check.Close("plague fresh butchery combined", ContagionRiskMath.Combined(plagueFreshFlea, plagueFreshFluid), 0.091929f, 0.002f),
@@ -180,11 +191,27 @@ internal static class Program
         checks.Add(Check.Bool("corpse inspection uses the vanilla InteractThing job (removal-safe)",
             inspectCorpseProvider.Contains("JobDefOf.InteractThing"), true));
         string transmissionUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionTransmissionUtility.cs"));
+        string seedingCoordinator = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Seeding", "ContagionSeedingCoordinator.cs"));
         string corpseExposureProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionCorpseExposureProcessor.cs"));
         string pawnTransmissionProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionPawnTransmissionProcessor.cs"));
         checks.Add(Check.Bool("shared path-walk helper exists", transmissionUtility.Contains("CollectReachablePathDistances"), true));
         checks.Add(Check.Bool("corpse fleas use path-walk distances", corpseExposureProcessor.Contains("CollectReachablePathDistances"), true));
         checks.Add(Check.Bool("live proximity uses path-walk distances", pawnTransmissionProcessor.Contains("CollectReachablePathDistances"), true));
+        checks.Add(Check.Bool("lord-group suppression resolves through pawn lord",
+            transmissionUtility.Contains("TryResolveSuppressionScope")
+            && transmissionUtility.Contains("pawn.GetLord()")
+            && transmissionUtility.Contains("lord.ownedPawns"), true));
+        checks.Add(Check.Bool("lord-group suppression caches by lord load id",
+            transmissionUtility.Contains("_activeLordGroupCaseCountCache")
+            && transmissionUtility.Contains("_affectableLordGroupPopulationCache")
+            && transmissionUtility.Contains("lord.loadID"), true));
+        int lordScopeIndex = transmissionUtility.IndexOf("Lord lord = pawn.GetLord();", StringComparison.Ordinal);
+        int wildScopeIndex = transmissionUtility.IndexOf("GetCaseTrack(pawn) == ContagionCaseTrack.WildAnimal", StringComparison.Ordinal);
+        checks.Add(Check.Bool("lord group scope is chosen before wild-animal scope",
+            lordScopeIndex >= 0 && wildScopeIndex > lordScopeIndex, true));
+        checks.Add(Check.Bool("arrival carrier capacity uses arriving group pawns",
+            seedingCoordinator.Contains("GetRemainingActiveCaseCapacity(component, resolvedProfile, arrivalSeeder, groupPawns)")
+            && seedingCoordinator.Contains("GetRemainingActiveCaseCapacityForGroup(groupPawns, resolvedProfile)"), true));
 
         // ---- Apparel protection (docs/Apparel_Protection_Design.md) -------------------------------
         // Seal integrity bands (design §7) keyed to the vanilla ratty (<50%) / tattered (<20%) states.

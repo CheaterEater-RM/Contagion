@@ -186,12 +186,12 @@ None configured.
 
 | Field | Value | Notes |
 |---|---|---|
-| useScaledActiveCaseCap | true (default) | Colony-human, colony-animal, and wild-animal caps are calculated separately |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable pawn in that track, floored, max 50% |
-| spreadSuppressionScale | **1.0** | Cap-aware suppression **on** for every vector and every track (colony + wild) |
+| useScaledActiveCaseCap | true (default) | Colony-human, colony-animal, lord-group, and wild-animal caps are calculated separately |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable pawn in the target scope, floored, max 50% |
+| spreadSuppressionScale | **1.0** | Cap-aware suppression **on** for every vector and every scope |
 | outbreakNotification | **FirstCase** | Human cases use first-case and cluster letters; hidden animal cases use the sick-signal and diagnosis-letter flow |
 
-Spread suppression is on for the same reasons as gut worms (see [GutWorms.md](GutWorms.md) → Suppression and Caps): muscle parasites spread within a population via fecal-oral pasture nodes, so as a track (colony humans, colony animals, or **wild animals**) nears its active-case cap, all transmission toward it is dampened — applied to every vector centrally in `BuildSeederChance`. The wild-animal cap scales with the wild population on the map, preventing a wild outbreak from saturating it. Set `suppressionMode` to *Let 'er rip* to disable.
+Spread suppression is on for the same reasons as gut worms (see [GutWorms.md](GutWorms.md) → Suppression and Caps): muscle parasites spread within a population via fecal-oral pasture nodes, so as a target scope (colony humans, colony animals, a non-colony lord group, or **wild animals**) nears its active-case cap, all transmission toward it is dampened — applied to every vector centrally in `BuildSeederChance`. The wild-animal cap scales with the wild population on the map, preventing a wild outbreak from saturating it, and spawned non-colony lord groups self-limit against their own pawns. Set `suppressionMode` to *Let 'er rip* to disable.
 
 `outbreakNotification FirstCase` makes the first visible human case a red, source-attributed outbreak letter; later visible human cases update a yellow cluster letter while the outbreak remains active. Animal infection is hidden until the sick-signal and diagnosis flow reveals it.
 
@@ -233,4 +233,4 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 - `contaminationExpiryDays 30` matches gut worms so both parasite food chains have the same persistence window.
 - No `Seeder_Arrival`: muscle parasites is not carried in by visitors or traders. It enters only through the environmental window and the animal/butchery chain, keeping the arrival pool focused on the diseases that are actually contagious between people (flu, plague).
 - `Seeder_Environmental cooldownDays 4` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
-- `spreadSuppressionScale 1.0` keeps outbreaks within the mod's active-case caps. Suppression is now applied to every vector (centrally in `BuildSeederChance`), not just person-to-person ones, and covers a dedicated **wild-animal** track so a wild fecal-oral outbreak self-limits to the wild population's capped fraction instead of saturating the map.
+- `spreadSuppressionScale 1.0` keeps outbreaks within the mod's active-case caps. Suppression is applied to every vector (centrally in `BuildSeederChance`), not just person-to-person ones, and covers colony tracks, non-colony lord groups, and a dedicated **wild-animal** track so outbreaks self-limit to the relevant population's capped fraction instead of saturating the map.

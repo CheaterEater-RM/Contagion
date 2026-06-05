@@ -114,11 +114,13 @@ None configured.
 
 | Field | Value | Notes |
 |---|---|---|
-| useScaledActiveCaseCap | true (default) | Animal cap scales from player animal count |
-| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per animal, floored, max 50% |
-| spreadSuppressionScale | 1.0 (default) | |
+| useScaledActiveCaseCap | true (default) | Colony-animal, lord-group, and wild-animal scopes calculate capacity separately |
+| maxActiveCaseChanceOffset | 0 | Cap chance is 30% + 1% per affectable animal in the target scope, floored, max 50% |
+| spreadSuppressionScale | 1.0 (default) | Normal suppression applies |
 | outbreakNotification | FirstCase (default) | Pure-animal exception suppresses outbreak and cluster letters; the player is notified through the sick-signal + diagnosis path instead |
 | showsSickSignal | true | Hidden until diagnosed; handlers notice the sick signal, doctors diagnose |
+
+Caravan and raid animals that belong to a non-colony lord group use that lord group's budget before falling back to the wild-animal budget. This lets infected pack animals self-limit within their caravan without counting as colony animals or as part of the map-wide wild herd.
 
 Although the profile inherits `FirstCase`, Animal Flu has `affectsHumans false`. The notifier deliberately suppresses the red/yellow outbreak letters for pure-animal diseases. Player notification instead comes through the animal-disease chain shared with plague, gut worms, and muscle parasites: a handler noticing the sick signal, a vet diagnosis letter, and the floating disease-activation message.
 
@@ -155,5 +157,5 @@ This makes the first spillover into a colony's animal population free if the dis
 
 - No seasonal introduction variation is currently configured. A mild winter peak or a flat year-round arrival profile may both be defensible (animal flu outbreaks in real farming are year-round), but it is worth making a deliberate choice.
 - The fomite vector intentionally does not use the human flu high-severity override. Animal flu progresses and tends differently, and animals sharing dirty barns should remain a plausible fomite risk.
-- Scaled caps replace the old flat herd cap. A 10-animal herd has an animal-flu cap of 4 active+incubating cases, and a 20-animal herd caps at 10.
+- Scaled caps replace the old flat herd cap. A 10-animal colony herd has an animal-flu cap of 4 active+incubating cases, and a 20-animal herd caps at 10. Spawned non-colony animal groups use the same capacity formula against their own lord group.
 - `animalCrossSpeciesFactorCurve` is a first-pass tuning pass. If Animal Flu still spreads too widely through mixed herds, lower the 1-race and 2-race factors; if it fails to establish from absent-species carriers, keep the 0-race factor at 1.0.
