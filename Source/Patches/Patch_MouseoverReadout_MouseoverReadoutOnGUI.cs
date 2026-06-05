@@ -431,7 +431,6 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
             builder.AppendLine("Contagion_DeveloperHoverCommonFactors".Translate(
                 FormatChance(breakdown.BaseChance),
                 FormatMultiplier(breakdown.Infectivity),
-                FormatMultiplier(breakdown.SeasonalMultiplier),
                 FormatMultiplier(breakdown.TargetEligibilityFactor),
                 FormatMultiplier(breakdown.SettingsMultiplier)).Resolve());
 

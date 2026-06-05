@@ -289,7 +289,6 @@ public static class ContagionDeveloperDiagnosticsUtility
             VectorKind = vectorKind,
             BaseChance = baseChance,
             Infectivity = infectivity,
-            SeasonalMultiplier = ContagionTransmissionUtility.GetSeasonalMultiplier(map, resolvedProfile.Profile),
             TargetEligibilityFactor = targetFactor,
             SettingsMultiplier = settingsMultiplier,
             VectorContextFactor = vectorContextFactor,
@@ -324,7 +323,6 @@ public static class ContagionDeveloperDiagnosticsUtility
             VectorKind = vectorKind,
             BaseChance = baseChance,
             Infectivity = ContagionTransmissionUtility.GetSourceInfectivity(sourcePawn, resolvedProfile, vector),
-            SeasonalMultiplier = ContagionTransmissionUtility.GetSeasonalMultiplier(map, resolvedProfile.Profile),
             TargetEligibilityFactor = 1f,
             SettingsMultiplier = settingsMultiplier,
             VectorContextFactor = vectorContextFactor

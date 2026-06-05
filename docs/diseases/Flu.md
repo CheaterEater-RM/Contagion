@@ -51,7 +51,7 @@ Flu is primarily airborne. It has two airborne components: a direct cough/sneeze
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.03 | Per 250-tick pass |
+| baseChancePerCheck | 0.02 | Per 250-tick pass |
 | maxRange | 10 | Direct plume range, in cells |
 | distanceFalloffRate | 0.25 | Exponential; moderate falloff |
 | outdoorFactor | 0.15 | Outdoor dispersal sharply cuts risk |
@@ -59,8 +59,6 @@ Flu is primarily airborne. It has two airborne components: a direct cough/sneeze
 | roomAirBaseChanceFactor | 0.25 | Same-room aerosol base chance is 25% of direct plume |
 | roomAirMaxRange | 10 | Same-room aerosol does not affect pawns farther than 10 cells apart |
 | roomAirMaxCells | 100 | Larger rooms are too ventilated/dilute for this component |
-| maskTargetEffectiveness | 0.7 | 70% of mask ToxicResist applied to inhale side |
-| maskSourceEffectiveness | 0.5 | 50% applied to emit side |
 | airwayImmunityFactor | 1.0 (default) | Breathless gene and airway barriers fully apply |
 
 ### Vector_Social (secondary)
@@ -69,10 +67,8 @@ Face-to-face conversations are a contact booster on top of airborne, regardless 
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerInteraction | 0.02 | Per social interaction |
+| baseChancePerInteraction | 0.1 | Per social interaction |
 | outdoorFactor | 0.5 | Half effect for outdoor conversations |
-| maskTargetEffectiveness | 0.6 | |
-| maskSourceEffectiveness | 0.5 | |
 | airwayImmunityFactor | 1.0 (default) | |
 
 ### Vector_Fomite (escalation)
@@ -146,7 +142,7 @@ Sickly pawns catch flu more often (vanilla `randomDiseaseMtbDays`) but shed at h
 
 ## Counterplay
 
-- **Masks** significantly reduce airborne and social transmission (filter); a sealed combat/space helmet makes the wearer immune to airborne/social/proximity spread. Breathless gene also helps. See `docs/Apparel_Protection_Design.md`.
+- **Airway protection** significantly reduces airborne and social transmission; filtering masks reduce exposure, and a sealed combat/space helmet makes the wearer immune to airborne/social/proximity spread. Breathless gene also helps. See `docs/Apparel_Protection_Design.md`.
 - **Hospital isolation** — walls and closed doors block direct airborne LOS and split room-air exposure; keeping sick pawns out of shared spaces matters.
 - **Social work priority** — cancelling social recreation for sick pawns eliminates the social vector.
 - **Cleaning + gloves** — removing vomit filth quickly cuts the fomite escalation path; gloves/sealed gear reduce what a pawn picks up from tagged vomit (fomite `apparelProtection`).

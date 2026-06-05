@@ -45,8 +45,6 @@ public sealed class ContagionSpreadBreakdown
 
     public float Infectivity { get; set; }
 
-    public float SeasonalMultiplier { get; set; } = 1f;
-
     public float TargetEligibilityFactor { get; set; }
 
     public float SettingsMultiplier { get; set; } = 1f;
@@ -75,7 +73,6 @@ public sealed class ContagionSpreadBreakdown
 
     public float FinalChance => Mathf.Max(0f, BaseChance)
         * Mathf.Max(0f, Infectivity)
-        * Mathf.Max(0f, SeasonalMultiplier)
         * Mathf.Max(0f, TargetEligibilityFactor)
         * Mathf.Max(0f, VectorContextFactor)
         * Mathf.Max(0f, SettingsMultiplier);

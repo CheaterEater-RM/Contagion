@@ -230,7 +230,6 @@ public static class ContagionTransmissionUtility
 
         return Mathf.Max(0f, baseChance)
             * infectivity
-            * GetSeasonalMultiplier(map, resolvedProfile.Profile)
             * targetFactor
             * Mathf.Max(0f, vectorContextFactor)
             * Mathf.Max(0f, settingsMultiplier);
@@ -257,7 +256,6 @@ public static class ContagionTransmissionUtility
         // Storyteller seeding also routes through here but is additionally capacity-gated, and this
         // returns 1f at zero active-case load, so a clean map is unaffected.
         return Mathf.Max(0f, baseChance)
-            * GetSeasonalMultiplier(map, resolvedProfile.Profile)
             * targetFactor
             * GetSpreadSuppressionFactor(map, resolvedProfile, target)
             * Mathf.Max(0f, settingsMultiplier);

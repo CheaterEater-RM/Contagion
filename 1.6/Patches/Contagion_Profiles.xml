@@ -54,7 +54,7 @@
         </sourceInfectivityFactors>
         <vectors>
           <li Class="Contagion.Vector_Airborne">
-            <baseChancePerCheck>0.03</baseChancePerCheck>
+            <baseChancePerCheck>0.02</baseChancePerCheck>
             <outdoorFactor>0.15</outdoorFactor>
             <maxRange>10</maxRange>
             <distanceFalloffRate>0.25</distanceFalloffRate>
@@ -66,7 +66,7 @@
             <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
           </li>
           <li Class="Contagion.Vector_Social">
-            <baseChancePerInteraction>0.02</baseChancePerInteraction>
+            <baseChancePerInteraction>0.1</baseChancePerInteraction>
             <outdoorFactor>0.5</outdoorFactor>
             <maskTargetEffectiveness>0.6</maskTargetEffectiveness>
             <maskSourceEffectiveness>0.5</maskSourceEffectiveness>

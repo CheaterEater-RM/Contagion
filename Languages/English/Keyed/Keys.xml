@@ -65,7 +65,7 @@
   <Contagion_DeveloperHoverVectorProximity>Proximity</Contagion_DeveloperHoverVectorProximity>
   <Contagion_DeveloperHoverVectorSocial>Social (on interaction)</Contagion_DeveloperHoverVectorSocial>
   <Contagion_DeveloperHoverVectorLiveFlea>Live flea transfer</Contagion_DeveloperHoverVectorLiveFlea>
-  <Contagion_DeveloperHoverCommonFactors>Base roll {0} | Source infectivity {1} | Season {2} | Target susceptibility {3} | Settings {4}</Contagion_DeveloperHoverCommonFactors>
+  <Contagion_DeveloperHoverCommonFactors>Base roll {0} | Source infectivity {1} | Target susceptibility {2} | Settings {3}</Contagion_DeveloperHoverCommonFactors>
   <Contagion_DeveloperHoverAirborneFactors>Distance falloff {0} | Enclosure {1} | LOS {2} | Mask {3} | Colony suppression {4}</Contagion_DeveloperHoverAirborneFactors>
   <Contagion_DeveloperHoverProximityFactors>Distance falloff {0} | Outdoors {1} | Cleanliness {2} | Mask {3} | Colony suppression {4}</Contagion_DeveloperHoverProximityFactors>
   <Contagion_DeveloperHoverSocialFactors>Enclosure {0} | LOS {1} | Mask {2} | Colony suppression {3}</Contagion_DeveloperHoverSocialFactors>

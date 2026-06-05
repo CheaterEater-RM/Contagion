@@ -333,7 +333,8 @@ public static class ContagionSeedingCoordinator
             return false;
         }
 
-        chanceMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile);
+        chanceMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile)
+            * ContagionTransmissionUtility.GetSeasonalMultiplier(component.Map, resolvedProfile.Profile);
         return true;
     }
 
@@ -1230,8 +1231,14 @@ public static class ContagionSeedingCoordinator
             return;
         }
 
-        float directorMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile);
-        float adjustedMtbDays = mtbDays / Mathf.Max(0.01f, directorMultiplier);
+        float seedingMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile)
+            * ContagionTransmissionUtility.GetSeasonalMultiplier(component.Map, resolvedProfile.Profile);
+        if (seedingMultiplier <= 0f)
+        {
+            return;
+        }
+
+        float adjustedMtbDays = mtbDays / seedingMultiplier;
         if (!Rand.MTBEventOccurs(adjustedMtbDays, 60000f, 2500f))
         {
             return;

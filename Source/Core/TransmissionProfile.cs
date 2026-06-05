@@ -30,6 +30,7 @@ public sealed class TransmissionProfile : DefModExtension
 
     public SimpleCurve activeInfectivityCurve;
 
+    // Legacy XML name. Applies to Contagion-mode disease introduction/seeding, not ongoing spread.
     public SeasonalInfectivity seasonalInfectivity;
 
     public List<SusceptibilityFactor> susceptibilityFactors;

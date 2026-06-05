@@ -58,8 +58,6 @@ Animals spread flu to each other through direct respiratory plumes and shared ba
 | roomAirBaseChanceFactor | 0.25 | Same-room aerosol base chance is 25% of direct plume |
 | roomAirMaxRange | 10 | Same-room aerosol does not affect animals farther than 10 cells apart |
 | roomAirMaxCells | 100 | Larger barns are too ventilated/dilute for this component |
-| maskTargetEffectiveness | 0.0 (default) | Animals don't wear masks |
-| maskSourceEffectiveness | 0.0 (default) | |
 | airwayImmunityFactor | 1.0 (default) | |
 
 ### Vector_Fomite

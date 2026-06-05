@@ -284,7 +284,7 @@ public static class ContagionDiagnostics
             + $"obstruction={breakdown.ObstructionFactor:0.##} outdoor={breakdown.OutdoorFactor:0.##} "
             + $"cleanliness={breakdown.CleanlinessFactor:0.##} mask={breakdown.MaskFactor:0.##} "
             + $"suppression={breakdown.SuppressionFactor:0.##} eligibility={breakdown.TargetEligibilityFactor:0.##} "
-            + $"seasonal={breakdown.SeasonalMultiplier:0.##} settings={breakdown.SettingsMultiplier:0.##}]");
+            + $"settings={breakdown.SettingsMultiplier:0.##}]");
     }
 
     private static string DescribeThing(Thing thing)

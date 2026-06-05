@@ -488,7 +488,7 @@ internal sealed class ContagionFecalOralTracker : IExposable
             }
 
             ContagionDiagnostics.Record(ContagionDiagnosticCounter.FecalOralEatingAttempted);
-            // The seeder factor (season × target eligibility × suppression × settings) is identical for
+            // The seeder factor (target eligibility × suppression × settings) is identical for
             // every node of a disease, so memoize it per disease — on animal-heavy maps an ingester can
             // overlap several nodes and this eligibility/suppression lookup is the expensive part. Each
             // node still rolls independently (noisy-or), which is correct for separate piles of dung.
@@ -613,8 +613,8 @@ internal sealed class ContagionFecalOralTracker : IExposable
     // Shared per-node math for the dev overlay/tooltip: the seeded grazing chance this ingester would
     // face from one node if it grazed at `cell`. Mirrors NotifyAnimalIngested's per-hotspot pipeline
     // exactly (context -> radius -> source species -> potency -> seeder factor -> distance), but rolls
-    // and seeds nothing. seederConstantByDisease memoizes the cell-independent seeder factor (season ×
-    // target eligibility × suppression × settings) so the eligibility lookup runs once per disease.
+    // and seeds nothing. seederConstantByDisease memoizes the cell-independent seeder factor
+    // (target eligibility × suppression × settings) so the eligibility lookup runs once per disease.
     private bool TryGetNodeGrazingChance(
         ContagionHotspotEntry hotspot,
         Pawn ingester,

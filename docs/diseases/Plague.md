@@ -148,8 +148,6 @@ Plague's live-host `Vector_Proximity` is flea/contact transfer from an infected 
 | cleanlinessImpact | 1.0 | Filthy areas increase transmission — fleas thrive in debris |
 | outdoorFactor | 0.75 | Outdoor spread is still significant (fleas outdoors) |
 | outdoorFilthRadius | 4 | Outdoor filth within 4 cells increases transmission |
-| maskTargetEffectiveness | 0.4 | Physical barrier (gas mask) reduces flea contact somewhat |
-| maskSourceEffectiveness | 0.3 | |
 | airwayImmunityFactor | **0** | Gene-based airway immunity (breathless) does nothing — fleas are not inhaled |
 
 ### Cross-species transmission
@@ -269,7 +267,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - **Vets** — diagnosed animals go into active disease at low severity (0.1) and can be treated early. A skilled vet with the 48 h window can save most animals.
 - **Job filter** — disabling `AllowInfectedCorpses` on the butcher bill (default) prevents infected corpses from entering the meat chain entirely.
 - **Sealed suits for corpse handling** — the strongest counterplay against the corpse-flea/fluid and butchery vectors. Their `apparelProtection` rides the *seal*, not coverage: ordinary clothing barely helps against fleas (floor 0.20), but a sealed suit (vacsuit/power armor, with assumed gauntlets) cuts exposure sharply and a full sealed loadout is immune (capstone). Combat armor degrades — keep it out of the ratty zone; the vacsuit's seal is durable. See `docs/Apparel_Protection_Design.md`.
-- **No airway immunity** — unlike flu, plague's proximity vector is flea contact, not airway, so a sealed helmet does **not** make a pawn immune to it and breathless does nothing. A mask/helmet still acts as a weak physical barrier (`maskTargetEffectiveness 0.4`), reducing but never eliminating flea-proximity transfer.
+- **No airway immunity** — unlike flu, plague's proximity vector is flea contact, not airway, so a sealed helmet does **not** make a pawn immune to it and breathless does nothing. Apparel can still act as a weak physical barrier through the proximity vector, reducing but never eliminating flea-proximity transfer.
 
 ---
 
