@@ -17,4 +17,14 @@
     <spontaneousSickChanceWildPerDay>0.005</spontaneousSickChanceWildPerDay>
   </Contagion.ContagionAnimalFalsePositiveDef>
 
+  <!-- Global transmission cadence. 60000 ticks = 1 day, so 500 = 120 passes/day. Higher = slower
+       pawn-to-pawn spread and less CPU (fewer passes/day); lower = faster, finer-grained spread.
+       Raised from the original 250 to 500 to take the edge off dense-group spread without relying on
+       suppression alone (validated with tools/ContagionSpreadSim). -->
+  <Contagion.ContagionTransmissionTuningDef>
+    <defName>Contagion_TransmissionTuning</defName>
+    <label>transmission cadence tuning</label>
+    <transmissionCheckIntervalTicks>500</transmissionCheckIntervalTicks>
+  </Contagion.ContagionTransmissionTuningDef>
+
 </Defs>

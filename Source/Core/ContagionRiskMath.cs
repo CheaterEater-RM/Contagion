@@ -32,17 +32,51 @@ public static class ContagionRiskMath
 
     public static float SpreadSuppressionFactor(ContagionSuppressionMode mode, float load)
     {
+        // Floors and engage windows were retuned against the offline spread simulator
+        // (tools/ContagionSpreadSim): with 240 transmission passes/day even a small per-pass leak
+        // compounds across a disease's multi-day infectious window, so the old Medium/Weak floors
+        // (0.05 / 0.15) let active cases climb to ~1.8–2× the scaled cap before the smoothstep bit.
+        // Medium now engages earlier (0.75) and floors near zero (0.02) so the default mode actually
+        // holds the active-case ceiling near the cap; Weak keeps a softer, deliberately leaky brake.
+        // Strong is unchanged — it was already a true cap (floor 0 at load ≥ 1.0).
         return mode switch
         {
             ContagionSuppressionMode.Strong => EvaluateSuppressionSmoothstep(load, 0.50f, 1.00f, 0f),
-            ContagionSuppressionMode.Weak => EvaluateSuppressionSmoothstep(load, 0.98f, 2.00f, 0.15f),
-            _ => EvaluateSuppressionSmoothstep(load, 0.90f, 1.10f, 0.05f)
+            ContagionSuppressionMode.Weak => EvaluateSuppressionSmoothstep(load, 0.90f, 1.40f, 0.08f),
+            _ => EvaluateSuppressionSmoothstep(load, 0.75f, 1.05f, 0.02f)
         };
     }
 
     public static float SeederBonusChance(float chance)
     {
         return (float)Math.Pow(Clamp01(chance), 1.0 / 3.0);
+    }
+
+    // Exponential distance falloff shared by every distance-gated vector (airborne plume, room-air,
+    // proximity, fecal-oral grazing). Kept pure (System.Math) so the offline tooling can call the
+    // exact production curve. The 0.01 rate floor mirrors the live path and guarantees a finite,
+    // monotonically-decaying factor even when a vector authors a zero falloff rate.
+    public static float DistanceFactor(float distance, float distanceFalloffRate)
+    {
+        return (float)Math.Exp(-Math.Max(0.01f, distanceFalloffRate) * Math.Max(0f, distance));
+    }
+
+    // The pre-seeder-bonus pawn-to-pawn transmission product (design §transmission equation): every
+    // term gates multiplicatively and a zero anywhere blocks transmission. Deliberately NOT clamped
+    // to 1 — the seeder cube-root and the final Rand.Chance clamp happen at the call site. Shared so
+    // ContagionSpreadBreakdown and the offline spread simulator compute the identical chance.
+    public static float PreSeederBonusChance(
+        float baseChance,
+        float infectivity,
+        float targetEligibilityFactor,
+        float vectorContextFactor,
+        float settingsMultiplier)
+    {
+        return Math.Max(0f, baseChance)
+            * Math.Max(0f, infectivity)
+            * Math.Max(0f, targetEligibilityFactor)
+            * Math.Max(0f, vectorContextFactor)
+            * Math.Max(0f, settingsMultiplier);
     }
 
     public static float ButcheryExposureFactor(float cookingLevel, float medicineLevel, float animalsLevel, bool animalCorpse)

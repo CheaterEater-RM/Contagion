@@ -107,7 +107,7 @@ Cooking contaminated meat can expose the cook through raw ingredient handling. O
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.0010 | Per 250-tick transmission pass |
+| baseChancePerCheck | 0.0010 | Per transmission pass (default 500 ticks; global cadence, see `ContagionTransmissionTuningDef`) |
 | potencyDecayPerDay | 0.09 | Longer-lived than gut worm barn contamination |
 | roomCleanlinessImpact | 0.5 | Dirty rooms amplify exposure |
 

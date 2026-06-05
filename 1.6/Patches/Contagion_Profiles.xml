@@ -347,11 +347,18 @@
                plague it represents fleas/contact moving through reachable space, not airborne
                spread or arbitrary distance-based infection. -->
           <li Class="Contagion.Vector_Proximity">
-            <baseChancePerCheck>0.025</baseChancePerCheck>
+            <!-- Live-host contact/fleas. Retuned down against tools/ContagionSpreadSim: at 240
+                 passes/day the old base 0.025 + falloff 0.35 saturated a tight caravan to 50% in
+                 ~0.2 days even with suppression. Lower base and a steeper falloff slow the early
+                 burst across every suppression mode without removing contact spread entirely. -->
+            <baseChancePerCheck>0.015</baseChancePerCheck>
             <maxRange>6</maxRange>
-            <distanceFalloffRate>0.35</distanceFalloffRate>
+            <distanceFalloffRate>0.45</distanceFalloffRate>
             <cleanlinessImpact>1.0</cleanlinessImpact>
-            <outdoorFactor>0.75</outdoorFactor>
+            <!-- Lowered from 0.75 to 0.45 (x0.6): outdoor contact/flea spread is more dispersed, so a
+                 mingling outdoor trade caravan no longer saturates before it leaves. Targets the
+                 outdoor caravan case specifically — indoor contact spread is unaffected (enclosure 1). -->
+            <outdoorFactor>0.50</outdoorFactor>
             <outdoorFilthRadius>4</outdoorFilthRadius>
             <maskTargetEffectiveness>0.4</maskTargetEffectiveness>
             <maskSourceEffectiveness>0.3</maskSourceEffectiveness>

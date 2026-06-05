@@ -71,7 +71,7 @@ This vector starts low at death, ramps over the first hours as fleas abandon the
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.006 | Ground corpse aura, per 250-tick pass |
+| baseChancePerCheck | 0.006 | Ground corpse aura, per transmission pass (default 500 ticks; scaled by the global cadence like every per-pass vector) |
 | carriedBaseChancePerCheck | 0.025 | Close-contact risk to the pawn carrying the corpse |
 | butcherBaseChance | 0.600 | Major close-contact flea roll while cutting the corpse |
 | maxRange | 12 | Fresh corpse flea migration path range |
@@ -142,13 +142,15 @@ Plague's live-host `Vector_Proximity` is flea/contact transfer from an infected 
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.025 | Per 250-tick pass |
+| baseChancePerCheck | 0.015 | Per transmission pass. Lowered from 0.025 — at the old 250-tick cadence (240 passes/day) it saturated a tight caravan to 50% in ~0.2 days even with suppression (see `tools/ContagionSpreadSim`) |
 | maxRange | 6 | Short reachable path range; requires close contact |
-| distanceFalloffRate | 0.35 | Steeper falloff than airborne; matters a lot inside 3 path cells |
+| distanceFalloffRate | 0.45 | Steepened from 0.35 to tighten the early burst; matters a lot inside 3 path cells |
 | cleanlinessImpact | 1.0 | Filthy areas increase transmission — fleas thrive in debris |
-| outdoorFactor | 0.75 | Outdoor spread is still significant (fleas outdoors) |
+| outdoorFactor | 0.5 | Lowered from 0.75: outdoor contact/flea spread is more dispersed, so a mingling outdoor caravan no longer saturates before it leaves. Set to 0.5 to match flu's airborne outdoorFactor — the two diseases now disperse outdoors consistently. Indoor contact is unaffected (enclosure 1.0) |
 | outdoorFilthRadius | 4 | Outdoor filth within 4 cells increases transmission |
 | airwayImmunityFactor | **0** | Gene-based airway immunity (breathless) does nothing — fleas are not inhaled |
+
+> **Transmission cadence.** The live transmission pass now runs every **500 ticks (120 passes/day)** by default, set by the global `ContagionTransmissionTuningDef` (`Contagion_TransmissionTuning`, in `1.6/Defs/Contagion_GlobalTuning.xml`) and read by `Contagion_MapTransmissionComponent`. It was raised from 250 to halve the wildfire pressure and CPU cost. **All `baseChancePerCheck` vectors are per-pass**, so this dial uniformly scales every per-pass contact vector (live proximity/airborne/social *and* corpse flea/fluid, fomite, fecal-oral living); the environmental and fecal-oral-eating passes use the separate 2500-tick gate and are unaffected.
 
 ### Cross-species transmission
 
@@ -212,6 +214,8 @@ None configured for live-host spread or Contagion-mode arrival pressure. Corpse 
 | outbreakNotification | FirstCase (default) | Human cases use first-case and cluster letters; hidden animal cases use the sick-signal and diagnosis-letter flow |
 
 Spread suppression is target-scope based. Colony humans and colony animals keep separate budgets; wild animals without a lord use the map-wide wild budget; and non-colony lord groups (trade caravans, visitors, allies, raids, sieges, beggars, quest groups) use one mixed human+animal budget keyed to that group. This prevents an infected plague caravan from infecting every member before it leaves while also preventing that caravan from consuming the colony's active-case capacity.
+
+**Suppression strength is a soft brake, not a hard cap, for the live transmission pass.** Ongoing pawn-to-pawn seeding only scales the per-pass chance by `SpreadSuppressionFactor`; the hard `IsAtActiveCaseCapacity` gate applies to *seeding/arrivals* only. The suppression-mode curves were retuned against `tools/ContagionSpreadSim` so that **Medium (the default) holds peak active near the scaled cap** (~1.3× on a 20-pawn caravan) rather than leaking to ~1.8–2×; **Strong** remains a true cap (floor 0 at load ≥ 1.0, peak ≈ cap); **Weak** is a deliberately leaky brake; **Let 'er rip** disables suppression entirely (the unbounded worst case). See `ContagionRiskMath.SpreadSuppressionFactor`.
 
 The first visible human case starts a red, source-attributed outbreak letter. Later visible human cases update a yellow cluster letter while the outbreak remains active. Animal plague remains hidden until detected and diagnosed, so colony animals notify through the sick-signal and successful-diagnosis letters instead of the outbreak-letter track.
 

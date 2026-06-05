@@ -7,7 +7,13 @@ namespace Contagion;
 
 public sealed class Contagion_MapTransmissionComponent : MapComponent
 {
-    private const int TransmissionCheckInterval = 250;
+    // Cadence between live pawn-to-pawn / corpse transmission passes. Sourced from the global
+    // ContagionTransmissionTuningDef (XML-tunable) and cached for the session — the value is constant
+    // for a run, so we avoid a DefDatabase lookup on every tick's interval gate.
+    private int _transmissionCheckInterval;
+
+    private int TransmissionCheckInterval =>
+        _transmissionCheckInterval != 0 ? _transmissionCheckInterval : (_transmissionCheckInterval = ContagionTransmissionTuningDef.CheckIntervalTicks);
 
     private const int EnvironmentalCheckInterval = 2500;
 

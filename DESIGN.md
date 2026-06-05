@@ -368,7 +368,8 @@ result = lerp(1, factor, spreadSuppressionScale)
 - `scaledCapacity(scope)` = `population × clamp(0.30 + population×0.01 + maxActiveCaseChanceOffset, 0, 0.50)` — i.e. ~30–50% of the scope's affectable population (requires `useScaledActiveCaseCap`).
 - `population` = the scope's affectable pawns: colony humans, colony animals, all affectable pawns in the target's lord group, or **all wild animals on the map** for the wild track.
 - `spreadSuppressionScale` (per disease) scales the effect; **0 = exempt**. Suppression is a *balance* guarantee, not a transmission model — even map-seeded diseases (Malaria, SleepingSickness) keep it on so a player can rely on "no more than ~half my colony." It requires `useScaledActiveCaseCap = true`. No shipped disease currently sets the scale to 0.
-- `suppressionMode` (player setting) selects the smoothstep band; **Let 'er rip** disables suppression entirely.
+- `suppressionMode` (player setting) selects the smoothstep band; **Let 'er rip** disables suppression entirely. Bands were tuned with `tools/ContagionSpreadSim`: **Strong** is a true cap (floor 0 at load ≥ 1.0, peak ≈ cap); **Medium** (default) engages at ~0.75 load and floors near 0.02, so it holds peak active near the cap; **Weak** is a deliberately softer/leaky brake.
+- **Soft brake on the live pass, hard cap on seeding.** For the ongoing pawn-to-pawn transmission pass, suppression only *rate-scales* the per-pass chance — there is no hard stop — so under Medium/Weak active cases can modestly exceed the scaled cap during an outbreak. The hard `IsAtActiveCaseCapacity` gate applies to *seeding* paths (storyteller/arrival/acausal) only.
 
 **Scope rules:**
 - **Target-gated:** applied to the target's own scope. Colony humans, colony animals, lord-owned non-colony groups, and wild animals each suppress against their own population. Non-colony humanlikes without a lord are not counted or throttled. Lord groups are resolved before wild animals, so caravan/raid/ally animals use their group's mixed budget rather than the map-wide wild-animal budget.
@@ -398,6 +399,8 @@ A standalone, fully patchable `Def` (shipped as `Contagion_RespiratoryImmunity`)
 
 Composable classes. The composition *is* the API: "airborne + social + fomite" is flu, "live flea/contact proximity" is plague, "social only" is a contact disease a modder could build.
 
+**Transmission cadence.** Every `baseChancePerCheck` is a *per-pass* chance, and the pass cadence is a global, XML-tunable constant — `ContagionTransmissionTuningDef` (`Contagion_TransmissionTuning` in `Contagion_GlobalTuning.xml`), read by `Contagion_MapTransmissionComponent`. Default **500 ticks (120 passes/day)**, raised from the original 250 to halve dense-group "wildfire" spread and CPU cost. Because the chances are per-pass, this dial uniformly scales every per-pass contact vector (live proximity/airborne/social and corpse flea/fluid, fomite, fecal-oral living); the environmental and fecal-oral-eating passes run on the separate 2500-tick gate and are unaffected.
+
 ### Vector_Airborne (respiratory)
 Primary respiratory vector. Direct plume uses distance falloff, roofing-based enclosure, and LOS obstruction. Optional room air is a separate same-room aerosol roll with room-size dilution and a short range cap.
 - `baseChancePerCheck` (0.03), `outdoorFactor` (0.15), `maxRange` (10), `distanceFalloffRate` (0.25), `obstructedFactor` (0.0), `roomAirBaseChanceFactor` (0.25), `roomAirMaxRange` (10), `roomAirMaxCells` (100)
@@ -408,7 +411,7 @@ A booster on respiratory spread that fires on successful social interactions (fa
 
 ### Vector_Proximity (short-range physical/contact)
 Short-range physical spread modulated by cleanliness. For plague this is live-host flea/contact transfer, not random near-person infection. It uses reachable path distance, so walls and closed doors block while open doors pass during the check. Uses indoor room cleanliness or an outdoor filth-count fallback. `airwayImmunityFactor` is typically set to 0 for plague (contact, not airway).
-- `baseChancePerCheck` (0.025), `maxRange` (6), `distanceFalloffRate` (0.35), `cleanlinessImpact` (1.0), `outdoorFactor` (0.75), `outdoorFilthRadius` (4)
+- `baseChancePerCheck` (0.015), `maxRange` (6), `distanceFalloffRate` (0.45), `cleanlinessImpact` (1.0), `outdoorFactor` (0.5), `outdoorFilthRadius` (4)
 
 ### Vector_Environmental
 Ambient exposure for malaria/sleeping sickness and environmental parasites — seeded by the map, no person-to-person spread. Temperature factor (zero below `minTemperature`, peaks at `peakTemperature`), water-proximity factor, indoor shelter falloff by depth from the nearest unroofed cell, an optional human hygiene reduction, and an AC/cool-room reduction. Biome-gated via vanilla `BiomeDef.CommonalityOfDisease`.

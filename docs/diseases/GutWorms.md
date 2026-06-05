@@ -115,7 +115,7 @@ Cooking contaminated meat can expose the cook through raw ingredient handling. O
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.0014 | Per 250-tick transmission pass |
+| baseChancePerCheck | 0.0014 | Per transmission pass (default 500 ticks; global cadence, see `ContagionTransmissionTuningDef`) |
 | potencyDecayPerDay | 0.14 | Barn contamination fades slowly unless refreshed |
 | roomCleanlinessImpact | 0.6 | Dirty rooms amplify exposure |
 

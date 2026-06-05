@@ -73,11 +73,12 @@ public sealed class ContagionSpreadBreakdown
 
     public bool SeederBonusApplied { get; set; }
 
-    public float PreSeederBonusChance => Mathf.Max(0f, BaseChance)
-        * Mathf.Max(0f, Infectivity)
-        * Mathf.Max(0f, TargetEligibilityFactor)
-        * Mathf.Max(0f, VectorContextFactor)
-        * Mathf.Max(0f, SettingsMultiplier);
+    public float PreSeederBonusChance => ContagionRiskMath.PreSeederBonusChance(
+        BaseChance,
+        Infectivity,
+        TargetEligibilityFactor,
+        VectorContextFactor,
+        SettingsMultiplier);
 
     public float FinalChance => SeederBonusApplied
         ? ContagionRiskMath.SeederBonusChance(PreSeederBonusChance)

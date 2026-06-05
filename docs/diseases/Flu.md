@@ -51,7 +51,7 @@ Flu is primarily airborne. It has two airborne components: a direct cough/sneeze
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.02 | Per 250-tick pass |
+| baseChancePerCheck | 0.02 | Per transmission pass (default 500 ticks; global cadence, see `ContagionTransmissionTuningDef`) |
 | maxRange | 10 | Direct plume range, in cells |
 | distanceFalloffRate | 0.25 | Exponential; moderate falloff |
 | outdoorFactor | 0.5 | Outdoor dispersal cuts risk, but not so sharply that outdoor caravans/visitors can't seed the colony |

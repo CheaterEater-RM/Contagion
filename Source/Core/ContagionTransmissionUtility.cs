@@ -1069,7 +1069,7 @@ public static class ContagionTransmissionUtility
 
     public static float GetDistanceFactor(float distance, float distanceFalloffRate)
     {
-        return Mathf.Exp(-Mathf.Max(0.01f, distanceFalloffRate) * distance);
+        return ContagionRiskMath.DistanceFactor(distance, distanceFalloffRate);
     }
 
     public static bool TryGetRoomAirFactor(
