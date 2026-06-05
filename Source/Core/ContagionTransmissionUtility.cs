@@ -1208,6 +1208,25 @@ public static class ContagionTransmissionUtility
         return room == null || room.PsychologicallyOutdoors;
     }
 
+    // Aerosol vectors (airborne, proximity, social) ride on air: a vacuum has none, so a respiratory
+    // pathogen cannot cross it. Returns a 0..1 multiplier that collapses to 0 when either endpoint is
+    // in hard vacuum and scales linearly through partial pressure, so a breaching/depressurizing
+    // gravship compartment loses aerosol transmission as it bleeds out. This is the one air-vector
+    // property a bare roof check misses: a roofed-but-depressurized room reads as fully enclosed
+    // otherwise. Fomite/foodborne/fecal-oral/contact vectors are unaffected — surfaces still carry
+    // pathogens in vacuum, so callers fold this only into the air-borne factor chain.
+    // DLC-safe: IntVec3.GetVacuum returns 0 without Odyssey, so this is a no-op (returns 1) there.
+    public static float GetAerosolVacuumFactor(Map map, IntVec3 sourceCell, IntVec3 targetCell)
+    {
+        if (map == null)
+        {
+            return 1f;
+        }
+
+        float vacuum = Mathf.Max(sourceCell.GetVacuum(map), targetCell.GetVacuum(map));
+        return Mathf.Clamp01(1f - vacuum);
+    }
+
     // Single indoor/outdoor authority for the fecal-oral split: a cell counts as "indoor barn" only
     // when it sits in a bounded, psychologically-indoor room. A bare roof is NOT enough — a roofed-but-
     // open shed is psychologically outdoors and has no contained living space to keep clean, so it falls

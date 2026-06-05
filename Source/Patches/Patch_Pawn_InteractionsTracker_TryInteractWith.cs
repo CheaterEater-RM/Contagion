@@ -146,7 +146,8 @@ internal static class Patch_Pawn_InteractionsTracker_TryInteractWith
             bool sourceRoofed = map.roofGrid.Roofed(sourcePawn.Position);
             bool targetRoofed = map.roofGrid.Roofed(targetPawn.Position);
             bool hasLineOfSight = GenSight.LineOfSight(sourcePawn.Position, targetPawn.Position, map);
-            float enclosureFactor = sourceRoofed && targetRoofed ? 1f : socialVector.outdoorFactor;
+            float enclosureFactor = (sourceRoofed && targetRoofed ? 1f : socialVector.outdoorFactor)
+                * ContagionTransmissionUtility.GetAerosolVacuumFactor(map, sourcePawn.Position, targetPawn.Position);
             float obstructionFactor = hasLineOfSight ? 1f : 0f;
             float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(sourcePawn, targetPawn, socialVector);
             float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile, targetPawn);

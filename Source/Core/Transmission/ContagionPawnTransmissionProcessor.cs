@@ -321,7 +321,8 @@ internal sealed class ContagionPawnTransmissionProcessor
         bool sourceRoofed = _map.roofGrid.Roofed(source.Pawn.Position);
         bool targetRoofed = _map.roofGrid.Roofed(targetPawn.Position);
         bool hasLineOfSight = GenSight.LineOfSight(source.Pawn.Position, targetPawn.Position, _map);
-        float enclosureFactor = sourceRoofed && targetRoofed ? 1f : vector.outdoorFactor;
+        float enclosureFactor = (sourceRoofed && targetRoofed ? 1f : vector.outdoorFactor)
+            * ContagionTransmissionUtility.GetAerosolVacuumFactor(_map, source.Pawn.Position, targetPawn.Position);
         float obstructionFactor = hasLineOfSight ? 1f : vector.obstructedFactor;
         float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
         float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, source.ResolvedProfile, targetPawn);
@@ -364,6 +365,7 @@ internal sealed class ContagionPawnTransmissionProcessor
         }
 
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.AirborneAttempted);
+        roomAirFactor *= ContagionTransmissionUtility.GetAerosolVacuumFactor(_map, source.Pawn.Position, targetPawn.Position);
         float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);
         float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(_map, source.ResolvedProfile, targetPawn);
         if (!ContagionDeveloperDiagnosticsUtility.TryBuildAirborneRoomBreakdown(
@@ -402,9 +404,10 @@ internal sealed class ContagionPawnTransmissionProcessor
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.ProximityAttempted);
         Room sourceRoom = source.Pawn.Position.GetRoom(_map);
         Room targetRoom = targetPawn.Position.GetRoom(_map);
-        float outdoorFactor = ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
+        float outdoorFactor = (ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
             ? vector.outdoorFactor
-            : 1f;
+            : 1f)
+            * ContagionTransmissionUtility.GetAerosolVacuumFactor(_map, source.Pawn.Position, targetPawn.Position);
         float cleanlinessFactor = ContagionTransmissionUtility.GetLocalCleanlinessFactor(
             targetPawn.Position, targetRoom, _map, vector.cleanlinessImpact, vector.outdoorFilthRadius);
         float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(source.Pawn, targetPawn, vector);

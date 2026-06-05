@@ -256,7 +256,8 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
                 float distance = ContagionTransmissionUtility.GetHorizontalDistance(sourcePawn.Position, targetPawn.Position);
                 bool sourceRoofed = map.roofGrid.Roofed(sourcePawn.Position);
                 bool targetRoofed = map.roofGrid.Roofed(targetPawn.Position);
-                float enclosureFactor = sourceRoofed && targetRoofed ? 1f : airborne.outdoorFactor;
+                float enclosureFactor = (sourceRoofed && targetRoofed ? 1f : airborne.outdoorFactor)
+                    * ContagionTransmissionUtility.GetAerosolVacuumFactor(map, sourcePawn.Position, targetPawn.Position);
                 float obstructionFactor = GenSight.LineOfSight(sourcePawn.Position, targetPawn.Position, map) ? 1f : airborne.obstructedFactor;
                 float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(sourcePawn, targetPawn, airborne);
                 float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile, targetPawn);
@@ -289,6 +290,7 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
                     out float effectiveRoomDistance,
                     out float roomAirFactor))
             {
+                roomAirFactor *= ContagionTransmissionUtility.GetAerosolVacuumFactor(map, sourcePawn.Position, targetPawn.Position);
                 float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(sourcePawn, targetPawn, roomAirborne);
                 float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile, targetPawn);
                 ContagionDeveloperDiagnosticsUtility.TryBuildAirborneRoomBreakdown(
@@ -314,9 +316,10 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
             {
                 Room sourceRoom = sourcePawn.Position.GetRoom(map);
                 Room targetRoom = targetPawn.Position.GetRoom(map);
-                float outdoorFactor = ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
+                float outdoorFactor = (ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
                     ? proximity.outdoorFactor
-                    : 1f;
+                    : 1f)
+                    * ContagionTransmissionUtility.GetAerosolVacuumFactor(map, sourcePawn.Position, targetPawn.Position);
                 float cleanlinessFactor = ContagionTransmissionUtility.GetLocalCleanlinessFactor(
                     targetPawn.Position, targetRoom, map, proximity.cleanlinessImpact, proximity.outdoorFilthRadius);
                 float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(sourcePawn, targetPawn, proximity);
@@ -345,7 +348,8 @@ internal static class Patch_MouseoverReadout_MouseoverReadoutOnGUI
             {
                 bool sourceRoofed = map.roofGrid.Roofed(sourcePawn.Position);
                 bool targetRoofed = map.roofGrid.Roofed(targetPawn.Position);
-                float enclosureFactor = sourceRoofed && targetRoofed ? 1f : social.outdoorFactor;
+                float enclosureFactor = (sourceRoofed && targetRoofed ? 1f : social.outdoorFactor)
+                    * ContagionTransmissionUtility.GetAerosolVacuumFactor(map, sourcePawn.Position, targetPawn.Position);
                 float obstructionFactor = GenSight.LineOfSight(sourcePawn.Position, targetPawn.Position, map) ? 1f : 0f;
                 float maskFactor = ContagionApparelProtectionUtility.GetRespiratoryMaskFactor(sourcePawn, targetPawn, social);
                 float suppressionFactor = ContagionTransmissionUtility.GetSpreadSuppressionFactor(map, resolvedProfile, targetPawn);

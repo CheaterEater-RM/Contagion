@@ -355,7 +355,8 @@ public static class ContagionDeveloperOverlayDrawer
                     float distance = ContagionTransmissionUtility.GetHorizontalDistance(sourcePawn.Position, cell);
                     bool targetRoofed = map.roofGrid.Roofed(cell);
                     float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(distance, airborne.distanceFalloffRate);
-                    float enclosureFactor = sourceRoofed && targetRoofed ? 1f : airborne.outdoorFactor;
+                    float enclosureFactor = (sourceRoofed && targetRoofed ? 1f : airborne.outdoorFactor)
+                        * ContagionTransmissionUtility.GetAerosolVacuumFactor(map, sourcePawn.Position, cell);
                     float obstructionFactor = GenSight.LineOfSight(sourcePawn.Position, cell, map) ? 1f : airborne.obstructedFactor;
                     ContagionDeveloperDiagnosticsUtility.TryBuildNominalAirborneBreakdown(
                         sourcePawn,
@@ -383,6 +384,7 @@ public static class ContagionDeveloperOverlayDrawer
                         out float effectiveRoomDistance,
                         out float roomAirFactor))
                 {
+                    roomAirFactor *= ContagionTransmissionUtility.GetAerosolVacuumFactor(map, sourcePawn.Position, cell);
                     ContagionDeveloperDiagnosticsUtility.TryBuildNominalAirborneRoomBreakdown(
                         sourcePawn,
                         resolvedProfile,
@@ -404,9 +406,10 @@ public static class ContagionDeveloperOverlayDrawer
                 {
                     Room targetRoom = cell.GetRoom(map);
                     float distanceFactor = ContagionTransmissionUtility.GetDistanceFactor(pathDistance, proximity.distanceFalloffRate);
-                    float outdoorFactor = ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
+                    float outdoorFactor = (ContagionTransmissionUtility.IsOutdoors(sourceRoom) || ContagionTransmissionUtility.IsOutdoors(targetRoom)
                         ? proximity.outdoorFactor
-                        : 1f;
+                        : 1f)
+                        * ContagionTransmissionUtility.GetAerosolVacuumFactor(map, sourcePawn.Position, cell);
                     float cleanlinessFactor = ContagionTransmissionUtility.GetLocalCleanlinessFactor(
                         cell, targetRoom, map, proximity.cleanlinessImpact, proximity.outdoorFilthRadius);
                     ContagionDeveloperDiagnosticsUtility.TryBuildNominalProximityBreakdown(
