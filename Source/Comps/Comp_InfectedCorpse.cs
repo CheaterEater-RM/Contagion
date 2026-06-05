@@ -83,7 +83,12 @@ public sealed class Comp_InfectedCorpse : ThingComp
     {
         base.PostSpawnSetup(respawningAfterLoad);
 
-        if (respawningAfterLoad || IsInfected || parent is not Corpse corpse)
+        // Once a corpse has been inspected, the comp state is authoritative — never re-derive from
+        // the inner pawn. Re-derivation runs on every spawn, and hauling despawns/respawns the
+        // corpse, so without this guard a cleared corpse would be re-flagged suspected-infected from
+        // a lingering inner-pawn sick signal or hidden disease (TryInspectCorpse also strips the
+        // sick signal, but this keeps the inspection result sticky against any residual state).
+        if (respawningAfterLoad || IsInfected || HasBeenInspected || parent is not Corpse corpse)
         {
             return;
         }

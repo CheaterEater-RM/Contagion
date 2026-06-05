@@ -306,5 +306,21 @@ public static class ContagionCorpseUtility
                 MessageTypeDefOf.NeutralEvent);
             ContagionDiagnostics.Trace($"Corpse inspection false negative: {inspector.LabelShortCap} found no sign of disease on {corpse.InnerPawn?.LabelShortCap} (actual disease: {hasDisease}).");
         }
+
+        // Inspection definitively resolves the pre-diagnosis "sick" signal. Remove it from the dead
+        // inner pawn so re-spawning the corpse (e.g. after hauling) can't re-derive a suspected-
+        // infected state from the lingering signal and silently undo this result.
+        // (Comp_InfectedCorpse.PostSpawnSetup also short-circuits once HasBeenInspected is set.)
+        RemoveInnerPawnSickSignal(corpse);
+    }
+
+    private static void RemoveInnerPawnSickSignal(Corpse corpse)
+    {
+        Pawn inner = corpse?.InnerPawn;
+        Hediff sick = inner?.health?.hediffSet?.GetFirstHediffOfDef(ContagionDefOf.Contagion_AnimalSick);
+        if (sick != null)
+        {
+            inner.health.RemoveHediff(sick);
+        }
     }
 }
