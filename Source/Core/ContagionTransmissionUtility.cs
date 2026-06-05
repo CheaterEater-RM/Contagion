@@ -277,6 +277,30 @@ public static class ContagionTransmissionUtility
         return GetCaseTrack(pawn) == ContagionCaseTrack.WildAnimal || IsColonyCasePawn(pawn);
     }
 
+    public static bool ShouldApplySeederBonus(Map map, Pawn source, Pawn target, ResolvedTransmissionProfile resolvedProfile)
+    {
+        if (map == null
+            || source == null
+            || target == null
+            || source.Dead
+            || target.Dead
+            || !source.Spawned
+            || !target.Spawned
+            || source.Map != map
+            || target.Map != map
+            || resolvedProfile?.DiseaseDef == null)
+        {
+            return false;
+        }
+
+        if (IsColonyCasePawn(source) || !IsColonyCasePawn(target))
+        {
+            return false;
+        }
+
+        return CountActiveCases(map, resolvedProfile) <= 0;
+    }
+
     public static ContagionCaseTrack GetCaseTrack(Pawn pawn)
     {
         if (pawn?.RaceProps?.Animal == true)
@@ -716,7 +740,7 @@ public static class ContagionTransmissionUtility
         return track == ContagionCaseTrack.WildAnimal || IsColonyCasePawn(pawn);
     }
 
-    private static bool IsColonyCasePawn(Pawn pawn)
+    public static bool IsColonyCasePawn(Pawn pawn)
     {
         if (pawn == null || pawn.Dead)
         {

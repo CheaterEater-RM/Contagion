@@ -61,6 +61,10 @@ internal static class Program
             Check.Close("biome disease commonality baseline", ContagionRiskMath.BiomeDiseaseCommonalityFactor(100f), 1f, 0.0001f),
             Check.Close("biome disease commonality above baseline", ContagionRiskMath.BiomeDiseaseCommonalityFactor(160f), 1.6f, 0.0001f),
             Check.Close("biome disease commonality clamps negatives", ContagionRiskMath.BiomeDiseaseCommonalityFactor(-10f), 0f, 0.0001f),
+            Check.Close("seeder bonus leaves zero at zero", ContagionRiskMath.SeederBonusChance(0f), 0f, 0.0001f),
+            Check.Close("seeder bonus leaves one at one", ContagionRiskMath.SeederBonusChance(1f), 1f, 0.0001f),
+            Check.Close("seeder bonus cuberoots tiny chance", ContagionRiskMath.SeederBonusChance(0.001f), 0.1f, 0.0001f),
+            Check.Close("seeder bonus cuberoots low chance", ContagionRiskMath.SeederBonusChance(0.027f), 0.3f, 0.0001f),
             Check.Close("skill10 butchery factor", butcherFactor, 0.5875f, 0.0001f),
             Check.Close("skill10 cooked meal survival factor", ordinaryMealFactor, 0.091325f, 0.0005f),
             Check.Close("plague fresh butchery combined", ContagionRiskMath.Combined(plagueFreshFlea, plagueFreshFluid), 0.091929f, 0.002f),
@@ -215,6 +219,7 @@ internal static class Program
         string corpseExposureUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionCorpseExposureUtility.cs"));
         string environmentalProcessor = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionEnvironmentalExposureProcessor.cs"));
         string fecalOralTracker = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionFecalOralTracker.cs"));
+        string developerDiagnosticsUtility = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionDeveloperDiagnosticsUtility.cs"));
         string hotspotStore = File.ReadAllText(Path.Combine(Root, "Source", "Core", "Transmission", "ContagionHotspotStore.cs"));
         string developerOverlay = File.ReadAllText(Path.Combine(Root, "Source", "Core", "ContagionDeveloperOverlayDrawer.cs"));
         string selectionOverlayPatch = File.ReadAllText(Path.Combine(Root, "Source", "Patches", "Patch_Pawn_DrawExtraSelectionOverlays.cs"));
@@ -239,6 +244,13 @@ internal static class Program
         checks.Add(Check.Bool("cook->food applies source protection", contaminatedFood.Contains("GetCookSourceProtectionFactor"), true));
         checks.Add(Check.Bool("seal integrity reads worn HitPoints", apparelUtility.Contains("HitPoints"), true));
         checks.Add(Check.Bool("apparel utility uses SealIntegrity", apparelUtility.Contains("SealIntegrity"), true));
+        checks.Add(Check.Bool("pawn-to-pawn breakdown applies seeder bonus",
+            developerDiagnosticsUtility.Contains("SeederBonusApplied = targetFactor > 0f")
+            && developerDiagnosticsUtility.Contains("ShouldApplySeederBonus"), true));
+        int nominalBreakdownIndex = developerDiagnosticsUtility.IndexOf("private static bool TryBuildNominalBreakdown", StringComparison.Ordinal);
+        checks.Add(Check.Bool("nominal overlay breakdowns skip seeder bonus",
+            nominalBreakdownIndex >= 0
+            && !developerDiagnosticsUtility.Substring(nominalBreakdownIndex).Contains("ShouldApplySeederBonus"), true));
 
         int failures = 0;
         foreach (Check check in checks)

@@ -297,6 +297,10 @@ public static class ContagionDiagnostics
             return;
         }
 
+        string seederBonusDetail = breakdown.SeederBonusApplied
+            ? $" preSeeder={Mathf.Clamp01(breakdown.PreSeederBonusChance):P2} seederBonus=cuberoot"
+            : string.Empty;
+
         EmitLogMessage(
             $"[Contagion] ROLL {breakdown.VectorKind} {(breakdown.DiseaseDef != null ? breakdown.DiseaseDef.defName : "?")} "
             + $"{DescribeThing(source)}→{DescribeThing(target)}: chance={chance:P2} → {(passed ? "PASS" : "fail")} "
@@ -305,7 +309,7 @@ public static class ContagionDiagnostics
             + $"obstruction={breakdown.ObstructionFactor:0.##} outdoor={breakdown.OutdoorFactor:0.##} "
             + $"cleanliness={breakdown.CleanlinessFactor:0.##} mask={breakdown.MaskFactor:0.##} "
             + $"suppression={breakdown.SuppressionFactor:0.##} eligibility={breakdown.TargetEligibilityFactor:0.##} "
-            + $"settings={breakdown.SettingsMultiplier:0.##}]");
+            + $"settings={breakdown.SettingsMultiplier:0.##}{seederBonusDetail}]");
     }
 
     private static string DescribeThing(Thing thing)

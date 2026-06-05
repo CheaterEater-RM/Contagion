@@ -333,6 +333,24 @@ eater's Foodborne roll. See `docs/Apparel_Protection_Design.md` §5.
 
 Each term is independently tunable via XML. The engine multiplies them; a 0 in any term blocks transmission.
 
+### Seeder Bonus For First Colony Jump
+
+External carriers have fewer contact rolls than pawns already living inside the colony, so rare visitor-to-colony jumps can fail even when the same disease would spread plausibly once established. To keep arrival pressure from requiring inflated within-colony transmissibility, pawn-to-pawn contact vectors apply a one-time first-jump bonus:
+
+```
+if external live source -> colony target
+and no colony pawn or player-faction animal has this disease/incubation:
+    finalChance = cuberoot(finalChance)
+```
+
+This is applied after the normal transmission equation, so immunity, species barriers, susceptibility, PPE, distance, room context, suppression, and settings all still gate the roll first. Zero remains zero and one remains one; low nonzero chances get the largest lift.
+
+Scope is deliberately narrow:
+
+- **Covered:** airborne direct plume, same-room airborne, proximity, and social transmission from a non-colony pawn into a colony pawn/animal.
+- **Clean-colony check:** one shared colony pool. Any living colonist, slave, prisoner, or player-faction animal with the resolved disease or incubation disables the bonus for all colony targets.
+- **Excluded:** environmental, foodborne, corpse, vomit/fomite, fecal-oral, cooking, acausal, direct seeder, and nominal dev-overlay chance math.
+
 ---
 
 ## Spread Suppression

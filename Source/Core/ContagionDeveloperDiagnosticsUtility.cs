@@ -293,7 +293,9 @@ public static class ContagionDeveloperDiagnosticsUtility
             SettingsMultiplier = settingsMultiplier,
             VectorContextFactor = vectorContextFactor,
             ImmunityCause = immunityCause,
-            TargetEligibilityBlockReason = blockReason
+            TargetEligibilityBlockReason = blockReason,
+            SeederBonusApplied = targetFactor > 0f
+                && ContagionTransmissionUtility.ShouldApplySeederBonus(map, sourcePawn, targetPawn, resolvedProfile)
         };
 
         return breakdown.FinalChance > 0f;

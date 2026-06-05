@@ -71,11 +71,17 @@ public sealed class ContagionSpreadBreakdown
 
     public string TargetEligibilityBlockReason { get; set; }
 
-    public float FinalChance => Mathf.Max(0f, BaseChance)
+    public bool SeederBonusApplied { get; set; }
+
+    public float PreSeederBonusChance => Mathf.Max(0f, BaseChance)
         * Mathf.Max(0f, Infectivity)
         * Mathf.Max(0f, TargetEligibilityFactor)
         * Mathf.Max(0f, VectorContextFactor)
         * Mathf.Max(0f, SettingsMultiplier);
+
+    public float FinalChance => SeederBonusApplied
+        ? ContagionRiskMath.SeederBonusChance(PreSeederBonusChance)
+        : PreSeederBonusChance;
 }
 
 // A node in the session-only infection trace graph. Anchors to a live Thing (pawn / corpse /

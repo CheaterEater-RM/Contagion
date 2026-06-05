@@ -301,6 +301,17 @@ Design implication:
 | Vomit contamination | narrow hook around `JobDriver_Vomit` or `FilthMaker.TryMakeFilth(..., out Filth)` | Vanilla already creates visible `Filth_Vomit` here | `JobDriver_Vomit` is generic, so filter by contagious disease on the pawn |
 | Lovin transmission | no clean dedicated callback; likely custom handling around `JobDriver_Lovin` completion | The owning code path is known | This is the least clean planned hook and should be deferred unless a concrete disease needs it |
 
+### First-Jump Seeder Bonus
+
+The visitor-to-colony contact gap is handled in the pawn-to-pawn breakdown layer, not in XML profile tuning. `ContagionDeveloperDiagnosticsUtility.TryBuildBreakdown(...)` computes the ordinary final chance first, then marks `SeederBonusApplied` when `ContagionTransmissionUtility.ShouldApplySeederBonus(...)` says the roll is an external live source targeting a clean colony. `ContagionSpreadBreakdown.FinalChance` then returns `cuberoot(PreSeederBonusChance)`.
+
+Important constraints:
+
+- Applies only to real source-target pawn contact rolls: airborne direct, airborne room, proximity, and social.
+- The clean-colony check is shared across human and animal colony pawns; any colonist, slave, prisoner, or player-faction animal with the resolved disease or incubation disables the bonus.
+- Do not route seeder-path vectors through this mechanic. Environmental, foodborne, corpse, fomite, fecal-oral, cooking, acausal, and direct seeding continue to use their existing chance paths.
+- Nominal developer overlay breakdowns intentionally skip this bonus because they are source-only visualizations, not rolls against a concrete colony target.
+
 ## Design Constraints Confirmed By Source
 
 ### Part-Target Metadata Is Mandatory

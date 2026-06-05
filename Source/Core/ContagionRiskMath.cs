@@ -10,6 +10,11 @@ public static class ContagionRiskMath
         return Math.Max(0f, commonality) / 100f;
     }
 
+    public static float SeederBonusChance(float chance)
+    {
+        return (float)Math.Pow(Clamp01(chance), 1.0 / 3.0);
+    }
+
     public static float ButcheryExposureFactor(float cookingLevel, float medicineLevel, float animalsLevel, bool animalCorpse)
     {
         float skill = cookingLevel + medicineLevel * 0.25f;
