@@ -81,6 +81,8 @@ public static class ContagionDeveloperOverlayDrawer
 
     private static readonly Dictionary<int, float> EatingRiskByCell = new Dictionary<int, float>();
 
+    private static readonly List<ContagionEatingNodeOverlayEntry> EatingNodeOverlayEntries = new List<ContagionEatingNodeOverlayEntry>();
+
     public static void DrawHoverLine(Pawn sourcePawn, Pawn targetPawn)
     {
         if (sourcePawn == null || targetPawn == null)
@@ -607,69 +609,115 @@ public static class ContagionDeveloperOverlayDrawer
         }
 
         component.BuildEatingRiskOverlay(ingester, EatingRiskByCell);
-        if (EatingRiskByCell.Count == 0)
+        component.BuildEatingNodeOverlay(ingester, EatingNodeOverlayEntries);
+        if (EatingRiskByCell.Count == 0 && EatingNodeOverlayEntries.Count == 0)
         {
             return;
         }
 
-        foreach (List<IntVec3> bucket in FillOverlayBuckets.Values)
+        if (EatingRiskByCell.Count > 0)
         {
-            bucket.Clear();
+            foreach (List<IntVec3> bucket in FillOverlayBuckets.Values)
+            {
+                bucket.Clear();
+            }
+
+            FillOverlayBucketColors.Clear();
+            float strongestChance = 0f;
+            foreach (KeyValuePair<int, float> chanceEntry in EatingRiskByCell)
+            {
+                IntVec3 cell = CellIndicesUtility.IndexToCell(chanceEntry.Key, map.Size.x);
+                strongestChance = ContagionRiskMath.VisibleChanceMaximum(
+                    strongestChance,
+                    chanceEntry.Value,
+                    ShouldDrawCell(map, cell),
+                    MinVisibleNominalChance);
+            }
+
+            if (strongestChance > 0f)
+            {
+                foreach (KeyValuePair<int, float> chanceEntry in EatingRiskByCell)
+                {
+                    if (chanceEntry.Value < MinVisibleNominalChance)
+                    {
+                        continue;
+                    }
+
+                    float normalizedChance = GetDisplayStrength(chanceEntry.Value, strongestChance);
+                    if (normalizedChance <= 0f)
+                    {
+                        continue;
+                    }
+
+                    IntVec3 cell = CellIndicesUtility.IndexToCell(chanceEntry.Key, map.Size.x);
+                    if (!ShouldDrawCell(map, cell))
+                    {
+                        continue;
+                    }
+
+                    Color color = ValueBands[GetValueBand(normalizedChance)];
+                    int colorKey = PackColor(color);
+                    if (!FillOverlayBuckets.TryGetValue(colorKey, out List<IntVec3> bucket))
+                    {
+                        bucket = new List<IntVec3>();
+                        FillOverlayBuckets[colorKey] = bucket;
+                    }
+
+                    FillOverlayBucketColors[colorKey] = color;
+                    bucket.Add(cell);
+                }
+
+                foreach (KeyValuePair<int, List<IntVec3>> bucket in FillOverlayBuckets)
+                {
+                    if (bucket.Value.Count > 0)
+                    {
+                        DrawFilledCells(bucket.Value, FillOverlayBucketColors[bucket.Key]);
+                    }
+                }
+            }
         }
 
-        FillOverlayBucketColors.Clear();
-        float strongestChance = 0f;
-        foreach (KeyValuePair<int, float> chanceEntry in EatingRiskByCell)
-        {
-            IntVec3 cell = CellIndicesUtility.IndexToCell(chanceEntry.Key, map.Size.x);
-            strongestChance = ContagionRiskMath.VisibleChanceMaximum(
-                strongestChance,
-                chanceEntry.Value,
-                ShouldDrawCell(map, cell),
-                MinVisibleNominalChance);
-        }
+        DrawEatingNodeOverlay(ingester, EatingNodeOverlayEntries);
+    }
 
-        if (strongestChance <= 0f)
+    private static void DrawEatingNodeOverlay(Pawn selectedAnimal, IReadOnlyList<ContagionEatingNodeOverlayEntry> nodes)
+    {
+        if (selectedAnimal?.Map == null || nodes == null || nodes.Count == 0)
         {
             return;
         }
 
-        foreach (KeyValuePair<int, float> chanceEntry in EatingRiskByCell)
+        Map map = selectedAnimal.Map;
+        Vector3 selectedPosition = LiftToOverlay(selectedAnimal.DrawPos);
+        Color radiusColor = TraceFecalOralEatingColor;
+        radiusColor.a = 0.28f;
+        Color connectorColor = TraceFecalOralEatingColor;
+        connectorColor.a = 0.62f;
+        Material connectorMaterial = GetMaterial(connectorColor);
+
+        for (int i = 0; i < nodes.Count; i++)
         {
-            if (chanceEntry.Value < MinVisibleNominalChance)
+            ContagionEatingNodeOverlayEntry node = nodes[i];
+            if (!ShouldDrawCell(map, node.Cell))
             {
                 continue;
             }
 
-            float normalizedChance = GetDisplayStrength(chanceEntry.Value, strongestChance);
-            if (normalizedChance <= 0f)
+            Vector3 nodePosition = node.Cell.ToVector3ShiftedWithAltitude(AltitudeLayer.MetaOverlays);
+            nodePosition.y += 0.16f;
+            float potencyScale = Mathf.Clamp01(node.Potency / 2.5f);
+            DrawRing(nodePosition, 0.24f + potencyScale * 0.12f, TraceFecalOralEatingColor, 0.055f);
+            DrawMarker(nodePosition, TraceFecalOralEatingColor, 0.11f + potencyScale * 0.06f, 0.03f);
+
+            if (node.Radius > 0)
             {
-                continue;
+                DrawRing(nodePosition, node.Radius, radiusColor, 0.035f);
             }
 
-            IntVec3 cell = CellIndicesUtility.IndexToCell(chanceEntry.Key, map.Size.x);
-            if (!ShouldDrawCell(map, cell))
+            if (node.SelectedPawnInRange)
             {
-                continue;
-            }
-
-            Color color = ValueBands[GetValueBand(normalizedChance)];
-            int colorKey = PackColor(color);
-            if (!FillOverlayBuckets.TryGetValue(colorKey, out List<IntVec3> bucket))
-            {
-                bucket = new List<IntVec3>();
-                FillOverlayBuckets[colorKey] = bucket;
-            }
-
-            FillOverlayBucketColors[colorKey] = color;
-            bucket.Add(cell);
-        }
-
-        foreach (KeyValuePair<int, List<IntVec3>> bucket in FillOverlayBuckets)
-        {
-            if (bucket.Value.Count > 0)
-            {
-                DrawFilledCells(bucket.Value, FillOverlayBucketColors[bucket.Key]);
+                GenDraw.DrawLineBetween(nodePosition, selectedPosition, connectorMaterial, 0.04f);
+                DrawDirectionArrows(nodePosition, selectedPosition, connectorColor);
             }
         }
     }

@@ -234,6 +234,11 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
         _fecalOralTracker.BuildEatingRiskOverlay(ingester, map, chanceByCell);
     }
 
+    internal void BuildEatingNodeOverlay(Pawn selectedPawn, List<ContagionEatingNodeOverlayEntry> nodes)
+    {
+        _fecalOralTracker.BuildEatingNodeOverlay(selectedPawn, map, nodes);
+    }
+
     internal List<ContagionEatingRiskEntry> GetEatingRiskBreakdown(Pawn ingester, IntVec3 cell)
     {
         return _fecalOralTracker.GetEatingRiskBreakdown(ingester, cell, map);

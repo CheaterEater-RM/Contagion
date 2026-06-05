@@ -100,6 +100,30 @@ internal readonly struct ContagionEatingRiskEntry
     public float Distance { get; }
 }
 
+// Dev-overlay read model: one live fecal-oral eating node, after time/weather potency decay,
+// with enough vector data for the world overlay to draw the node and its exposure radius.
+internal readonly struct ContagionEatingNodeOverlayEntry
+{
+    public ContagionEatingNodeOverlayEntry(HediffDef diseaseDef, IntVec3 cell, float potency, int radius, bool selectedPawnInRange)
+    {
+        DiseaseDef = diseaseDef;
+        Cell = cell;
+        Potency = potency;
+        Radius = radius;
+        SelectedPawnInRange = selectedPawnInRange;
+    }
+
+    public HediffDef DiseaseDef { get; }
+
+    public IntVec3 Cell { get; }
+
+    public float Potency { get; }
+
+    public int Radius { get; }
+
+    public bool SelectedPawnInRange { get; }
+}
+
 internal sealed class ContagionFecalOralTracker : IExposable
 {
     private const int TicksPerDay = 60000;
@@ -566,6 +590,50 @@ internal sealed class ContagionFecalOralTracker : IExposable
                 chanceByCell.TryGetValue(index, out float existing);
                 chanceByCell[index] = CombineProbabilities(existing, nodeChance);
             }
+        }
+    }
+
+    // Dev-overlay node glyphs: independent of the selected pawn's eligibility, so an already-infected
+    // animal still lets testers see the live pasture nodes it is standing in or near.
+    internal void BuildEatingNodeOverlay(Pawn selectedPawn, Map map, List<ContagionEatingNodeOverlayEntry> nodes)
+    {
+        nodes?.Clear();
+        if (nodes == null || map == null || _hotspots.Count == 0)
+        {
+            return;
+        }
+
+        bool hasSelectedAnimal = selectedPawn != null
+            && selectedPawn.Spawned
+            && selectedPawn.Map == map
+            && selectedPawn.RaceProps?.Animal == true;
+
+        for (int hotspotIndex = 0; hotspotIndex < _hotspots.Count; hotspotIndex++)
+        {
+            ContagionHotspotEntry hotspot = _hotspots.Get(hotspotIndex);
+            if (hotspot?.DiseaseDef == null
+                || !hotspot.Cell.InBounds(map)
+                || !DiseaseProfileCache.TryGetResolvedProfile(hotspot.DiseaseDef, out ResolvedTransmissionProfile resolvedProfile)
+                || !ContagionDiseaseUtility.TryGetVector(resolvedProfile.Profile, out Vector_FecalOralEating vector))
+            {
+                continue;
+            }
+
+            float nodePotency = GetHotspotPotency(hotspot, vector, map);
+            if (nodePotency <= MinHotspotPotency)
+            {
+                continue;
+            }
+
+            bool selectedPawnInRange = hasSelectedAnimal
+                && selectedPawn.Position.InHorDistOf(hotspot.Cell, vector.hotspotRadius);
+
+            nodes.Add(new ContagionEatingNodeOverlayEntry(
+                hotspot.DiseaseDef,
+                hotspot.Cell,
+                nodePotency,
+                vector.hotspotRadius,
+                selectedPawnInRange));
         }
     }
 
