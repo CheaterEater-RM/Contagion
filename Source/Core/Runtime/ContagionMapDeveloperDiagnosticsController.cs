@@ -516,10 +516,11 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
     // carrier being destroyed and its forward node appearing (e.g. meat consumed → meal spawns).
     private const int PruneGraceTicks = 2500;
 
-    // Each tick: refresh ghost positions, collapse consumed food nodes, then drop any connected
-    // component that no longer contains an active carrier. Corpses and pawns leave a ghost ring;
-    // consumed food (Item) nodes splice out so the chain collapses toward the eater rather than
-    // littering ghosts on chairs and stockpiles.
+    // Each tick: refresh ghost positions, collapse transient medium nodes (consumed food and cleaned
+    // filth), then drop any connected component that no longer contains an active carrier. Corpses and
+    // pawns leave a ghost ring; consumed food (Item) and cleaned filth (Filth) nodes splice out so the
+    // chain collapses toward the eater/host rather than littering ghosts on chairs, stockpiles, or barn
+    // floors.
     private void PruneGraph()
     {
         if (_nodes.Count == 0)
@@ -538,7 +539,7 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
             }
         }
 
-        SpliceConsumedItemNodes();
+        SpliceConsumedTransientNodes();
 
         Dictionary<int, ContagionTraceNode> byId = new Dictionary<int, ContagionTraceNode>(_nodes.Count);
         for (int i = 0; i < _nodes.Count; i++)
@@ -601,10 +602,11 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
         _edges.RemoveAll(edge => !liveIds.Contains(edge.FromId) || !liveIds.Contains(edge.ToId));
     }
 
-    // Removes consumed/destroyed food (Item) nodes, reconnecting each predecessor straight to each
-    // successor so the chain stays continuous (corpse → bench → … → eater) without leaving a ghost
-    // ring where the meal was eaten. Corpses, pawns, and benches keep their ghost instead.
-    private void SpliceConsumedItemNodes()
+    // Removes consumed/destroyed transient-medium nodes — eaten food (Item) and cleaned filth (Filth) —
+    // reconnecting each predecessor straight to each successor so the chain stays continuous
+    // (corpse → bench → … → eater, or animal → … → host) without leaving a ghost ring where the meal was
+    // eaten or the filth was cleaned. Corpses, pawns, and benches keep their ghost instead.
+    private void SpliceConsumedTransientNodes()
     {
         bool changed = true;
         while (changed)
@@ -613,7 +615,8 @@ internal sealed class ContagionMapDeveloperDiagnosticsController
             for (int i = 0; i < _nodes.Count; i++)
             {
                 ContagionTraceNode node = _nodes[i];
-                if (!node.Orphaned || node.Kind != ContagionTraceNodeKind.Item)
+                if (!node.Orphaned
+                    || (node.Kind != ContagionTraceNodeKind.Item && node.Kind != ContagionTraceNodeKind.Filth))
                 {
                     continue;
                 }
