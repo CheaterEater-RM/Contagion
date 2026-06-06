@@ -1,14 +1,409 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Patch>
   <!-- Compatibility seals for known third-party apparel that Contagion can't infer well from stats
-       (design §3.5 rule 2). Each operation MUST guard with PatchOperationFindMod (the source mod) AND
-       only apply when the item author hasn't already shipped their own protection, so rule 1 always wins:
+       (design §3.5 rule 2). Each block is guarded by PatchOperationFindMod (source mod present), and each
+       add is guarded so the item author's own Contagion extension always wins (resolution hierarchy rule 1).
 
-         <xpath>Defs/ThingDef[defName="SomeModdedSuit"
-                  and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]</xpath>
+       Pattern per item (robust whether or not the def already has <modExtensions>, e.g. VEF ApparelExtension):
+         1. ensure an empty <modExtensions> exists  (fires only when none present)
+         2. append the Contagion li                  (fires only when no Contagion li present yet)
+       Both ops carry <success>Always</success> so a non-matching guard (or a renamed/absent def in a
+       different mod version) never aborts the rest of the sequence.
 
-       Most modded spacer armor already "just works" via the tech-level fallback (Spacer + VacuumResistance/
-       ToxEnv taken at face value), so entries here are only for gear the heuristic misjudges.
+       Channel model recap (see docs/Apparel_Protection_Design.md):
+         airwaySeal  - graded airway FILTER value (a non-sealed mask). NOTE: a mask's airway protection is
+                       normally read at runtime from its ToxicEnvironmentResistance offset; authoring an
+                       airwaySeal ON TOP of an existing ToxEnv offset DOUBLE-COUNTS. So we only author
+                       airwaySeal for masks that have NO ToxEnvironmentResistance of their own.
+         airwaySealed - hermetic respiratory immunity (enclosed helmets / CBRN masks).
+         skinSeal / handsSeal / feetSeal - graded contact seal per channel.
+         coversExtremities - credit hands/feet at skinSeal (sealed/powered full-body suits).
+         durableSeal - seal holds to 0 HP (dedicated PPE).
+         providesSealedAtmosphere - single item flips the whole pawn to fully sealed / immune (top tier).
 
-       No third-party entries yet — intentionally empty, kept to document the convention. -->
+       Cook PPE: skin (apron/scrubs), hands (gloves) and airway (mask) seals all reduce a cook contracting
+       disease off contaminated ingredients via Vector_CookingExposure (Patch_GenRecipe_MakeRecipeProducts). -->
+
+  <!-- ============================ Dubs Rimatomics ============================ -->
+  <!-- MOPP = sealed CBRN (suit + mask => fully sealed capstone => immune). Radiation suit = partial skin.
+       Radiation/MOPP gear inherits ToxicEnvironmentResistance 0.40, so the radiation MASK already filters
+       the airway on its own; we don't author it (would double-count). MOPP mask uses airwaySealed (the 0.40
+       filter is harmless underneath the hermetic seal). -->
+  <Operation Class="PatchOperationFindMod">
+    <mods><li>Dubwise.Rimatomics</li></mods>
+    <match>
+      <Operation Class="PatchOperationSequence">
+        <operations>
+          <!-- MOPP suits (body) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[(defName="Apparel_MoppSuitDesert" or defName="Apparel_MoppSuitWoodland" or defName="Apparel_MoppSuitSnow") and not(modExtensions)]</xpath>
+            <value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[(defName="Apparel_MoppSuitDesert" or defName="Apparel_MoppSuitWoodland" or defName="Apparel_MoppSuitSnow") and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value>
+              <li Class="Contagion.ApparelContagionProtection">
+                <skinSeal>0.95</skinSeal>
+                <coversExtremities>true</coversExtremities>
+                <durableSeal>true</durableSeal>
+              </li>
+            </value>
+          </li>
+          <!-- MOPP masks (CBRN, hermetic) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[(defName="Apparel_MoppMaskDesert" or defName="Apparel_MoppMaskWoodland" or defName="Apparel_MoppMaskSnow") and not(modExtensions)]</xpath>
+            <value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[(defName="Apparel_MoppMaskDesert" or defName="Apparel_MoppMaskWoodland" or defName="Apparel_MoppMaskSnow") and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value>
+              <li Class="Contagion.ApparelContagionProtection">
+                <airwaySealed>true</airwaySealed>
+                <durableSeal>true</durableSeal>
+              </li>
+            </value>
+          </li>
+          <!-- Radiation suit (partial skin; lighter than MOPP) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_RadiationSuit" and not(modExtensions)]</xpath>
+            <value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_RadiationSuit" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value>
+              <li Class="Contagion.ApparelContagionProtection">
+                <skinSeal>0.6</skinSeal>
+              </li>
+            </value>
+          </li>
+        </operations>
+      </Operation>
+    </match>
+  </Operation>
+
+  <!-- ============================ Combat Extended ============================ -->
+  <!-- CE_Apparel_GasMask (ToxEnv 0.8) and CE_Apparel_ImprovGasMask (ToxEnv 0.5) already filter the airway
+       through their ToxicEnvironmentResistance offsets - the exact mechanism Contagion's mask model reads.
+       Authoring an airwaySeal would double-count. CE body armor is combat gear (no respiratory/seal role).
+       => No CE patches needed; intentionally omitted. -->
+
+  <!-- ============================ Equip Gas Masks ============================ -->
+  <!-- Equip's gas mask carries ToxicResistance (NOT ToxicEnvironmentResistance), so the runtime filter sees
+       nothing; author a graded airway filter (no double-count). Filter, not hermetic. -->
+  <Operation Class="PatchOperationFindMod">
+    <mods><li>syila.eqgasmask</li></mods>
+    <match>
+      <Operation Class="PatchOperationSequence">
+        <operations>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_GasMask" and not(modExtensions)]</xpath>
+            <value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_GasMask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value>
+              <li Class="Contagion.ApparelContagionProtection">
+                <airwaySeal>0.8</airwaySeal>
+              </li>
+            </value>
+          </li>
+        </operations>
+      </Operation>
+    </match>
+  </Operation>
+
+  <!-- ============================ KK Gasmask ============================ -->
+  <!-- KK's masks (Apparel_GasMask, Apparel_FilterCloth, Apparel_GlitterFilter) all carry
+       ToxicEnvironmentResistance offsets, so they already filter the airway at runtime (the same way vanilla
+       gas masks do). Authoring would double-count. => No patches needed; intentionally omitted.
+       (Their ToxEnv offsets are MayRequire Biotech, matching KK's own design.) -->
+
+  <!-- ============================ VFE - Pirates (warcaskets) ============================ -->
+  <!-- Warcaskets are sealed powered armour worn as a unified set. Tag each casket BODY with
+       providesSealedAtmosphere => any warcasket wearer is fully sealed (immune to flu etc.), regardless of HP
+       or coverage. Bodies use the VFEPirates.WarcasketDef element, so match by defName with Defs/*. The plain
+       under-layer bodysuit (VFEP_Warcasket_Bodysuit) is intentionally excluded. -->
+  <Operation Class="PatchOperationFindMod">
+    <mods><li>OskarPotocki.VFE.Pirates</li></mods>
+    <match>
+      <Operation Class="PatchOperationSequence">
+        <operations>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/*[(defName="VFEP_Warcasket_Warcasket" or defName="VFEP_Warcasket_Marine" or defName="VFEP_Warcasket_Recon" or defName="VFEP_Warcasket_Cataphract" or defName="VFEP_Warcasket_Aerial" or defName="VFEP_Warcasket_Barrage" or defName="VFEP_Warcasket_Hazard" or defName="VFEP_Warcasket_Shock" or defName="VFEP_Warcasket_Siegebreaker" or defName="VFEP_Warcasket_Guardian" or defName="VFEP_Warcasket_Controller" or defName="VFEP_Warcasket_Sarcophagus" or defName="VFEP_Warcasket_Brute") and not(modExtensions)]</xpath>
+            <value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/*[(defName="VFEP_Warcasket_Warcasket" or defName="VFEP_Warcasket_Marine" or defName="VFEP_Warcasket_Recon" or defName="VFEP_Warcasket_Cataphract" or defName="VFEP_Warcasket_Aerial" or defName="VFEP_Warcasket_Barrage" or defName="VFEP_Warcasket_Hazard" or defName="VFEP_Warcasket_Shock" or defName="VFEP_Warcasket_Siegebreaker" or defName="VFEP_Warcasket_Guardian" or defName="VFEP_Warcasket_Controller" or defName="VFEP_Warcasket_Sarcophagus" or defName="VFEP_Warcasket_Brute") and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value>
+              <li Class="Contagion.ApparelContagionProtection">
+                <providesSealedAtmosphere>true</providesSealedAtmosphere>
+                <durableSeal>true</durableSeal>
+              </li>
+            </value>
+          </li>
+        </operations>
+      </Operation>
+    </match>
+  </Operation>
+
+  <!-- ============================ VFE - Medieval 2 (plague mask) ============================ -->
+  <!-- The plague mask's hard Plague immunity is the mod's own VEF worn-hediff (VFEM2_PlagueMask /
+       makeImmuneTo Plague) and works automatically since Contagion uses vanilla Plague. We only ADD graded
+       airway protection vs other airborne diseases (Flu etc.). It has no ToxEnvironmentResistance, so the
+       authored airwaySeal does not double-count. Herb beak mask = filter, not hermetic. -->
+  <Operation Class="PatchOperationFindMod">
+    <mods><li>OskarPotocki.VFE.Medieval2</li></mods>
+    <match>
+      <Operation Class="PatchOperationSequence">
+        <operations>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VFEM2_Apparel_PlagueMask" and not(modExtensions)]</xpath>
+            <value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VFEM2_Apparel_PlagueMask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value>
+              <li Class="Contagion.ApparelContagionProtection">
+                <airwaySeal>0.55</airwaySeal>
+              </li>
+            </value>
+          </li>
+        </operations>
+      </Operation>
+    </match>
+  </Operation>
+
+  <!-- ============================ Vanilla Apparel Expanded ============================ -->
+  <Operation Class="PatchOperationFindMod">
+    <mods><li>VanillaExpanded.VAPPE</li></mods>
+    <match>
+      <Operation Class="PatchOperationSequence">
+        <operations>
+          <!-- Gloves (contact + cooking-exposure; user wants gloves especially rewarded) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Handwear_Gloves" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Handwear_Gloves" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><handsSeal>0.45</handsSeal></li></value>
+          </li>
+          <!-- Boots / shoes (surface/contact feet) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[(defName="VAE_Footwear_Boots" or defName="VAE_Footwear_Shoes") and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[(defName="VAE_Footwear_Boots" or defName="VAE_Footwear_Shoes") and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><feetSeal>0.3</feetSeal></li></value>
+          </li>
+          <!-- Surgical mask (airway filter; covers the head = "airways + contact on head") -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_SurgicalMask" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_SurgicalMask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.55</airwaySeal></li></value>
+          </li>
+          <!-- Doctor scrubs (big body bonus; the doctor set is scrubs + surgical mask) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_DoctorScrubs" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_DoctorScrubs" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.6</skinSeal></li></value>
+          </li>
+          <!-- Lab coat -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_LabCoat" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_LabCoat" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.45</skinSeal></li></value>
+          </li>
+          <!-- Chef's uniform (apron-equivalent: good cooking + general body bonus) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_ChefsUniform" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_ChefsUniform" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.5</skinSeal></li></value>
+          </li>
+          <!-- Chef's toque (small generous cook bonus; airway filter) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_ChefsToque" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_ChefsToque" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.15</airwaySeal></li></value>
+          </li>
+        </operations>
+      </Operation>
+    </match>
+  </Operation>
+
+  <!-- ============================ Vanilla Armour Expanded ============================ -->
+  <!-- HAZMAT suit + HAZMAT hood => fully sealed capstone => immune (hood covers Eyes but is described as a
+       full-head gas mask). Combat sets mirror vanilla tiers: riot ~ flak (covering-grade, not hermetic),
+       trooper ~ recon, siegebreaker ~ marine. Spacer FullHead/VacRes>=0.5 helmets seal the airway (design §3.4). -->
+  <Operation Class="PatchOperationFindMod">
+    <mods><li>VanillaExpanded.VARME</li></mods>
+    <match>
+      <Operation Class="PatchOperationSequence">
+        <operations>
+          <!-- HAZMAT suit (dedicated; near-full skin seal) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_HAZMATSuit" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_HAZMATSuit" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.95</skinSeal><coversExtremities>true</coversExtremities><durableSeal>true</durableSeal></li></value>
+          </li>
+          <!-- HAZMAT hood (hermetic; pairs with suit for full seal) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_HAZMATMask" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_HAZMATMask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySealed>true</airwaySealed><durableSeal>true</durableSeal></li></value>
+          </li>
+          <!-- Gloves: plate (medieval) modest, marine (powered) strong -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Handwear_PlateGloves" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Handwear_PlateGloves" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><handsSeal>0.4</handsSeal></li></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Handwear_MarineGloves" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Handwear_MarineGloves" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><handsSeal>0.7</handsSeal></li></value>
+          </li>
+          <!-- Boots: plate modest, marine strong -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Footwear_PlateBoots" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Footwear_PlateBoots" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><feetSeal>0.4</feetSeal></li></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Footwear_MarineBoots" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Footwear_MarineBoots" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><feetSeal>0.7</feetSeal></li></value>
+          </li>
+          <!-- Riot armor / helmet (~ vanilla flak: covering-grade, not hermetic) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_RiotArmor" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_RiotArmor" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.5</skinSeal></li></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_RiotHelmet" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_RiotHelmet" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.55</airwaySeal></li></value>
+          </li>
+          <!-- Trooper armor / helmet (~ vanilla recon; spacer powered, helmet seals) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_TrooperArmor" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_TrooperArmor" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.85</skinSeal><coversExtremities>true</coversExtremities></li></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_TrooperHelmet" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_TrooperHelmet" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.7</airwaySeal><airwaySealed>true</airwaySealed></li></value>
+          </li>
+          <!-- Siegebreaker armor / helmet (~ vanilla marine; spacer powered, enclosed helmet) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_HeavyMarineArmor" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Apparel_HeavyMarineArmor" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.95</skinSeal><coversExtremities>true</coversExtremities></li></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_HeavyMarineHelmet" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="VAE_Headgear_HeavyMarineHelmet" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.85</airwaySeal><airwaySealed>true</airwaySealed></li></value>
+          </li>
+        </operations>
+      </Operation>
+    </match>
+  </Operation>
+
+  <!-- ============================ FashionRIMsta (Continued) ============================ -->
+  <!-- Pure-XML apparel pack. Gasmask (FullHead, ToxicResistance only => no runtime filter => author airway).
+       Surgical mask + scrubs = a doctor set; chef jacket = apron-equivalent; chef hat / desert wrap small. -->
+  <Operation Class="PatchOperationFindMod">
+    <mods><li>Mlie.FashionRIMsta</li></mods>
+    <match>
+      <Operation Class="PatchOperationSequence">
+        <operations>
+          <!-- Gasmask (FullHead filter; no ToxEnv of its own) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSGasmask" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSGasmask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.7</airwaySeal></li></value>
+          </li>
+          <!-- Surgical mask -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSSurgicalMask" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSSurgicalMask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.55</airwaySeal></li></value>
+          </li>
+          <!-- Scrubs -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSScrubs" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSScrubs" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.55</skinSeal></li></value>
+          </li>
+          <!-- Chef jacket (apron-equivalent) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSChefJacket" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSChefJacket" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.5</skinSeal></li></value>
+          </li>
+          <!-- Chef hat (small) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSChefsHat" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSChefsHat" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.15</airwaySeal></li></value>
+          </li>
+          <!-- Desert head wrap (light face cover) -->
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSDesertWrap" and not(modExtensions)]</xpath><value><modExtensions /></value>
+          </li>
+          <li Class="PatchOperationAdd"><success>Always</success>
+            <xpath>Defs/ThingDef[defName="Apparel_FSDesertWrap" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+            <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.3</airwaySeal></li></value>
+          </li>
+        </operations>
+      </Operation>
+    </match>
+  </Operation>
+
 </Patch>

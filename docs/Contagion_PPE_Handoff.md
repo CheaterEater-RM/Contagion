@@ -101,3 +101,39 @@ No dedicated PPE, but **sealed marine-armour variants** (and ghillie suits) coul
 4. **defName collision** (`Apparel_GasMask` in two mods): patch the defName once; it resolves to whichever mod is loaded. Make the patch tolerant of either field set.
 
 > All source mods here are **reference only** — read for defNames/coverage, do not copy defs or art into Contagion.
+
+---
+
+## Implementation status (done)
+
+All patches live in `1.6/Patches/Contagion_ApparelProtection_Compat.xml`, one `PatchOperationFindMod`
+block per mod, each item using the guarded two-step add (`<success>Always</success>` so a renamed/absent
+def never aborts the rest) and `not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])` so an
+item author's own seal always wins (rule 1).
+
+Key decisions made during implementation (some differ from this handoff after checking the code/design):
+
+- **Masks are filters fed by `ToxicEnvironmentResistance`** (design §3.4, and the note atop
+  `Contagion_ApparelProtection.xml`). Authoring `airwaySeal` on a mask that *already* has a ToxEnv offset
+  **double-counts**. So:
+  - **KK Gasmask** (`Mlie.KKGasmask`) and **Combat Extended** gas masks (`CE_Apparel_GasMask` ToxEnv 0.8,
+    `CE_Apparel_ImprovGasMask` ToxEnv 0.5) already filter via their ToxEnv offsets → **no patch** (omitted
+    with a comment). CE body armor is combat-only → skipped.
+  - Masks with **no** ToxEnv (Equip Gas Masks, FashionRIMsta gas/surgical masks, VAE surgical mask, the VFE
+    M2 plague mask) get an authored `airwaySeal` filter — no double-count.
+- **VFE-Pirates warcaskets**: every casket **body** def (`VFEP_Warcasket_<series>`, 13 of them; the plain
+  bodysuit excluded) gets `providesSealedAtmosphere` + `durableSeal` → any warcasket wearer is fully sealed
+  (immune to flu etc.). Matched with `Defs/*[defName=…]` because they use the `VFEPirates.WarcasketDef` element.
+- **VFE-Medieval 2 plague mask**: its hard Plague immunity is the mod's own VEF hediff and works unchanged
+  (Contagion uses vanilla `Plague`); we only **add** a graded `airwaySeal 0.55` for other airborne diseases.
+- **Rimatomics**: MOPP suit (`skinSeal 0.95` + extremities + durable) + MOPP mask (`airwaySealed` + durable)
+  → capstone immune. Radiation suit `skinSeal 0.6`; radiation mask left alone (its inherited ToxEnv 0.40
+  already filters the airway).
+- **VAE / VARME**: HAZMAT suit + hood → sealed capstone; gloves/boots get hands/feet seals (marine > plate);
+  combat sets mirror vanilla tiers — riot ≈ flak (skin 0.5, helmet airway filter, **not** hermetic), trooper
+  ≈ recon and siegebreaker ≈ marine (spacer FullHead/VacRes≥0.5 helmets `airwaySealed` per §3.4).
+- **Cook PPE**: aprons/scrubs (skin), gloves (hands), masks (airway) all reduce the cook contracting disease
+  off contaminated ingredients via `Vector_CookingExposure` — no new code, just the seal values.
+
+Open items: confirm the **Equip Gas Masks** packageId (`syila.eqgasmask`) and CE/VARME field sets survive
+version bumps; CE renames between releases.
