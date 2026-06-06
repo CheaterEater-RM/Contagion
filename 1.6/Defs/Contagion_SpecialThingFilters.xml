@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Defs>
   <SpecialThingFilterDef>
-    <defName>AllowInfectedCorpses</defName>
+    <defName>Contagion_AllowInfectedCorpses</defName>
     <label>allow infected corpses</label>
     <description>Allow corpses carrying a contagious disease.</description>
     <parentCategory>Corpses</parentCategory>
@@ -11,7 +11,7 @@
   </SpecialThingFilterDef>
 
   <SpecialThingFilterDef>
-    <defName>AllowUninfectedCorpses</defName>
+    <defName>Contagion_AllowUninfectedCorpses</defName>
     <label>allow uninfected corpses</label>
     <description>Allow corpses that are not carrying a contagious disease.</description>
     <parentCategory>Corpses</parentCategory>

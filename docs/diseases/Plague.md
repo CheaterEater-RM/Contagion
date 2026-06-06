@@ -227,7 +227,7 @@ The first visible human case starts a red, source-attributed outbreak letter. La
 
 When a plague-infected animal dies, its corpse spawns **fresh** (not rotted) and is marked by `Comp_InfectedCorpse`, showing "Infected corpse: Plague" in the inspect string and a visual overlay. This lets the player see the risk before deciding what to do.
 
-**Butchering** is controlled entirely by the `AllowInfectedCorpses` job filter on the `ButcherCorpseFlesh` recipe (disabled by default). If the player enables that filter, their pawns will butcher infected corpses.
+**Butchering** is controlled entirely by the `Contagion_AllowInfectedCorpses` job filter on the `ButcherCorpseFlesh` recipe (disabled by default). If the player enables that filter, their pawns will butcher infected corpses.
 
 **Corpse handling**:
 - Fleas: spawned infected corpses expose nearby pawns. Carried infected corpses expose the carrier at elevated close-contact risk and create a smaller moving aura.
@@ -271,7 +271,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - **Freezing corpses** — rapidly kills the corpse-flea vector. Frozen plague bodies are still unpleasant to handle, but they stop shedding migrating fleas. Walls and closed doors block corpse-flea path spread; open doors allow it while open.
 - **Penoxycyline** — reduces contract chance via vanilla `DiseaseContractChanceFactor`.
 - **Vets** — diagnosed animals go into active disease at low severity (0.1) and can be treated early. A skilled vet with the 48 h window can save most animals.
-- **Job filter** — disabling `AllowInfectedCorpses` on the butcher bill (default) prevents infected corpses from entering the meat chain entirely.
+- **Job filter** — disabling `Contagion_AllowInfectedCorpses` on the butcher bill (default) prevents infected corpses from entering the meat chain entirely.
 - **Sealed suits for corpse handling** — the strongest counterplay against the corpse-flea/fluid and butchery vectors. Their `apparelProtection` rides the *seal*, not coverage: ordinary clothing barely helps against fleas (floor 0.20), but a sealed suit (vacsuit/power armor, with assumed gauntlets) cuts exposure sharply and a full sealed loadout is immune (capstone). Combat armor degrades — keep it out of the ratty zone; the vacsuit's seal is durable. See `docs/Apparel_Protection_Design.md`.
 - **No airway immunity** — unlike flu, plague's proximity vector is flea contact, not airway, so a sealed helmet does **not** make a pawn immune to it and breathless does nothing. Apparel can still act as a weak physical barrier through the proximity vector, reducing but never eliminating flea-proximity transfer.
 

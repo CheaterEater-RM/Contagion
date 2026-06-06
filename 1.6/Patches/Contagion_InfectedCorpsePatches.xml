@@ -8,9 +8,9 @@
   </Operation>
 
   <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="ButcherCorpseFlesh" and not(defaultIngredientFilter/specialFiltersToDisallow/li="AllowInfectedCorpses")]/defaultIngredientFilter/specialFiltersToDisallow</xpath>
+    <xpath>Defs/RecipeDef[defName="ButcherCorpseFlesh" and not(defaultIngredientFilter/specialFiltersToDisallow/li="Contagion_AllowInfectedCorpses")]/defaultIngredientFilter/specialFiltersToDisallow</xpath>
     <value>
-      <li>AllowInfectedCorpses</li>
+      <li>Contagion_AllowInfectedCorpses</li>
     </value>
   </Operation>
 </Patch>

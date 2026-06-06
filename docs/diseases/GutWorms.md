@@ -224,7 +224,7 @@ Spread suppression is on. Gut worms does spread within a population — vomit fo
 
 ### Corpse contagiousness (`corpseContagious true`)
 
-Animals killed while infected with gut worms spawn a fresh corpse marked by `Comp_InfectedCorpse`. Butcher bills exclude infected corpses by default through the `AllowInfectedCorpses` special filter. If the player enables that filter, raw meat receives full contamination. This is a major human infection path: infected animal → contaminated meat → contaminated meals or raw ingestion → colonist infection.
+Animals killed while infected with gut worms spawn a fresh corpse marked by `Comp_InfectedCorpse`. Butcher bills exclude infected corpses by default through the `Contagion_AllowInfectedCorpses` special filter. If the player enables that filter, raw meat receives full contamination. This is a major human infection path: infected animal → contaminated meat → contaminated meals or raw ingestion → colonist infection.
 
 Eating an infected corpse raw is treated as extreme direct exposure and should almost always transmit to an eligible eater. The intended safety measure is keeping infected corpses out of the food supply entirely.
 
@@ -241,7 +241,7 @@ This mechanic is especially important for gut worms: undetected infected animals
 - **Water management** — humans and animals near rivers or large ponds have much higher environmental exposure. Roofed barns and indoor work areas with no water proximity are effectively safe.
 - **Roofed built-floor livestock** — a strong counter for the meat-chain path. Under the `groundContact` model an animal kept on a roofed stone/built floor (away from standing water) sits at ≈`stoneFactor 0.25 × roofedMultiplier 0.3 = 0.075x`; the risk is grazing live ground and waterside dirt, not barn depth.
 - **Vet inspection** — the sick signal lets a skilled handler catch infected animals before slaughter. High Animals skill is the key lever.
-- **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
+- **Corpse filtering** — leave `Contagion_AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
 - **Butcher skill** — the notice roll in `Patch_Corpse_ButcherProducts` uses Medical as primary and Cooking at 0.60× weight; Animals adds at 0.25× for animal corpses. A skilled butcher-medic or a dedicated cook-handler significantly reduces meat-chain risk.
 - **Kitchen hygiene** — infected cooks in dirty kitchens produce more contaminated food. Restricting sick pawns from cooking is the strongest single lever against the food-chain spread.
 - **Cook PPE (Typhoid Mary)** — if a sick cook must keep working, food-handling gear cuts both ends: their `cookSourceProtection` reduces contamination baked into meals, and their `Vector_CookingExposure` `apparelProtection` (hands/airway-weighted) reduces the cook contracting it off raw ingredients. A sealed-suit cook is effectively a non-vector.

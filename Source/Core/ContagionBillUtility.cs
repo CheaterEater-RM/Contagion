@@ -14,9 +14,9 @@ public static class ContagionBillUtility
             return;
         }
 
-        if (ContagionDefOf.AllowInfectedCorpses != null)
+        if (ContagionDefOf.Contagion_AllowInfectedCorpses != null)
         {
-            bill.ingredientFilter.SetAllow(ContagionDefOf.AllowInfectedCorpses, false);
+            bill.ingredientFilter.SetAllow(ContagionDefOf.Contagion_AllowInfectedCorpses, false);
         }
     }
 }

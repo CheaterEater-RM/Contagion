@@ -20,9 +20,9 @@ public static class ContagionDefOf
 
     public static HediffDef Contagion_PendingExam;
 
-    public static SpecialThingFilterDef AllowInfectedCorpses;
+    public static SpecialThingFilterDef Contagion_AllowInfectedCorpses;
 
-    public static SpecialThingFilterDef AllowUninfectedCorpses;
+    public static SpecialThingFilterDef Contagion_AllowUninfectedCorpses;
 
     static ContagionDefOf()
     {

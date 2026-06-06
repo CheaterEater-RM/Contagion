@@ -210,7 +210,7 @@ Spread suppression is on for the same reasons as gut worms (see [GutWorms.md](Gu
 
 ### Corpse contagiousness (`corpseContagious true`)
 
-Infected animal carcasses spawn fresh and are marked by `Comp_InfectedCorpse`. Butcher bills exclude infected corpses by default through the `AllowInfectedCorpses` special filter. If the player enables that filter, the unified notice roll (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: true`) and meat contamination fire normally.
+Infected animal carcasses spawn fresh and are marked by `Comp_InfectedCorpse`. Butcher bills exclude infected corpses by default through the `Contagion_AllowInfectedCorpses` special filter. If the player enables that filter, the unified notice roll (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: true`) and meat contamination fire normally.
 
 As with gut worms, contaminated meat and prepared food remain hazardous for up to 30 days.
 
@@ -228,7 +228,7 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 
 - **Roofed built-floor housing** — under the `groundContact` model, a roofed barn with a built or stone floor cuts exposure to `stoneFactor 0.20 × roofedMultiplier 0.3 ≈ 0.06x`, and frozen ground is lower still. Keeping animals off bare grazing dirt (especially marsh/mud) is the strongest single counter and requires no active management. Note this now keys on the floor surface and roof, not how deep the barn is.
 - **Vet inspection** — handler detection via sick signal is the key lever. A skilled handler (Animals skill 15+) has a ~75% detection chance per interaction. Routine handler routines (training, tending, feeding) will catch most infections before slaughter.
-- **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
+- **Corpse filtering** — leave `Contagion_AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
 - **Cooking quality** — ordinary cooked meals share a 0.20 recipe factor before Cooking skill. Survival meals (0.05×) are safer because they are cooked and sealed. Avoid raw meat and pemmican (0.70×) from uncertain sources.
 - **Raw corpse ingestion** — eating an infected corpse raw is treated as extreme direct exposure and should almost always transmit to an eligible eater.
 - **Expiry awareness** — contaminated preserved meat stays dangerous for 30 days. A stockpile built from an infected batch remains a hazard well after the animal is dead.

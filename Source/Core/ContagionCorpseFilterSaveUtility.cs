@@ -6,8 +6,8 @@ namespace Contagion;
 
 internal static class ContagionCorpseFilterSaveUtility
 {
-    private const string AllowInfectedCorpsesDefName = "AllowInfectedCorpses";
-    private const string AllowUninfectedCorpsesDefName = "AllowUninfectedCorpses";
+    private const string AllowInfectedCorpsesDefName = "Contagion_AllowInfectedCorpses";
+    private const string AllowUninfectedCorpsesDefName = "Contagion_AllowUninfectedCorpses";
 
     public static bool IsContagionCorpseFilter(SpecialThingFilterDef def)
     {
@@ -44,8 +44,8 @@ internal static class ContagionCorpseFilterSaveUtility
     {
         def = defName switch
         {
-            AllowInfectedCorpsesDefName => ContagionDefOf.AllowInfectedCorpses,
-            AllowUninfectedCorpsesDefName => ContagionDefOf.AllowUninfectedCorpses,
+            AllowInfectedCorpsesDefName => ContagionDefOf.Contagion_AllowInfectedCorpses,
+            AllowUninfectedCorpsesDefName => ContagionDefOf.Contagion_AllowUninfectedCorpses,
             _ => null
         };
 
