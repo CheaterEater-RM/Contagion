@@ -31,14 +31,14 @@
   </Operation>
 
   <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Animal_GutWorms" and not(hediffClass)]</xpath>
+    <xpath>Defs/HediffDef[defName="Contagion_Animal_GutWorms" and not(hediffClass)]</xpath>
     <value>
       <hediffClass>Contagion.Hediff_ContagionAnimalHiddenDisease</hediffClass>
     </value>
   </Operation>
 
   <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Animal_MuscleParasites" and not(hediffClass)]</xpath>
+    <xpath>Defs/HediffDef[defName="Contagion_Animal_MuscleParasites" and not(hediffClass)]</xpath>
     <value>
       <hediffClass>Contagion.Hediff_ContagionAnimalHiddenDisease</hediffClass>
     </value>

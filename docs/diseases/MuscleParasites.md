@@ -9,7 +9,7 @@ Trichinella-type larvae contracted from raw or undercooked infected meat, contam
 | Field | Value |
 |---|---|
 | HediffDef | `MuscleParasites` |
-| Animal variant HediffDef | `Animal_MuscleParasites` |
+| Animal variant HediffDef | `Contagion_Animal_MuscleParasites` |
 | Species | Human + Animal |
 | Vanilla incident | `Disease_MuscleParasites` (vanilla Core) |
 | Contagion incubation | 3 days |
@@ -20,7 +20,7 @@ Trichinella-type larvae contracted from raw or undercooked infected meat, contam
 
 ### Why no `selfSchedules`
 
-The vanilla Core `Disease_MuscleParasites` incident already exists and is picked by the storyteller. Contagion intercepts it in Mode 1 (creating a pending environmental window) or cancels it in Mode 2. No `selfSchedules` is needed; no new incident def is created. The animal-variant def (`Animal_MuscleParasites`) is added by Contagion and uses `Hediff_ContagionAnimalHiddenDisease` so the disease stays hidden in animals until a vet diagnoses it.
+The vanilla Core `Disease_MuscleParasites` incident already exists and is picked by the storyteller. Contagion intercepts it in Mode 1 (creating a pending environmental window) or cancels it in Mode 2. No `selfSchedules` is needed; no new incident def is created. The animal-variant def (`Contagion_Animal_MuscleParasites`) is added by Contagion and uses `Hediff_ContagionAnimalHiddenDisease` so the disease stays hidden in animals until a vet diagnoses it.
 
 ---
 
@@ -28,7 +28,7 @@ The vanilla Core `Disease_MuscleParasites` incident already exists and is picked
 
 Muscle parasites reduce movement capacity significantly. Larvae embed in muscle tissue — the primary gameplay hit is locomotion and manipulation penalties. There is no severity progression and no immunity race; the disease has no lethal threshold and cannot kill. The only removal mechanism is accumulating 300% total tend quality over roughly three vet visits. Without treatment the disease persists indefinitely.
 
-For animals: same as gut worms — neither lethal nor self-clearing in vanilla. `Animal_MuscleParasites` adds `HediffComp_AnimalNaturalRecovery` so wild animals self-clear in ~15 days and domestic animals in ~25 days. Active vet tending remains far faster (~4–6 days).
+For animals: same as gut worms — neither lethal nor self-clearing in vanilla. `Contagion_Animal_MuscleParasites` adds `HediffComp_AnimalNaturalRecovery` so wild animals self-clear in ~15 days and domestic animals in ~25 days. Active vet tending remains far faster (~4–6 days).
 
 ---
 

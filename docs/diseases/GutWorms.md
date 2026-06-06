@@ -9,7 +9,7 @@ Water-borne intestinal parasite entering through contaminated water, fecal conta
 | Field | Value |
 |---|---|
 | HediffDef | `GutWorms` |
-| Animal variant HediffDef | `Animal_GutWorms` |
+| Animal variant HediffDef | `Contagion_Animal_GutWorms` |
 | Species | Human + Animal |
 | Vanilla incident | `Disease_GutWorms` |
 | Contagion incubation | 2 days |
@@ -25,7 +25,7 @@ Water-borne intestinal parasite entering through contaminated water, fecal conta
 
 Gut worms is chronic: there is no severity progression and no immunity race. The disease has no lethal threshold — it cannot kill. The only removal mechanism is accumulating 300% total tend quality, which requires a doctor or vet tending the pawn roughly three times over ~4–6 days. Without treatment the disease persists indefinitely.
 
-For animals specifically: they neither die from it nor clear it on their own. Untreated infected animals are permanent reservoirs. `Animal_GutWorms` adds `HediffComp_AnimalNaturalRecovery` so wild animals self-clear in ~15 days and domestic animals in ~25 days without vet attention — but active vet tending remains far faster.
+For animals specifically: they neither die from it nor clear it on their own. Untreated infected animals are permanent reservoirs. `Contagion_Animal_GutWorms` adds `HediffComp_AnimalNaturalRecovery` so wild animals self-clear in ~15 days and domestic animals in ~25 days without vet attention — but active vet tending remains far faster.
 
 ---
 

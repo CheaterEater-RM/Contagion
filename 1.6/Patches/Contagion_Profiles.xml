@@ -403,8 +403,8 @@
         <immunityDurationDays>15</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
-        <!-- Animal_GutWorms is the animal-variant hediff: same disease cluster, hidden until diagnosed. -->
-        <animalVariantDef>Animal_GutWorms</animalVariantDef>
+        <!-- Contagion_Animal_GutWorms is the animal-variant hediff: same disease cluster, hidden until diagnosed. -->
+        <animalVariantDef>Contagion_Animal_GutWorms</animalVariantDef>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
         <!-- Gut worms are not externally visible — reduced passive presentation (~10% cumulative)
@@ -684,8 +684,8 @@
         <immunityDurationDays>20</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
-        <!-- Animal_MuscleParasites is the animal-variant hediff: same disease cluster, hidden until diagnosed. -->
-        <animalVariantDef>Animal_MuscleParasites</animalVariantDef>
+        <!-- Contagion_Animal_MuscleParasites is the animal-variant hediff: same disease cluster, hidden until diagnosed. -->
+        <animalVariantDef>Contagion_Animal_MuscleParasites</animalVariantDef>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
         <!-- Muscle parasites are deeply embedded — reduced passive presentation (~10% cumulative)
