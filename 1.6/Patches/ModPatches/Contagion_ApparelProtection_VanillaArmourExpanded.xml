@@ -1,118 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Patch>
   <!-- Vanilla Armour Expanded: HAZMAT is dedicated PPE; combat sets mirror vanilla armour tiers. -->
-  <Operation Class="PatchOperationFindMod">
-    <mods><li>VanillaExpanded.VARME</li></mods>
-    <match Class="PatchOperationSequence">
-      <operations>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_HAZMATSuit" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_HAZMATSuit" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.95</skinSeal><coversExtremities>true</coversExtremities><durableSeal>true</durableSeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Headgear_HAZMATMask" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Headgear_HAZMATMask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><airwaySealed>true</airwaySealed><durableSeal>true</durableSeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Handwear_PlateGloves" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Handwear_PlateGloves" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><handsSeal>0.4</handsSeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Handwear_MarineGloves" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Handwear_MarineGloves" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><handsSeal>0.7</handsSeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Footwear_PlateBoots" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Footwear_PlateBoots" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><feetSeal>0.4</feetSeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Footwear_MarineBoots" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Footwear_MarineBoots" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><feetSeal>0.7</feetSeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_RiotArmor" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_RiotArmor" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.5</skinSeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_RiotHelmet" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_RiotHelmet" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.55</airwaySeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_TrooperArmor" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_TrooperArmor" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.85</skinSeal><coversExtremities>true</coversExtremities></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Headgear_TrooperHelmet" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Headgear_TrooperHelmet" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.7</airwaySeal><airwaySealed>true</airwaySealed></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_HeavyMarineArmor" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Apparel_HeavyMarineArmor" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.95</skinSeal><coversExtremities>true</coversExtremities></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Headgear_HeavyMarineHelmet" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="VanillaExpanded.VARME"><success>Always</success>
           <xpath>Defs/ThingDef[defName="VAE_Headgear_HeavyMarineHelmet" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.85</airwaySeal><airwaySealed>true</airwaySealed></li></value>
-        </li>
-      </operations>
-    </match>
   </Operation>
 </Patch>

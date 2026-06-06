@@ -2,64 +2,57 @@
 <Patch>
   <!-- FashionRIMsta: pure XML apparel. Gasmask has ToxicResistance only, so author airway protection.
        Surgical mask + scrubs form a doctor set; chef jacket is apron-equivalent; chef hat and wrap are light. -->
-  <Operation Class="PatchOperationFindMod">
-    <mods><li>Mlie.FashionRIMsta</li></mods>
-    <match Class="PatchOperationSequence">
-      <operations>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSGasmask" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSGasmask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.7</airwaySeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSSurgicalMask" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSSurgicalMask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.55</airwaySeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSScrubs" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSScrubs" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.55</skinSeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSChefJacket" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSChefJacket" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><skinSeal>0.5</skinSeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSChefsHat" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSChefsHat" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.15</airwaySeal></li></value>
-        </li>
+  </Operation>
 
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSDesertWrap" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="Mlie.FashionRIMsta"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_FSDesertWrap" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.3</airwaySeal></li></value>
-        </li>
-      </operations>
-    </match>
   </Operation>
 </Patch>

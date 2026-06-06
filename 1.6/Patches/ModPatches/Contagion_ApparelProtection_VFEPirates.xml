@@ -2,15 +2,11 @@
 <Patch>
   <!-- VFE Pirates: warcasket bodies are sealed powered armour. Tag each body with providesSealedAtmosphere;
        the under-layer bodysuit is intentionally excluded. -->
-  <Operation Class="PatchOperationFindMod">
-    <mods><li>OskarPotocki.VFE.Pirates</li></mods>
-    <match Class="PatchOperationSequence">
-      <operations>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="OskarPotocki.VFE.Pirates"><success>Always</success>
           <xpath>Defs/*[(defName="VFEP_Warcasket_Warcasket" or defName="VFEP_Warcasket_Marine" or defName="VFEP_Warcasket_Recon" or defName="VFEP_Warcasket_Cataphract" or defName="VFEP_Warcasket_Aerial" or defName="VFEP_Warcasket_Barrage" or defName="VFEP_Warcasket_Hazard" or defName="VFEP_Warcasket_Shock" or defName="VFEP_Warcasket_Siegebreaker" or defName="VFEP_Warcasket_Guardian" or defName="VFEP_Warcasket_Controller" or defName="VFEP_Warcasket_Sarcophagus" or defName="VFEP_Warcasket_Brute") and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="OskarPotocki.VFE.Pirates"><success>Always</success>
           <xpath>Defs/*[(defName="VFEP_Warcasket_Warcasket" or defName="VFEP_Warcasket_Marine" or defName="VFEP_Warcasket_Recon" or defName="VFEP_Warcasket_Cataphract" or defName="VFEP_Warcasket_Aerial" or defName="VFEP_Warcasket_Barrage" or defName="VFEP_Warcasket_Hazard" or defName="VFEP_Warcasket_Shock" or defName="VFEP_Warcasket_Siegebreaker" or defName="VFEP_Warcasket_Guardian" or defName="VFEP_Warcasket_Controller" or defName="VFEP_Warcasket_Sarcophagus" or defName="VFEP_Warcasket_Brute") and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value>
             <li Class="Contagion.ApparelContagionProtection">
@@ -18,8 +14,5 @@
               <durableSeal>true</durableSeal>
             </li>
           </value>
-        </li>
-      </operations>
-    </match>
   </Operation>
 </Patch>

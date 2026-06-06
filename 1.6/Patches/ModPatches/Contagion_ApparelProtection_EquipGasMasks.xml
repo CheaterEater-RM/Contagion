@@ -2,23 +2,16 @@
 <Patch>
   <!-- Equip Gas Masks: its mask carries ToxicResistance, not ToxicEnvironmentResistance, so Contagion's
        runtime mask filter sees nothing. Author a graded airway filter without marking it hermetic. -->
-  <Operation Class="PatchOperationFindMod">
-    <mods><li>syila.eqgasmask</li></mods>
-    <match Class="PatchOperationSequence">
-      <operations>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  <Operation Class="PatchOperationAdd" MayRequire="syila.eqgasmask"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_GasMask" and not(modExtensions)]</xpath>
           <value><modExtensions /></value>
-        </li>
-        <li Class="PatchOperationAdd"><success>Always</success>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="syila.eqgasmask"><success>Always</success>
           <xpath>Defs/ThingDef[defName="Apparel_GasMask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
           <value>
             <li Class="Contagion.ApparelContagionProtection">
               <airwaySeal>0.8</airwaySeal>
             </li>
           </value>
-        </li>
-      </operations>
-    </match>
   </Operation>
 </Patch>
