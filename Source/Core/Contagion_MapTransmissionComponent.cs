@@ -7,6 +7,8 @@ namespace Contagion;
 
 public sealed class Contagion_MapTransmissionComponent : MapComponent
 {
+    private const int CurrentSaveVersion = 1;
+
     // Cadence between live pawn-to-pawn / corpse transmission passes. Sourced from the global
     // ContagionTransmissionTuningDef (XML-tunable) and cached for the session — the value is constant
     // for a run, so we avoid a DefDatabase lookup on every tick's interval gate.
@@ -28,6 +30,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     private readonly ContagionCorpseExposureProcessor _corpseExposureProcessor;
 
     private readonly List<Pawn> _transmissionDuePawns = new List<Pawn>();
+
+    private int _saveVersion;
 
     private ContagionVomitFomiteTracker _vomitFomiteTracker = new();
 
@@ -79,6 +83,12 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
     public override void ExposeData()
     {
         base.ExposeData();
+        if (Scribe.mode == LoadSaveMode.Saving)
+        {
+            _saveVersion = CurrentSaveVersion;
+        }
+
+        Scribe_Values.Look(ref _saveVersion, "saveVersion", 0);
         Scribe_Deep.Look(ref _vomitFomiteTracker, "vomitFomiteTracker");
         Scribe_Deep.Look(ref _fecalOralTracker, "fecalOralTracker");
         Scribe_Deep.Look(ref _seedingState, "seedingState");
@@ -91,6 +101,8 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
 
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
+            RunPostLoadMigrations(_saveVersion);
+            _saveVersion = CurrentSaveVersion;
             _vomitFomiteTracker ??= new ContagionVomitFomiteTracker();
             _fecalOralTracker ??= new ContagionFecalOralTracker();
             _seedingState ??= new ContagionMapSeedingState();
@@ -102,6 +114,14 @@ public sealed class Contagion_MapTransmissionComponent : MapComponent
             _outbreakOriginTick ??= new Dictionary<HediffDef, int>();
             _vomitFomiteTracker.Cleanup(map);
             _fecalOralTracker.Cleanup(map);
+        }
+    }
+
+    private static void RunPostLoadMigrations(int loadedVersion)
+    {
+        if (loadedVersion < 1)
+        {
+            // Version 0 predates explicit map-state versioning; existing PostLoadInit cleanup is enough.
         }
     }
 
