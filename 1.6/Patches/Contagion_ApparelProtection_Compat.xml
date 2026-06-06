@@ -31,9 +31,8 @@
        filter is harmless underneath the hermetic seal). -->
   <Operation Class="PatchOperationFindMod">
     <mods><li>Dubwise.Rimatomics</li></mods>
-    <match>
-      <Operation Class="PatchOperationSequence">
-        <operations>
+    <match Class="PatchOperationSequence">
+      <operations>
           <!-- MOPP suits (body) -->
           <li Class="PatchOperationAdd"><success>Always</success>
             <xpath>Defs/ThingDef[(defName="Apparel_MoppSuitDesert" or defName="Apparel_MoppSuitWoodland" or defName="Apparel_MoppSuitSnow") and not(modExtensions)]</xpath>
@@ -76,8 +75,7 @@
               </li>
             </value>
           </li>
-        </operations>
-      </Operation>
+      </operations>
     </match>
   </Operation>
 
@@ -92,9 +90,8 @@
        nothing; author a graded airway filter (no double-count). Filter, not hermetic. -->
   <Operation Class="PatchOperationFindMod">
     <mods><li>syila.eqgasmask</li></mods>
-    <match>
-      <Operation Class="PatchOperationSequence">
-        <operations>
+    <match Class="PatchOperationSequence">
+      <operations>
           <li Class="PatchOperationAdd"><success>Always</success>
             <xpath>Defs/ThingDef[defName="Apparel_GasMask" and not(modExtensions)]</xpath>
             <value><modExtensions /></value>
@@ -107,8 +104,7 @@
               </li>
             </value>
           </li>
-        </operations>
-      </Operation>
+      </operations>
     </match>
   </Operation>
 
@@ -125,9 +121,8 @@
        under-layer bodysuit (VFEP_Warcasket_Bodysuit) is intentionally excluded. -->
   <Operation Class="PatchOperationFindMod">
     <mods><li>OskarPotocki.VFE.Pirates</li></mods>
-    <match>
-      <Operation Class="PatchOperationSequence">
-        <operations>
+    <match Class="PatchOperationSequence">
+      <operations>
           <li Class="PatchOperationAdd"><success>Always</success>
             <xpath>Defs/*[(defName="VFEP_Warcasket_Warcasket" or defName="VFEP_Warcasket_Marine" or defName="VFEP_Warcasket_Recon" or defName="VFEP_Warcasket_Cataphract" or defName="VFEP_Warcasket_Aerial" or defName="VFEP_Warcasket_Barrage" or defName="VFEP_Warcasket_Hazard" or defName="VFEP_Warcasket_Shock" or defName="VFEP_Warcasket_Siegebreaker" or defName="VFEP_Warcasket_Guardian" or defName="VFEP_Warcasket_Controller" or defName="VFEP_Warcasket_Sarcophagus" or defName="VFEP_Warcasket_Brute") and not(modExtensions)]</xpath>
             <value><modExtensions /></value>
@@ -141,8 +136,7 @@
               </li>
             </value>
           </li>
-        </operations>
-      </Operation>
+      </operations>
     </match>
   </Operation>
 
@@ -153,9 +147,8 @@
        authored airwaySeal does not double-count. Herb beak mask = filter, not hermetic. -->
   <Operation Class="PatchOperationFindMod">
     <mods><li>OskarPotocki.VFE.Medieval2</li></mods>
-    <match>
-      <Operation Class="PatchOperationSequence">
-        <operations>
+    <match Class="PatchOperationSequence">
+      <operations>
           <li Class="PatchOperationAdd"><success>Always</success>
             <xpath>Defs/ThingDef[defName="VFEM2_Apparel_PlagueMask" and not(modExtensions)]</xpath>
             <value><modExtensions /></value>
@@ -168,17 +161,15 @@
               </li>
             </value>
           </li>
-        </operations>
-      </Operation>
+      </operations>
     </match>
   </Operation>
 
   <!-- ============================ Vanilla Apparel Expanded ============================ -->
   <Operation Class="PatchOperationFindMod">
     <mods><li>VanillaExpanded.VAPPE</li></mods>
-    <match>
-      <Operation Class="PatchOperationSequence">
-        <operations>
+    <match Class="PatchOperationSequence">
+      <operations>
           <!-- Gloves (contact + cooking-exposure; user wants gloves especially rewarded) -->
           <li Class="PatchOperationAdd"><success>Always</success>
             <xpath>Defs/ThingDef[defName="VAE_Handwear_Gloves" and not(modExtensions)]</xpath><value><modExtensions /></value>
@@ -235,8 +226,7 @@
             <xpath>Defs/ThingDef[defName="VAE_Headgear_ChefsToque" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
             <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.15</airwaySeal></li></value>
           </li>
-        </operations>
-      </Operation>
+      </operations>
     </match>
   </Operation>
 
@@ -246,9 +236,8 @@
        trooper ~ recon, siegebreaker ~ marine. Spacer FullHead/VacRes>=0.5 helmets seal the airway (design §3.4). -->
   <Operation Class="PatchOperationFindMod">
     <mods><li>VanillaExpanded.VARME</li></mods>
-    <match>
-      <Operation Class="PatchOperationSequence">
-        <operations>
+    <match Class="PatchOperationSequence">
+      <operations>
           <!-- HAZMAT suit (dedicated; near-full skin seal) -->
           <li Class="PatchOperationAdd"><success>Always</success>
             <xpath>Defs/ThingDef[defName="VAE_Apparel_HAZMATSuit" and not(modExtensions)]</xpath><value><modExtensions /></value>
@@ -340,8 +329,7 @@
             <xpath>Defs/ThingDef[defName="VAE_Headgear_HeavyMarineHelmet" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
             <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.85</airwaySeal><airwaySealed>true</airwaySealed></li></value>
           </li>
-        </operations>
-      </Operation>
+      </operations>
     </match>
   </Operation>
 
@@ -350,9 +338,8 @@
        Surgical mask + scrubs = a doctor set; chef jacket = apron-equivalent; chef hat / desert wrap small. -->
   <Operation Class="PatchOperationFindMod">
     <mods><li>Mlie.FashionRIMsta</li></mods>
-    <match>
-      <Operation Class="PatchOperationSequence">
-        <operations>
+    <match Class="PatchOperationSequence">
+      <operations>
           <!-- Gasmask (FullHead filter; no ToxEnv of its own) -->
           <li Class="PatchOperationAdd"><success>Always</success>
             <xpath>Defs/ThingDef[defName="Apparel_FSGasmask" and not(modExtensions)]</xpath><value><modExtensions /></value>
@@ -401,8 +388,7 @@
             <xpath>Defs/ThingDef[defName="Apparel_FSDesertWrap" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
             <value><li Class="Contagion.ApparelContagionProtection"><airwaySeal>0.3</airwaySeal></li></value>
           </li>
-        </operations>
-      </Operation>
+      </operations>
     </match>
   </Operation>
 
