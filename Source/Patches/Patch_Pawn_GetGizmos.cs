@@ -10,18 +10,19 @@ internal static class Patch_Pawn_GetGizmos
 {
     public static void Postfix(Pawn __instance, ref IEnumerable<Gizmo> __result)
     {
+        // Dev gizmos are the only thing this patch adds, so bail before allocating when developer
+        // mode is off — leaving the original __result enumerable untouched for every normal player.
+        if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true)
+        {
+            return;
+        }
+
         if (__instance == null || !__instance.Spawned || __instance.Map == null)
         {
             return;
         }
 
         List<Gizmo> gizmos = __result == null ? new List<Gizmo>() : new List<Gizmo>(__result);
-
-        if (Contagion_Mod.Settings?.DeveloperDiagnosticsEnabled != true)
-        {
-            __result = gizmos;
-            return;
-        }
 
         gizmos.Add(new Command_ContagionDeveloperSeedDisease(__instance));
 

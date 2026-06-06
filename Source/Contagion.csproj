@@ -15,6 +15,10 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>..\1.6\Assemblies\</OutputPath>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <!-- No pdb: runtime debug symbols are unused (only compile errors are tracked), and a pdb
+         leaks absolute source paths into both the .pdb and the dll's debug-directory header. -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
   <ItemGroup>
