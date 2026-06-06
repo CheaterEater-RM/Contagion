@@ -106,10 +106,11 @@ No dedicated PPE, but **sealed marine-armour variants** (and ghillie suits) coul
 
 ## Implementation status (done)
 
-All patches live in `1.6/Patches/Contagion_ApparelProtection_Compat.xml`, one `PatchOperationFindMod`
-block per mod, each item using the guarded two-step add (`<success>Always</success>` so a renamed/absent
-def never aborts the rest) and `not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])` so an
-item author's own seal always wins (rule 1).
+Compatibility patches live in `1.6/Patches/ModPatches/`, one XML file per source mod. Each file uses a
+single `PatchOperationFindMod` block, with each item using the guarded two-step add (`<success>Always</success>`
+so a renamed/absent def never aborts the rest) and
+`not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])` so an item author's own seal always wins
+(rule 1).
 
 Key decisions made during implementation (some differ from this handoff after checking the code/design):
 

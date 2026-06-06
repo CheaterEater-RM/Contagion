@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <!-- VFE Medieval 2: the plague mask already grants hard Plague immunity through its own VEF worn hediff.
+       Add graded airway protection for other airborne diseases. -->
+  <Operation Class="PatchOperationFindMod">
+    <mods><li>OskarPotocki.VFE.Medieval2</li></mods>
+    <match Class="PatchOperationSequence">
+      <operations>
+        <li Class="PatchOperationAdd"><success>Always</success>
+          <xpath>Defs/ThingDef[defName="VFEM2_Apparel_PlagueMask" and not(modExtensions)]</xpath>
+          <value><modExtensions /></value>
+        </li>
+        <li Class="PatchOperationAdd"><success>Always</success>
+          <xpath>Defs/ThingDef[defName="VFEM2_Apparel_PlagueMask" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+          <value>
+            <li Class="Contagion.ApparelContagionProtection">
+              <airwaySeal>0.55</airwaySeal>
+            </li>
+          </value>
+        </li>
+      </operations>
+    </match>
+  </Operation>
+</Patch>

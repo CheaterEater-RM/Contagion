@@ -352,7 +352,7 @@ Respiratory already routes through `GetRespiratoryMaskFactor` into the three paw
 - `Contagion_ApparelProtection.xml` — flat two-step `PatchOperationAdd` of §6 modExtensions; DLC rows via
   `MayRequire` package-id guards. (Most spacer armor is also caught by the tech-level
   fallback, so authoring is a refinement, not a requirement.)
-- `Contagion_ApparelProtection_Compat.xml` — known third-party gear, guarded not-already-present.
+- `ModPatches/Contagion_ApparelProtection_*.xml` — known third-party gear, one guarded file per source mod.
 - Profile XML — §4 `ContactProtectionProfile` blocks on the relevant `<li Class="Contagion.Vector_*">`.
 
 **UX** (§8) — `ProtectionSummary(pawn)` aggregator; Gear-tab block (confirm hook vs `ITab_Pawn_Gear`);
