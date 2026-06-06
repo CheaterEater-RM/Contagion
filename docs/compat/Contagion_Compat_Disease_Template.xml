@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  CONTAGION COMPATIBILITY TEMPLATE — DISEASE TRANSMISSION PROFILE
+  ============================================================================
+
+  Drop this file (renamed) into YOUR mod at:  YourMod/1.6/Patches/
+
+  It attaches Contagion's `TransmissionProfile` modExtension to your disease
+  HediffDef so the disease becomes contagious: it incubates, sheds through
+  vectors, seeds onto the map, and respects Contagion's outbreak suppression.
+  No assembly reference, no Harmony, no C# required — pure XML.
+
+  ----------------------------------------------------------------------------
+  REQUIRED SETUP IN YOUR About/About.xml
+  ----------------------------------------------------------------------------
+    <loadAfter>
+      <li>CheaterEater.Contagion</li>
+    </loadAfter>
+
+  ----------------------------------------------------------------------------
+  RULES (these are why the template looks the way it does)
+  ----------------------------------------------------------------------------
+  1. Guard EVERY operation with MayRequire so the patch is silently skipped
+     when Contagion is not installed:
+        MayRequire="CheaterEater.Contagion,your.mod.id"
+     (If the HediffDef is your own, list your own id alongside Contagion. If
+      you are making a third party's disease contagious, list their id.)
+
+  2. Use the flat TWO-STEP add pattern for <modExtensions>:
+        Step 1 — create <modExtensions> only if it does not exist.
+        Step 2 — add the <li> only if it is not already present.
+     NEVER use PatchOperationSequence/PatchOperationConditional against a
+     <modExtensions> node that may be absent.
+
+  ----------------------------------------------------------------------------
+  KEY TOP-LEVEL TransmissionProfile FIELDS  (defaults in brackets)
+  ----------------------------------------------------------------------------
+    incubationDays        [1]      Pre-symptomatic window (contagious via the
+                                   incubationInfectivityCurve below).
+    pendingWindowDays     [5]      Storyteller mode: how long a queued start
+                                   waits before falling back to an acausal seed.
+    immunityDurationDays  [0]      Days of immunity after recovery (mod uses 30).
+    affectsHumans         [true]   Eligible to infect humanlike pawns.
+    affectsAnimals        [false]  Eligible to infect animals.
+    animalVariantDef      [-]      If affectsAnimals, non-humanlike targets get
+                                   THIS hediff instead of the primary def. Lets
+                                   one profile own both human + animal variants.
+    crossSpeciesTransmissionFactor [0]  Human<->animal transmission multiplier.
+    selfSchedules         [false]  If you author NO disease IncidentDef, set
+                                   true so Contagion generates one and the
+                                   storyteller schedules it. Requires a
+                                   Seeder_Storyteller in this profile.
+    selfScheduleCommonality [100]  Biome commonality for the generated incident
+                                   (100 ~= vanilla flu; higher = picked more).
+    corpseContagious      [false]  Corpse remains an exposure source after death.
+    showsSickSignal       [false]  Animal carriers show a diagnosable "sick"
+                                   signal (also patch the animal hediffClass —
+                                   see the bottom of this file).
+    spreadSuppressionScale [1]     How hard global suppression bites. 0 = ignore
+                                   suppression (environmental, no person-to-person
+                                   spread). >1 = suppresses faster.
+    useScaledActiveCaseCap [true]  Gate the colony-fraction active-case cap.
+    dangerWeight          [1]      How much an active case backs the seeding
+                                   director off (dangerous diseases buy room).
+    outbreakNotification  [FirstCase]  None / FirstCase / EveryCase.
+    outbreakEndDays       [3]      Quiet days before the next case is "first" again.
+
+  ----------------------------------------------------------------------------
+  INFECTIVITY CURVES (SimpleCurve: x = progress 0..1, y = relative shedding)
+  ----------------------------------------------------------------------------
+    incubationInfectivityCurve  x = incubation progress (0 = just infected,
+                                1 = symptom onset). REQUIRED for incubating
+                                carriers to shed at all — a zero/absent curve
+                                filters them out of contagious scanning.
+    activeInfectivityCurve      x = active-disease severity progress.
+
+  ----------------------------------------------------------------------------
+  VECTOR CLASSES  (<li Class="Contagion.Vector_*">) — copy the closest analog
+  out of 1.6/Patches/Contagion_Profiles.xml for full per-vector params:
+    Vector_Airborne        plume/room-air spread          (see Flu)
+    Vector_Social          face-to-face interaction       (see Flu)
+    Vector_Proximity       contact/flea reachable-space   (see Plague)
+    Vector_Fomite          surfaces + contaminated vomit  (see Flu)
+    Vector_Foodborne       infected-cook contaminated meals (see Plague/GutWorms)
+    Vector_CookingExposure handler exposure while cooking  (see Plague)
+    Vector_Environmental   contaminated water/soil window  (see Malaria/GutWorms)
+    Vector_CorpseFlea      flea burst off fresh corpses    (see Plague)
+    Vector_CorpseFluid     butchery/handling corpse fluids (see Plague)
+    Vector_FecalOralLiving animal filth contamination      (see GutWorms)
+    Vector_FecalOralEating animal pasture/grazing hotspots (see GutWorms)
+
+  Any contact vector may carry an <apparelProtection> block
+  (ContactProtectionProfile) controlling how clothing blocks THAT vector:
+        <apparelProtection>
+          <unsealedEffectiveness>0.60</unsealedEffectiveness>  <!- block at seal=0 ->
+          <handsWeight>0.60</handsWeight>      <!- weights distribute across ->
+          <airwayWeight>0.40</airwayWeight>    <!- the 4 channels ->
+          <skinWeight>0</skinWeight>
+          <feetWeight>0</feetWeight>
+        </apparelProtection>
+
+  ----------------------------------------------------------------------------
+  SEEDER CLASSES  (<li Class="Contagion.Seeder_*">):
+    Seeder_Storyteller   storyteller-driven start (pairs with selfSchedules).
+    Seeder_Arrival       carried in by visitors/traders/caravans.
+    Seeder_Environmental contaminated water/soil window (environmental diseases).
+    Seeder_Acausal       random MTB fallback so the disease can appear at all.
+
+  ============================================================================
+  EXAMPLE — an airborne, person-to-person human disease (flu-shaped).
+  Replace YourModId / YourDisease, retune numbers, delete what you don't need.
+  ============================================================================
+-->
+<Patch>
+
+  <!-- Step 1: ensure a modExtensions node exists -->
+  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
+    <xpath>Defs/HediffDef[defName="YourDisease" and not(modExtensions)]</xpath>
+    <value><modExtensions /></value>
+  </Operation>
+
+  <!-- Step 2: add the transmission profile if not already present -->
+  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
+    <xpath>Defs/HediffDef[defName="YourDisease" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+
+        <incubationDays>1.5</incubationDays>
+        <pendingWindowDays>15</pendingWindowDays>
+        <immunityDurationDays>30</immunityDurationDays>
+        <affectsHumans>true</affectsHumans>
+
+        <!-- Set true if you ship NO disease IncidentDef of your own. -->
+        <selfSchedules>true</selfSchedules>
+        <selfScheduleCommonality>100</selfScheduleCommonality>
+
+        <spreadSuppressionScale>1.0</spreadSuppressionScale>
+        <dangerWeight>1.0</dangerWeight>
+        <outbreakNotification>FirstCase</outbreakNotification>
+
+        <!-- Contagious from a low floor during incubation, ramping into the
+             active curve at symptom onset. -->
+        <incubationInfectivityCurve>
+          <points>
+            <li>(0.0, 0.1)</li>
+            <li>(0.3, 0.2)</li>
+            <li>(0.7, 0.45)</li>
+            <li>(1.0, 0.5)</li>
+          </points>
+        </incubationInfectivityCurve>
+        <activeInfectivityCurve>
+          <points>
+            <li>(0.00, 0.5)</li>
+            <li>(0.25, 1.0)</li>
+            <li>(0.55, 1.0)</li>
+            <li>(0.80, 0.3)</li>
+            <li>(1.00, 0.0)</li>
+          </points>
+        </activeInfectivityCurve>
+
+        <!-- Optional: spread changes with season (Contagion-mode seeding). -->
+        <seasonalInfectivity>
+          <spring>0.6</spring>
+          <summer>0.3</summer>
+          <fall>0.8</fall>
+          <winter>1.0</winter>
+          <permanentSummer>0.4</permanentSummer>
+          <permanentWinter>0.7</permanentWinter>
+        </seasonalInfectivity>
+
+        <vectors>
+          <li Class="Contagion.Vector_Airborne">
+            <baseChancePerCheck>0.02</baseChancePerCheck>
+            <outdoorFactor>0.5</outdoorFactor>
+            <maxRange>10</maxRange>
+            <distanceFalloffRate>0.25</distanceFalloffRate>
+            <obstructedFactor>0.0</obstructedFactor>
+            <roomAirBaseChanceFactor>0.25</roomAirBaseChanceFactor>
+            <roomAirMaxRange>10</roomAirMaxRange>
+            <roomAirMaxCells>100</roomAirMaxCells>
+            <maskTargetEffectiveness>0.7</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
+          </li>
+          <li Class="Contagion.Vector_Social">
+            <baseChancePerInteraction>0.1</baseChancePerInteraction>
+            <outdoorFactor>0.8</outdoorFactor>
+            <maskTargetEffectiveness>0.6</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
+          </li>
+          <li Class="Contagion.Vector_Fomite">
+            <apparelProtection>
+              <unsealedEffectiveness>0.60</unsealedEffectiveness>
+              <handsWeight>0.60</handsWeight>
+              <airwayWeight>0.40</airwayWeight>
+            </apparelProtection>
+            <contaminatesVomit>true</contaminatesVomit>
+            <baseChancePerContact>0.03</baseChancePerContact>
+            <potencyDecayPerHour>0.1</potencyDecayPerHour>
+          </li>
+        </vectors>
+
+        <seeders>
+          <!-- Pairs with selfSchedules: routes the storyteller's pick through incubation. -->
+          <li Class="Contagion.Seeder_Storyteller">
+            <seedCountRange>1~1</seedCountRange>
+            <cooldownDays>10</cooldownDays>
+          </li>
+          <!-- Carried in by visitors/traders. -->
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.015</arrivalChance>
+            <cooldownDays>3</cooldownDays>
+          </li>
+          <!-- Random fallback so the disease can appear even without the above. -->
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>180</mtbDays>
+            <cooldownDays>10</cooldownDays>
+          </li>
+        </seeders>
+
+      </li>
+    </value>
+  </Operation>
+
+  <!-- ======================================================================
+       OPTIONAL — animal disease that stays hidden until a vet diagnoses it.
+       Required alongside <showsSickSignal>true</showsSickSignal> above:
+       swap the animal hediff's class to Contagion's hidden-disease class.
+       (Remove this block if your disease has no hidden animal variant.)
+       ====================================================================== -->
+  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
+    <xpath>Defs/HediffDef[defName="YourAnimalDisease" and not(hediffClass)]</xpath>
+    <value>
+      <hediffClass>Contagion.Hediff_ContagionAnimalHiddenDisease</hediffClass>
+    </value>
+  </Operation>
+
+</Patch>
