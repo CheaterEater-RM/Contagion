@@ -139,6 +139,7 @@
 
   <!-- Butchering contamination -->
   <Contagion_MessageButcherNoticed>{0} found signs of {2} while butchering {1} and discarded the products.</Contagion_MessageButcherNoticed>
+  <Contagion_MessageCookNoticedInfectedMeat>{0} noticed signs of {1} in the meat and discarded it before cooking.</Contagion_MessageCookNoticedInfectedMeat>
   <Contagion_InfectedCorpseInspect>Infected corpse: {0}</Contagion_InfectedCorpseInspect>
   <Contagion_InfectedCorpseInspectUnknown>Infected corpse: Unknown</Contagion_InfectedCorpseInspectUnknown>
   <Contagion_UnknownCapacityCause>Unknown cause</Contagion_UnknownCapacityCause>
