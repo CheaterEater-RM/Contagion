@@ -9,7 +9,7 @@ public sealed class CompProperties_CorpseInspectable : CompProperties_Interactab
     {
         compClass = typeof(Comp_CorpseInspectable);
 
-        // Examination duration (matches the retired JobDriver_InspectCorpse's 400-tick wait).
+        // Examination duration matches the previous 400-tick inspection flow.
         ticksToActivate = 400;
 
         // One-shot per corpse is enforced by Comp_InfectedCorpse.HasBeenInspected, so this comp
