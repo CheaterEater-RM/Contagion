@@ -15,6 +15,7 @@ Respiratory flu strain adapted to non-human animals. Mirrors human Flu in mechan
 | Contagion incubation | 1 day |
 | Vanilla lethal severity | 1.0 |
 | Vanilla tend cycle | 48 h (animals tend less frequently) |
+| Contagion immunity | 30 days post-recovery (`immunityDurationDays 30`) |
 
 ---
 
@@ -149,7 +150,7 @@ This makes the first spillover into a colony's animal population free if the dis
 - **Barn separation** — keeping sick animals in a separate roofed area away from healthy animals contains airborne spread.
 - **Vet tending** — a dedicated doctor or handler with high Medicine skill keeping the 48 h tend window reduces severity progression.
 - **Cleaning** — removing vomit filth from shared animal areas cuts fomite spread.
-- **Sick signal + diagnosis** — animal flu uses the shared animal-disease chain (`showsSickSignal true`). Infected animals stay hidden until a handler notices the sick signal and a vet diagnoses them. A diagnosis letter fires for colony animals, so an outbreak no longer requires the player to inspect every animal's health tab. The standard generic diagnosis advice ("do not butcher until it recovers") still appears, though flu meat is in fact safe.
+- **Sick signal + diagnosis** — animal flu uses the shared animal-disease chain (`showsSickSignal true`). Infected animals stay hidden until a handler notices the sick signal and a vet diagnoses them. Independent of handler interaction, a hidden carrier rolls passive symptom presentation every half game-day against severity (back-loaded curve: 0.03 / 0.09 / 0.16 at severity 0.3 / 0.6 / 1.0), ~**60%** cumulative over the course — readily detectable, matching plague. A diagnosis letter fires for colony animals, so an outbreak no longer requires the player to inspect every animal's health tab. The standard generic diagnosis advice ("do not butcher until it recovers") still appears, though flu meat is in fact safe. No posthumous reveal: flu corpses are not contagious, so a flu death never marks the corpse.
 
 ---
 

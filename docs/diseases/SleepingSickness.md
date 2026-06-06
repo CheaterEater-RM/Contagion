@@ -16,12 +16,13 @@ Tsetse-fly-borne protozoan disease. Hotter and wetter than malaria — this is a
 | Vanilla lethal severity | 1.0 |
 | Vanilla tend cycle | 10 h |
 | Vanilla immunity | `immunityPerDaySick 0.4`, `severityPerDayNotImmune 0.45` — slower than malaria |
+| Contagion immunity | 30 days post-recovery (`immunityDurationDays 30`) |
 
 ---
 
 ## Vanilla Disease Characteristics
 
-Sleeping sickness is slower and more debilitating than malaria. The immunity race is slightly less aggressive (`severityPerDayNotImmune 0.45`) but the consciousness penalties are severe — advanced cases render pawns effectively comatose. The 10 h tend window means regular medical attention is required. Vanilla immunity decay means prior exposure provides minimal long-term protection.
+Sleeping sickness is slower and more debilitating than malaria. The immunity race is slightly less aggressive (`severityPerDayNotImmune 0.45`) but the consciousness penalties are severe — advanced cases render pawns effectively comatose. The 10 h tend window means regular medical attention is required. Vanilla immunity decay means prior exposure provides minimal long-term protection on its own, but Contagion adds a 30-day post-recovery immunity (`immunityDurationDays 30`) that prevents re-acquisition for ~half a year.
 
 ---
 

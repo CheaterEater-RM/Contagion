@@ -17,7 +17,7 @@ Water-borne intestinal parasite entering through contaminated water, fecal conta
 | Vanilla lethal severity | **None** — gut worms cannot kill directly |
 | Vanilla removal | Accumulate 300% total tend quality (`disappearsAtTotalTendQuality 3`); no immunity race |
 | Vanilla tend window | 48 h (`baseTendDurationHours 48`); ~3 skilled tends over ~4–6 days clears the disease |
-| Contagion immunity | 15 days post-recovery (`immunityDurationDays 15`) |
+| Contagion immunity | 30 days post-recovery (`immunityDurationDays 30`) |
 
 ---
 
@@ -232,6 +232,8 @@ Eating an infected corpse raw is treated as extreme direct exposure and should a
 
 Animals incubating gut worms can be detected by handlers via `AnimalChat` interaction (Animals skill / 20 roll). The `Contagion_AnimalSick` hediff is applied on detection and self-clears untreated by day 5 at latest. Diagnosis by a vet uses the unified diagnostic roll (`ContagionDiagnosticSkillUtility`, `isAnimalSubject: true`, `isButchery: false`): Medical primary, Animals at 0.60×, Sight-scaled. A passing roll collapses incubation to mild active disease; a failing roll produces a false negative and starts the diagnosis cooldown before the animal can present sick again.
 
+Independent of handler interaction, a hidden gut-worms carrier also rolls passive symptom presentation every half game-day against severity (back-loaded curve: 0.015 / 0.033 / 0.057 at severity 0.3 / 0.7 / 1.0), ~**40%** cumulative over the course — so even unhandled or wild animals tend to surface eventually.
+
 This mechanic is especially important for gut worms: undetected infected animals go through the butchering chain and contaminate the meat supply. Attentive handlers and skilled vets are the first line of defense.
 
 ---
@@ -246,7 +248,7 @@ This mechanic is especially important for gut worms: undetected infected animals
 - **Kitchen hygiene** — infected cooks in dirty kitchens produce more contaminated food. Restricting sick pawns from cooking is the strongest single lever against the food-chain spread.
 - **Cook PPE (Typhoid Mary)** — if a sick cook must keep working, food-handling gear cuts both ends: their `cookSourceProtection` reduces contamination baked into meals, and their `Vector_CookingExposure` `apparelProtection` (hands/airway-weighted) reduces the cook contracting it off raw ingredients. A sealed-suit cook is effectively a non-vector.
 - **Cooking** — ordinary cooked meals use a shared 0.20 recipe factor before Cooking skill. Survival meals (0.05×) are safer because they are cooked and sealed; pemmican (0.70×) remains risky with contaminated meat.
-- **Immunity** — 15-day post-recovery immunity prevents immediate re-infection from the same source.
+- **Immunity** — 30-day post-recovery immunity prevents immediate re-infection from the same source.
 
 ---
 

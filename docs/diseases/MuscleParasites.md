@@ -1,6 +1,6 @@
 # Muscle Parasites — Contagion Profile
 
-Trichinella-type larvae contracted from raw or undercooked infected meat, contaminated outdoor soil, fecal contamination, grazing environments, and unsafe food handling. No person-to-person airborne or proximity spread, no vomiting. The main colony chain is still environment → outdoor animal → butchered meat → human, but humans can also catch it directly from sustained outdoor environmental exposure or contaminated food. Longer incubation than gut worms, longer immunity.
+Trichinella-type larvae contracted from raw or undercooked infected meat, contaminated outdoor soil, fecal contamination, grazing environments, and unsafe food handling. No person-to-person airborne or proximity spread, no vomiting. The main colony chain is still environment → outdoor animal → butchered meat → human, but humans can also catch it directly from sustained outdoor environmental exposure or contaminated food. Longer incubation than gut worms.
 
 ---
 
@@ -16,7 +16,7 @@ Trichinella-type larvae contracted from raw or undercooked infected meat, contam
 | Vanilla lethal severity | **None** — muscle parasites cannot kill directly |
 | Vanilla removal | Accumulate 300% total tend quality (`disappearsAtTotalTendQuality 3`); no immunity race |
 | Vanilla tend window | 48 h (`baseTendDurationHours 48`); ~3 skilled tends over ~4–6 days clears the disease |
-| Contagion immunity | 20 days post-recovery (`immunityDurationDays 20`) |
+| Contagion immunity | 30 days post-recovery (`immunityDurationDays 30`) |
 
 ### Why no `selfSchedules`
 
@@ -216,7 +216,7 @@ As with gut worms, contaminated meat and prepared food remain hazardous for up t
 
 ### Sick signal (`showsSickSignal true`)
 
-Same detection/diagnosis chain as gut worms and plague: `AnimalChat` interaction -> Animals skill roll -> `Contagion_AnimalSick` -> vet diagnosis. The sick signal self-clears untreated by day 5 at latest, and any diagnosis attempt starts the diagnosis cooldown before the animal can present sick again. Detecting an infected animal before slaughter and either treating it or safely disposing of it is the entire counterplay loop.
+Same detection/diagnosis chain as gut worms and plague: `AnimalChat` interaction -> Animals skill roll -> `Contagion_AnimalSick` -> vet diagnosis. The sick signal self-clears untreated by day 5 at latest, and any diagnosis attempt starts the diagnosis cooldown before the animal can present sick again. Independent of handler interaction, a hidden carrier also rolls passive symptom presentation every half game-day against severity (back-loaded curve: 0.010 / 0.023 / 0.040 at severity 0.3 / 0.7 / 1.0), ~**30%** cumulative over the course — the lowest of the animal diseases, since larvae are the least externally obvious. Detecting an infected animal before slaughter and either treating it or safely disposing of it is the entire counterplay loop.
 
 ### No vomiting
 

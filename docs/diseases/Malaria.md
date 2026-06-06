@@ -16,12 +16,13 @@ Mosquito-borne disease seeded by warm, wet environments. No person-to-person spr
 | Vanilla lethal severity | 1.0 |
 | Vanilla tend cycle | 10 h |
 | Vanilla immunity | `immunityPerDaySick 0.5`, `severityPerDayNotImmune 0.5` — close race |
+| Contagion immunity | 30 days post-recovery (`immunityDurationDays 30`) |
 
 ---
 
 ## Vanilla Disease Characteristics
 
-Malaria is a recurring immunity-race disease. The vanilla immunity race is tight — `severityPerDayNotImmune 0.5` vs. `immunityPerDaySick 0.5`. Tended pawns typically survive but the margin is slim. Recurring malaria (vanilla `immunityPerDayNotSick −0.02`) means immunity slowly decays after recovery; a pawn who had malaria once is at risk again within 30 days. Penoxycyline is the primary prevention tool.
+Malaria is a recurring immunity-race disease. The vanilla immunity race is tight — `severityPerDayNotImmune 0.5` vs. `immunityPerDaySick 0.5`. Tended pawns typically survive but the margin is slim. Recurring malaria (vanilla `immunityPerDayNotSick −0.02`) means vanilla immunity slowly decays after recovery. On top of that, Contagion grants a 30-day post-recovery immunity (`immunityDurationDays 30`), so a recovered pawn is protected from re-acquisition for ~half a year before the environment can reinfect them. Penoxycyline is the primary prevention tool.
 
 ---
 

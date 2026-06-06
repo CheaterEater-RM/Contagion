@@ -12,7 +12,7 @@
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
         <pendingWindowDays>15</pendingWindowDays>
-        <immunityDurationDays>0</immunityDurationDays>
+        <immunityDurationDays>30</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <!-- Floor at 0.1 so an incubating carrier (e.g. one that arrives mid-incubation on a
              caravan) still sheds a minimal amount before symptom onset, rather than ~0 at the
@@ -130,7 +130,7 @@
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
         <pendingWindowDays>15</pendingWindowDays>
-        <immunityDurationDays>0</immunityDurationDays>
+        <immunityDurationDays>30</immunityDurationDays>
         <affectsHumans>false</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
         <!-- Sick signal + diagnosis chain (matches the other animal diseases): infected animals
@@ -142,6 +142,17 @@
              a corpse infected — an animal showing the sick signal at death only leaves a "suspected"
              corpse that post-mortem inspection clears as a harmless false positive. -->
         <showsSickSignal>true</showsSickSignal>
+        <!-- Back-loaded passive presentation, ~60% cumulative over the course (rolled every half-day
+             against severity, weighted toward later/higher-severity periods). No posthumous reveal:
+             corpseContagious is false (see above), so flu corpses never mark even at the default chance. -->
+        <passiveSymptomPresentationCurve>
+          <points>
+            <li>(0.0, 0.00)</li>
+            <li>(0.3, 0.03)</li>
+            <li>(0.6, 0.09)</li>
+            <li>(1.0, 0.16)</li>
+          </points>
+        </passiveSymptomPresentationCurve>
         <!-- Animal flu can freely establish in the first colony animal species it reaches from
              an outside carrier, but additional colony animal species are much harder to involve. -->
         <animalCrossSpeciesFactorCurve>
@@ -222,7 +233,7 @@
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>2.0</incubationDays>
         <pendingWindowDays>5</pendingWindowDays>
-        <immunityDurationDays>0</immunityDurationDays>
+        <immunityDurationDays>30</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
         <!-- Animal_Plague is the animal-variant hediff: same disease cluster, 48h tend cycle instead of 12h. -->
@@ -230,8 +241,17 @@
         <crossSpeciesTransmissionFactor>0.5</crossSpeciesTransmissionFactor>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
-        <!-- Passive presentation uses the default curve (~25% cumulative). Posthumous at 10% —
+        <!-- Back-loaded passive presentation, ~60% cumulative over the course (rolled every half-day
+             against severity, weighted toward later/higher-severity periods). Posthumous at 10% —
              plague lesions are apparent on a corpse even without prior symptoms. -->
+        <passiveSymptomPresentationCurve>
+          <points>
+            <li>(0.0, 0.00)</li>
+            <li>(0.3, 0.03)</li>
+            <li>(0.6, 0.09)</li>
+            <li>(1.0, 0.16)</li>
+          </points>
+        </passiveSymptomPresentationCurve>
         <posthumousSymptomChance>0.1</posthumousSymptomChance>
         <spreadSuppressionScale>1.0</spreadSuppressionScale>
         <!-- Plague is dangerous: weight active cases above average so the Mode 2 director backs off while it's present. -->
@@ -400,21 +420,23 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>2.0</incubationDays>
-        <immunityDurationDays>15</immunityDurationDays>
+        <immunityDurationDays>30</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
         <!-- Contagion_Animal_GutWorms is the animal-variant hediff: same disease cluster, hidden until diagnosed. -->
         <animalVariantDef>Contagion_Animal_GutWorms</animalVariantDef>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
-        <!-- Gut worms are not externally visible — reduced passive presentation (~10% cumulative)
-             and a lower posthumous chance (5%: worms are internal and not obvious post-mortem). -->
+        <!-- Gut worms are not externally visible, but kept fair for the player: back-loaded passive
+             presentation, ~40% cumulative over the course (rolled every half-day against severity,
+             weighted toward later periods). Lower posthumous chance (5%: worms are internal and not
+             obvious post-mortem). -->
         <passiveSymptomPresentationCurve>
           <points>
             <li>(0.0, 0.00)</li>
-            <li>(0.3, 0.003)</li>
-            <li>(0.7, 0.007)</li>
-            <li>(1.0, 0.012)</li>
+            <li>(0.3, 0.015)</li>
+            <li>(0.7, 0.033)</li>
+            <li>(1.0, 0.057)</li>
           </points>
         </passiveSymptomPresentationCurve>
         <posthumousSymptomChance>0.05</posthumousSymptomChance>
@@ -681,21 +703,23 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>3.0</incubationDays>
-        <immunityDurationDays>20</immunityDurationDays>
+        <immunityDurationDays>30</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <affectsAnimals>true</affectsAnimals>
         <!-- Contagion_Animal_MuscleParasites is the animal-variant hediff: same disease cluster, hidden until diagnosed. -->
         <animalVariantDef>Contagion_Animal_MuscleParasites</animalVariantDef>
         <corpseContagious>true</corpseContagious>
         <showsSickSignal>true</showsSickSignal>
-        <!-- Muscle parasites are deeply embedded — reduced passive presentation (~10% cumulative)
-             and a low posthumous chance (5%: larvae not externally visible without dissection). -->
+        <!-- Muscle parasites are deeply embedded, but kept fair for the player: back-loaded passive
+             presentation, ~30% cumulative over the course (rolled every half-day against severity,
+             weighted toward later periods). Low posthumous chance (5%: larvae not externally visible
+             without dissection). -->
         <passiveSymptomPresentationCurve>
           <points>
             <li>(0.0, 0.00)</li>
-            <li>(0.3, 0.003)</li>
-            <li>(0.7, 0.007)</li>
-            <li>(1.0, 0.012)</li>
+            <li>(0.3, 0.010)</li>
+            <li>(0.7, 0.023)</li>
+            <li>(1.0, 0.040)</li>
           </points>
         </passiveSymptomPresentationCurve>
         <posthumousSymptomChance>0.05</posthumousSymptomChance>
@@ -918,7 +942,7 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
-        <immunityDurationDays>0</immunityDurationDays>
+        <immunityDurationDays>30</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>FirstCase</outbreakNotification>
         <!-- Game-balance cap: even though this is map-seeded with no person-to-person spread, players
@@ -1014,7 +1038,7 @@
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
-        <immunityDurationDays>0</immunityDurationDays>
+        <immunityDurationDays>30</immunityDurationDays>
         <affectsHumans>true</affectsHumans>
         <outbreakNotification>FirstCase</outbreakNotification>
         <!-- Game-balance cap: even though this is map-seeded with no person-to-person spread, players

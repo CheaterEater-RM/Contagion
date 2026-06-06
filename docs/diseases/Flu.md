@@ -16,6 +16,7 @@ Seasonally introduced respiratory illness. Spreads person-to-person through the 
 | Vanilla lethal severity | 1.0 |
 | Vanilla tend cycle | 12 h |
 | Immunity race | close but survivable with care — `immunityPerDaySick 0.2388`, `severityPerDayNotImmune 0.2488` |
+| Contagion immunity | 30 days post-recovery (`immunityDurationDays 30`) |
 
 ---
 

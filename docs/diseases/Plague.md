@@ -18,6 +18,7 @@ Flea-borne bacterial disease that crosses freely between humans and animals. One
 | Animal tend cycle | 48 h (`severityPerDayTended −0.4254`) |
 | Human immunity | `immunityPerDaySick 0.5224`, `severityPerDayNotImmune 0.666` |
 | Animal immunity | `immunityPerDaySick 0.6092`, `severityPerDayNotImmune 0.666` |
+| Contagion immunity | 30 days post-recovery (`immunityDurationDays 30`) |
 
 ### Why two hediffs, one cluster
 
@@ -245,7 +246,7 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 
 **Detection path 1 — handler interaction:** When a colonist performs an `AnimalChat` interaction (training, tending, feeding), they roll `Animals skill / 20`. On success, `Contagion_AnimalSick` is applied — a visible signal in the animal's health bar. Works for colony animals only (wild animals receive no `AnimalChat` interactions from player colonists).
 
-**Detection path 2 — passive symptom presentation:** Any animal carrying a hidden active disease (`Hediff_ContagionAnimalHiddenDisease`, diagnosed or not) rolls a per-disease curve every half game-day. On success, `Contagion_AnimalSick` is applied and a message fires. This covers wild animals and colony animals whose handlers never noticed. Cumulative probability over a typical untreated course is approximately **25%**.
+**Detection path 2 — passive symptom presentation:** Any animal carrying a hidden active disease (`Hediff_ContagionAnimalHiddenDisease`, diagnosed or not) rolls a per-disease curve every half game-day. On success, `Contagion_AnimalSick` is applied and a message fires. This covers wild animals and colony animals whose handlers never noticed. The curve is back-loaded toward higher severity; cumulative probability over a typical untreated course is approximately **60%**.
 
 | Severity | Per-check chance |
 |---|---|
@@ -284,5 +285,5 @@ Animals incubating plague (hidden `Hediff_ContagionIncubation` with `TargetDisea
 - Plague uses separate scaled caps for colony humans and colony animals. A colony with 10 colonists and 10 animals has a human plague cap of 4 and an animal plague cap of 4, rather than one shared mixed-species pool. Non-colony lord groups intentionally use one mixed group budget, so a 20-pawn caravan with humans and animals trends toward a 10-case cap instead of separate human/animal saturation.
 - Live-host plague has no seasonal introduction variation, and ongoing spread is not season-weighted. Corpse fleas already have temperature-based suppression through `Vector_CorpseFlea`.
 - Incubation infectivity is set to a flat-ish curve (0.3 → 0.6). If playtesting shows plague outbreaks feel too fast or uncontainable, dial the starting value down toward 0.15–0.2 first; even the 2-day window amplifies moderate incubation infectivity.
-- Passive symptom presentation peaks at 5% per half-day at severity 1.0, giving ~25% cumulative over a typical untreated course. If wild animal plague feels too invisible, raise the peak toward 0.08; if messages are too noisy, lower it or raise the severity threshold.
+- Passive symptom presentation peaks at 16% per half-day at severity 1.0 (back-loaded curve: 0.03 at 0.3, 0.09 at 0.6), giving ~60% cumulative over a typical untreated course. If messages are too noisy, lower the peak; if plague animals still feel too invisible, raise it.
 - Posthumous symptom chance (10%) is the probability an animal that died with hidden plague shows as an infected corpse. Raise toward 0.3 for diseases with obvious post-mortem lesions; lower toward 0 for truly occult infections.
