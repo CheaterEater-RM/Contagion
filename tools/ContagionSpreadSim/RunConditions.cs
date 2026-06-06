@@ -28,6 +28,23 @@ internal sealed class RunConditions
     public float TargetSusceptibility = 1f; // vanilla DiseaseContractChanceFactor for a fresh, never-exposed pawn
     public bool SeederBonus;               // external->colony first-jump cube-root (off for single-group runs)
 
+    // Environmental-window mode (--environmental): source-less exposure during an open environmental
+    // window. Defaults model Contagion mode: 2500-tick passes, profile window days, profile budget.
+    public bool Environmental;
+    public int EnvironmentalTargets = 10;
+    public EnvironmentalTargetKind EnvironmentalTargetKind = EnvironmentalTargetKind.Human;
+    public EnvironmentalBudgetMode EnvironmentalBudgetMode = EnvironmentalBudgetMode.Profile;
+    public int EnvironmentalFixedBudget = -1;
+    public float EnvironmentalWindowDays = -1f;
+    public int EnvironmentalCheckIntervalTicks = 2500;
+    public float? EnvironmentalTemperature;
+    public float EnvironmentalWaterFactor = 1f;
+    public int EnvironmentalCellsFromUnroofed = 5;
+    public EnvironmentalSurface EnvironmentalSurface = EnvironmentalSurface.Dirt; // ground-contact diseases only
+    public EnvironmentalSchedule EnvironmentalSchedule = EnvironmentalSchedule.Always;
+    public int EnvironmentalDayStartHour = 7;  // outdoors-from hour for the "day" schedule
+    public int EnvironmentalDayEndHour = 19;    // outdoors-until hour for the "day" schedule
+
     // ── Global tuning dials ────────────────────────────────────────────────────────────────────
     // Ticks between transmission passes. Mirrors the production default in ContagionTransmissionTuningDef
     // (500 = 120 passes/day). Raising it slows pawn-to-pawn spread proportionally AND cuts CPU. 60000 ticks = 1 day.
@@ -69,6 +86,46 @@ internal sealed class RunConditions
                 case "--check-interval": c.CheckIntervalTicks = int.Parse(Next()); break;
                 case "--base-mult": c.BaseChanceMult = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
                 case "--outdoor-mult": c.OutdoorMult = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
+                case "--environmental":
+                case "--env":
+                    c.Environmental = true;
+                    break;
+                case "--env-targets":
+                case "--targets":
+                    c.EnvironmentalTargets = int.Parse(Next());
+                    break;
+                case "--env-target-kind":
+                    c.EnvironmentalTargetKind = ParseEnvironmentalTargetKind(Next());
+                    break;
+                case "--budget-mode":
+                    c.EnvironmentalBudgetMode = ParseEnvironmentalBudgetMode(Next());
+                    break;
+                case "--budget":
+                    c.EnvironmentalBudgetMode = EnvironmentalBudgetMode.Fixed;
+                    c.EnvironmentalFixedBudget = int.Parse(Next());
+                    break;
+                case "--window-days":
+                    c.EnvironmentalWindowDays = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture);
+                    break;
+                case "--env-check-interval":
+                    c.EnvironmentalCheckIntervalTicks = int.Parse(Next());
+                    break;
+                case "--temperature":
+                case "--temp":
+                    c.EnvironmentalTemperature = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture);
+                    break;
+                case "--water-factor":
+                    c.EnvironmentalWaterFactor = float.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture);
+                    break;
+                case "--cells-from-edge":
+                    c.EnvironmentalCellsFromUnroofed = int.Parse(Next());
+                    break;
+                case "--surface":
+                    c.EnvironmentalSurface = ParseEnvironmentalSurface(Next());
+                    break;
+                case "--schedule":
+                    c.EnvironmentalSchedule = ParseEnvironmentalSchedule(Next());
+                    break;
                 default: throw new ArgumentException($"Unknown argument '{a}'.");
             }
         }
@@ -96,4 +153,58 @@ internal sealed class RunConditions
     };
 
     public string SuppressionLabel => Suppression == ContagionSuppressionMode.LetErRip ? "off" : Suppression.ToString().ToLowerInvariant();
+
+    public string EnvironmentalTargetKindLabel => EnvironmentalTargetKind switch
+    {
+        EnvironmentalTargetKind.ColonyAnimal => "animal",
+        EnvironmentalTargetKind.WildAnimal => "wild",
+        _ => "human",
+    };
+
+    public string EnvironmentalBudgetLabel => EnvironmentalBudgetMode switch
+    {
+        EnvironmentalBudgetMode.None => "none",
+        EnvironmentalBudgetMode.Fixed => EnvironmentalFixedBudget.ToString(),
+        _ => "profile",
+    };
+
+    private static EnvironmentalTargetKind ParseEnvironmentalTargetKind(string value) => value.ToLowerInvariant() switch
+    {
+        "human" or "pawn" or "pawns" => EnvironmentalTargetKind.Human,
+        "animal" or "colony-animal" or "colonyanimal" => EnvironmentalTargetKind.ColonyAnimal,
+        "wild" or "wild-animal" or "wildanimal" => EnvironmentalTargetKind.WildAnimal,
+        _ => throw new ArgumentException($"Unknown environmental target kind '{value}'."),
+    };
+
+    private static EnvironmentalSurface ParseEnvironmentalSurface(string value) => value.ToLowerInvariant() switch
+    {
+        "dirt" or "soil" or "sand" => EnvironmentalSurface.Dirt,
+        "stone" or "rock" or "floor" => EnvironmentalSurface.Stone,
+        "ice" => EnvironmentalSurface.Ice,
+        "breeding" or "water" or "marsh" or "mud" => EnvironmentalSurface.Breeding,
+        _ => throw new ArgumentException($"Unknown environmental surface '{value}'."),
+    };
+
+    private static EnvironmentalSchedule ParseEnvironmentalSchedule(string value) => value.ToLowerInvariant() switch
+    {
+        "always" or "all" or "24h" => EnvironmentalSchedule.Always,
+        "day" or "dayshift" or "day-shift" => EnvironmentalSchedule.Day,
+        "night" or "nightshift" or "night-shift" => EnvironmentalSchedule.Night,
+        _ => throw new ArgumentException($"Unknown environmental schedule '{value}'."),
+    };
+
+    public string EnvironmentalScheduleLabel => EnvironmentalSchedule switch
+    {
+        EnvironmentalSchedule.Day => "day-out",
+        EnvironmentalSchedule.Night => "night-out",
+        _ => "always",
+    };
+
+    private static EnvironmentalBudgetMode ParseEnvironmentalBudgetMode(string value) => value.ToLowerInvariant() switch
+    {
+        "profile" => EnvironmentalBudgetMode.Profile,
+        "none" or "off" or "unlimited" => EnvironmentalBudgetMode.None,
+        "fixed" => EnvironmentalBudgetMode.Fixed,
+        _ => throw new ArgumentException($"Unknown environmental budget mode '{value}'."),
+    };
 }

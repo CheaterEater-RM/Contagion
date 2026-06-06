@@ -26,6 +26,27 @@ internal static class Reporter
         Console.WriteLine();
     }
 
+    public static void PrintEnvironmentalHeader()
+    {
+        Console.WriteLine();
+        Console.WriteLine("Contagion spread simulation — environmental infectivity during an open window (default 2500-tick interval = 24 passes/day).");
+        Console.WriteLine("inf% = mean % infected by window close · any% = trials with at least one infection · budget% = trials that hit the active window budget");
+        Console.WriteLine("p/pass = daily-MEAN per-target chance at zero load (time-of-day + schedule averaged) · t1st/t50/tBud = median days to first / 50% / budget reached");
+        Console.WriteLine("sched = when outdoors: always · day-out (sheltered at night) · night-out (sheltered by day)");
+        Console.WriteLine();
+        Console.WriteLine(string.Format(
+            "{0,-16} {1,-7} {2,-7} {3,-9} {4,3} {5,4} {6,6} {7,5} {8,7} {9,7} {10,6} {11,6} {12,6} {13,6} {14,7} {15,7}",
+            "disease", "target", "supp", "sched", "N", "cap", "budget", "win", "p/pass", "inf%", "mean", "any%", "budget%", "t1st", "t50", "tBud"));
+        Console.WriteLine(new string('-', 138));
+    }
+
+    public static void PrintEnvironmentalConfig(RunConditions c, DiseaseModel disease)
+    {
+        float temp = c.EnvironmentalTemperature ?? disease.EnvironmentalVector?.PeakTemperature ?? 0f;
+        Console.WriteLine($"config: env-interval={c.EnvironmentalCheckIntervalTicks}t ({60000 / c.EnvironmentalCheckIntervalTicks}/day) · base-mult={c.BaseChanceMult:0.##} · water-factor={c.EnvironmentalWaterFactor:0.##} · temp={temp:0.#}C · {(c.Outdoor ? "outdoor" : $"indoor/{c.EnvironmentalCellsFromUnroofed} cells")} · schedule={c.EnvironmentalScheduleLabel} · trials={c.Trials}");
+        Console.WriteLine();
+    }
+
     public static void PrintRow(Scenario scenario, RunConditions c, RunResult r)
     {
         Console.WriteLine(string.Format(
@@ -45,6 +66,28 @@ internal static class Reporter
             Days(r.MedianDaysToSaturation),
             r.SaturationRate * 100f,
             r.BurnedOutRate * 100f));
+    }
+
+    public static void PrintEnvironmentalRow(RunConditions c, EnvironmentalRunResult r)
+    {
+        Console.WriteLine(string.Format(
+            "{0,-16} {1,-7} {2,-7} {3,-9} {4,3} {5,4} {6,6} {7,5:0.#} {8,6:0.00}% {9,6:0.0}% {10,6:0.0} {11,5:0}% {12,6:0}% {13,6} {14,7} {15,7}",
+            c.Disease.ToLowerInvariant(),
+            c.EnvironmentalTargetKindLabel,
+            c.SuppressionLabel,
+            c.EnvironmentalScheduleLabel,
+            r.TargetCount,
+            r.Capacity,
+            Budget(r),
+            r.WindowDays,
+            r.MeanPerPassChanceAtStart * 100f,
+            r.MeanInfectedPct,
+            r.MeanInfected,
+            r.AnyInfectedRate * 100f,
+            r.BudgetReachedRate * 100f,
+            Days(r.MedianDaysToFirst),
+            Days(r.MedianDaysTo50),
+            Days(r.MedianDaysToBudget)));
     }
 
     public static void PrintAlerts(Scenario scenario, RunConditions c, RunResult r)
@@ -82,4 +125,7 @@ internal static class Reporter
     }
 
     private static string Days(float d) => d < 0f ? "—" : $"{d:0.0}d";
+
+    private static string Budget(EnvironmentalRunResult r)
+        => r.MeanBudget < 0f ? "none" : r.MeanBudget.ToString("0.0");
 }

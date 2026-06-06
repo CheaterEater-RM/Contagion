@@ -601,10 +601,12 @@
             <preparedOutdoorGroundFoodFactor>0.25</preparedOutdoorGroundFoodFactor>
             <storedOrIndoorFoodFactor>0.03</storedOrIndoorFoodFactor>
           </li>
-          <!-- Environmental acquisition: contaminated water. Worm eggs require above-freezing water to
-               remain viable — minTemperature 0 reflects that frozen/icy water suppresses transmission.
-               Peak in moderate warmth. Outdoor animals are fully exposed; indoor ones are not.
-               Humans can catch it too, but hygiene lowers their ambient exposure. -->
+          <!-- Environmental acquisition: contaminated water and soil. Worm eggs require above-freezing
+               water to remain viable — minTemperature 0 reflects that frozen/icy water suppresses
+               transmission. Peak in moderate warmth. Gut worms are tracked in from the ground, so the
+               groundContact model gates exposure on the surface under the pawn (and whether it is
+               roofed) rather than how deep into a room they are: bare dirt and tainted water are the
+               risk, while a roofed stone/built floor is nearly clean. -->
           <li Class="Contagion.Vector_Environmental">
             <!-- Sealed full-body suits / boots reduce ambient water/soil exposure (humanlike only). -->
             <apparelProtection>
@@ -613,14 +615,21 @@
               <feetWeight>0.40</feetWeight>
               <airwayWeight>0.15</airwayWeight>
             </apparelProtection>
-            <baseChancePerCheck>0.002</baseChancePerCheck>
+            <baseChancePerCheck>0.0028</baseChancePerCheck>
             <humanExposureFactor>0.50</humanExposureFactor>
             <minTemperature>0</minTemperature>
             <peakTemperature>22</peakTemperature>
             <waterProximityRadius>14</waterProximityRadius>
             <waterProximityWeight>0.08</waterProximityWeight>
-            <indoorReductionPerCellFromEdge>0.15</indoorReductionPerCellFromEdge>
-            <coolRoomThreshold>10</coolRoomThreshold>
+            <!-- Waterborne worm: standing/contaminated water is the breeding source (roof-immune),
+                 raw dirt carries eggs, hard floors and ice are nearly clean. -->
+            <groundContact>
+              <dirtFactor>1.0</dirtFactor>
+              <stoneFactor>0.25</stoneFactor>
+              <iceFactor>0.05</iceFactor>
+              <breedingFactor>3.0</breedingFactor>
+              <roofedMultiplier>0.3</roofedMultiplier>
+            </groundContact>
           </li>
         </vectors>
         <seeders>
@@ -633,9 +642,15 @@
           </li>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>0.8</baseChanceMultiplier>
+            <mtbDays>180</mtbDays>
             <windowDays>14</windowDays>
+            <contagionWindowDays>4</contagionWindowDays>
             <infectionBudget>2~4</infectionBudget>
-            <cooldownDays>3</cooldownDays>
+            <colonyHumanBudgetFraction>0.20~0.45</colonyHumanBudgetFraction>
+            <includePrisonersInColonyHumanBudget>false</includePrisonersInColonyHumanBudget>
+            <colonyAnimalBudgetFraction>0.25~0.60</colonyAnimalBudgetFraction>
+            <wildAnimalBudgetSqrtFactor>1.0</wildAnimalBudgetSqrtFactor>
+            <cooldownDays>15</cooldownDays>
           </li>
           <!-- No Seeder_Arrival: gut worms is a fecal-oral / contaminated-food disease, not something
                a visiting trader plausibly hands to the colony. It enters via the environmental window
@@ -843,14 +858,22 @@
               <feetWeight>0.40</feetWeight>
               <airwayWeight>0.15</airwayWeight>
             </apparelProtection>
-            <baseChancePerCheck>0.0015</baseChancePerCheck>
+            <baseChancePerCheck>0.0075</baseChancePerCheck>
             <humanExposureFactor>0.45</humanExposureFactor>
             <minTemperature>-5</minTemperature>
             <peakTemperature>18</peakTemperature>
             <waterProximityRadius>6</waterProximityRadius>
             <waterProximityWeight>0.02</waterProximityWeight>
-            <indoorReductionPerCellFromEdge>0.20</indoorReductionPerCellFromEdge>
-            <coolRoomThreshold>8</coolRoomThreshold>
+            <!-- Soil-tracked parasite: bare grazing dirt is the main route, marsh/mud slightly worse,
+                 hard floors and frozen ground almost nothing. Less waterborne than gut worms, so a
+                 lower breedingFactor. -->
+            <groundContact>
+              <dirtFactor>1.0</dirtFactor>
+              <stoneFactor>0.20</stoneFactor>
+              <iceFactor>0.03</iceFactor>
+              <breedingFactor>1.8</breedingFactor>
+              <roofedMultiplier>0.3</roofedMultiplier>
+            </groundContact>
           </li>
         </vectors>
         <seeders>
@@ -862,9 +885,15 @@
           </li>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>0.7</baseChanceMultiplier>
+            <mtbDays>200</mtbDays>
             <windowDays>14</windowDays>
+            <contagionWindowDays>4</contagionWindowDays>
             <infectionBudget>1~3</infectionBudget>
-            <cooldownDays>4</cooldownDays>
+            <colonyHumanBudgetFraction>0.15~0.35</colonyHumanBudgetFraction>
+            <includePrisonersInColonyHumanBudget>false</includePrisonersInColonyHumanBudget>
+            <colonyAnimalBudgetFraction>0.20~0.50</colonyAnimalBudgetFraction>
+            <wildAnimalBudgetSqrtFactor>0.8</wildAnimalBudgetSqrtFactor>
+            <cooldownDays>15</cooldownDays>
           </li>
           <!-- No Seeder_Arrival: muscle parasites is contracted by eating infected meat, not carried
                in by visitors. It enters via the environmental window and the animal/butchery chain. -->
@@ -899,7 +928,7 @@
         <!-- Dangerous environmental disease: weight active cases above average for the Mode 2 director. -->
         <dangerWeight>1.5</dangerWeight>
         <!-- Required for the colony-fraction cap/suppression above to function (it gates the scaled
-             capacity). The event-scoped environmental infectionBudget still bounds each window on top. -->
+             capacity). Environmental window budgets still bound each window on top. -->
         <useScaledActiveCaseCap>true</useScaledActiveCaseCap>
         <seasonalInfectivity>
           <spring>0.8</spring>
@@ -920,21 +949,50 @@
               <feetWeight>0.40</feetWeight>
               <airwayWeight>0.15</airwayWeight>
             </apparelProtection>
-            <baseChancePerCheck>0.0035</baseChancePerCheck>
+            <baseChancePerCheck>0.0040</baseChancePerCheck>
             <minTemperature>16</minTemperature>
             <peakTemperature>30</peakTemperature>
             <waterProximityRadius>10</waterProximityRadius>
             <waterProximityWeight>0.02</waterProximityWeight>
-            <indoorReductionPerCellFromEdge>0.08</indoorReductionPerCellFromEdge>
+            <!-- Mosquitoes are most active at dawn/dusk/night and actively seek humans, so a roof
+                 helps but does not seal them out the way it does the daytime tsetse fly — malaria
+                 keeps the lower per-cell reduction of the two. A typical 5x5 room (~2-3 cells deep)
+                 lands near 0.6x; a deep interior reaches full protection. Shelter is our stand-in for
+                 bed nets, which we cannot model directly. -->
+            <indoorReductionPerCellFromEdge>0.15</indoorReductionPerCellFromEdge>
             <coolRoomThreshold>22</coolRoomThreshold>
+            <!-- Anopheles mosquitoes bite from dusk through the night and peak before dawn; midday is
+                 the low. Averages ~1.0 over 24h, so an always-outdoors pawn is unchanged, but a pawn
+                 who works outdoors by day and sleeps under a roof at night dodges the peak — and a
+                 night-shift or unsheltered sleeper eats it. (x = local hour 0-24, y = multiplier.) -->
+            <timeOfDayActivityCurve>
+              <points>
+                <li>(0, 1.5)</li>
+                <li>(4, 1.6)</li>
+                <li>(6, 1.3)</li>
+                <li>(9, 0.5)</li>
+                <li>(12, 0.3)</li>
+                <li>(15, 0.4)</li>
+                <li>(18, 0.85)</li>
+                <li>(20, 1.3)</li>
+                <li>(22, 1.5)</li>
+                <li>(24, 1.5)</li>
+              </points>
+            </timeOfDayActivityCurve>
           </li>
         </vectors>
         <seeders>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>1.0</baseChanceMultiplier>
+            <mtbDays>120</mtbDays>
             <windowDays>14</windowDays>
+            <contagionWindowDays>5</contagionWindowDays>
             <infectionBudget>2~5</infectionBudget>
-            <cooldownDays>5</cooldownDays>
+            <colonyHumanBudgetFraction>0.25~0.65</colonyHumanBudgetFraction>
+            <includePrisonersInColonyHumanBudget>false</includePrisonersInColonyHumanBudget>
+            <colonyAnimalBudgetFraction>0~0</colonyAnimalBudgetFraction>
+            <wildAnimalBudgetSqrtFactor>0</wildAnimalBudgetSqrtFactor>
+            <cooldownDays>15</cooldownDays>
           </li>
           <li Class="Contagion.Seeder_Acausal">
             <mtbDays>180</mtbDays>
@@ -966,7 +1024,7 @@
         <!-- Dangerous environmental disease: weight active cases above average for the Mode 2 director. -->
         <dangerWeight>1.5</dangerWeight>
         <!-- Required for the colony-fraction cap/suppression above to function (it gates the scaled
-             capacity). The event-scoped environmental infectionBudget still bounds each window on top. -->
+             capacity). Environmental window budgets still bound each window on top. -->
         <useScaledActiveCaseCap>true</useScaledActiveCaseCap>
         <seasonalInfectivity>
           <spring>0.9</spring>
@@ -987,21 +1045,49 @@
               <feetWeight>0.40</feetWeight>
               <airwayWeight>0.15</airwayWeight>
             </apparelProtection>
-            <baseChancePerCheck>0.0022</baseChancePerCheck>
+            <baseChancePerCheck>0.0030</baseChancePerCheck>
             <minTemperature>20</minTemperature>
             <peakTemperature>32</peakTemperature>
             <waterProximityRadius>12</waterProximityRadius>
             <waterProximityWeight>0.035</waterProximityWeight>
-            <indoorReductionPerCellFromEdge>0.15</indoorReductionPerCellFromEdge>
+            <!-- Tsetse flies bite outdoors during the day and rest in vegetation, so a roof over the
+                 colonist's head is a stronger shield than it is against night-biting mosquitoes —
+                 sleeping sickness takes the higher per-cell reduction. It is also more waterborne and
+                 needs warmer temperatures than malaria (see minTemperature/waterProximity above). -->
+            <indoorReductionPerCellFromEdge>0.18</indoorReductionPerCellFromEdge>
             <coolRoomThreshold>24</coolRoomThreshold>
+            <!-- Tsetse flies are daytime biters: risk peaks at midday and is near-zero after dark.
+                 Averages ~1.0 over 24h. The flip side of malaria — scheduling outdoor work to the
+                 night (or simply being indoors during the day) is a real defense, while a normal
+                 day-shift outdoor worker takes the brunt. (x = local hour 0-24, y = multiplier.) -->
+            <timeOfDayActivityCurve>
+              <points>
+                <li>(0, 0.5)</li>
+                <li>(5, 0.55)</li>
+                <li>(7, 0.95)</li>
+                <li>(9, 1.45)</li>
+                <li>(12, 1.8)</li>
+                <li>(15, 1.65)</li>
+                <li>(17, 1.2)</li>
+                <li>(19, 0.85)</li>
+                <li>(21, 0.55)</li>
+                <li>(24, 0.5)</li>
+              </points>
+            </timeOfDayActivityCurve>
           </li>
         </vectors>
         <seeders>
           <li Class="Contagion.Seeder_Environmental">
             <baseChanceMultiplier>0.75</baseChanceMultiplier>
+            <mtbDays>180</mtbDays>
             <windowDays>14</windowDays>
+            <contagionWindowDays>5</contagionWindowDays>
             <infectionBudget>2~5</infectionBudget>
-            <cooldownDays>7</cooldownDays>
+            <colonyHumanBudgetFraction>0.20~0.50</colonyHumanBudgetFraction>
+            <includePrisonersInColonyHumanBudget>false</includePrisonersInColonyHumanBudget>
+            <colonyAnimalBudgetFraction>0~0</colonyAnimalBudgetFraction>
+            <wildAnimalBudgetSqrtFactor>0</wildAnimalBudgetSqrtFactor>
+            <cooldownDays>18</cooldownDays>
           </li>
           <li Class="Contagion.Seeder_Acausal">
             <mtbDays>240</mtbDays>

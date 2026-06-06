@@ -57,7 +57,7 @@ Storyteller fulfillment stays environmental. Incoming groups never carry muscle 
 - Soil contamination, not water. Parasite eggs survive in animal faeces deposited on the ground.
 - Temperature: moderate cold tolerance (`minTemperature −5°C`) — eggs survive mild frost but die in sustained arctic conditions. Peak in mild weather (`peakTemperature 18°C`).
 - Lower water dependency than gut worms (`waterProximityRadius 6`, `waterProximityWeight 0.02`).
-- Very strong indoor protection: `indoorReductionPerCellFromEdge 0.20` — animals in roofed barns are almost fully protected. This disease is specifically a grazing-animal disease.
+- Surface-driven exposure (`groundContact`): a grazing/soil disease tracked in from the ground, so risk follows the terrain under the pawn, not room depth. Bare grazing dirt is the baseline (1.0), marsh/mud slightly worse (1.8, roof-immune), built/stone floors and frozen ground almost nothing (0.20 / 0.03); a roof knocks non-breeding surfaces down ×0.3. Animals kept on a roofed built floor are almost fully protected; the risk is grazing live ground. In the sim (4-day Contagion window), an outdoor pawn on dirt averages ~1.9 infections, a day-worker who shelters at night ~1.2, marsh/wet ground ~2.5 (66% of trials reach the budget), and an indoor pawn on a built floor ~0.1.
 - Human hygiene: humanlike pawns use `humanExposureFactor 0.45`, reflecting better hygiene and less direct contact with contaminated soil and feces. This is a reduction, not immunity.
 
 ---
@@ -137,14 +137,23 @@ Parasites exist in contaminated outdoor soil. Grazing animals ingest eggs, and h
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.0015 | Per 2500-tick environmental pass |
+| baseChancePerCheck | 0.0075 | Per 2500-tick environmental pass |
 | humanExposureFactor | 0.45 | Humans get a hygiene reduction; animals rely on position/shelter |
 | minTemperature | −5°C | Eggs survive mild frost; die in sustained arctic cold |
 | peakTemperature | 18°C | Cool-to-moderate climate peak |
 | waterProximityRadius | 6 | Low water dependency |
 | waterProximityWeight | 0.02 | Minimal water effect |
-| indoorReductionPerCellFromEdge | **0.20** | Strongest indoor protection — barn housing near-eliminates risk |
-| coolRoomThreshold | 8°C | Refrigerated areas reduce risk |
+| **groundContact** | (see below) | Replaces the distance-from-edge shelter model: exposure is gated on the terrain under the pawn, not room depth |
+
+**groundContact** (soil-tracked acquisition — what surface you stand on, and whether it is roofed):
+
+| Surface factor | Value | Notes |
+|---|---|---|
+| dirtFactor | 1.0 | Bare grazing dirt — the main route |
+| stoneFactor | 0.20 | Natural rock and built/smoothed floors — cleanable |
+| iceFactor | 0.03 | Frozen ground essentially nothing |
+| breedingFactor | 1.8 | Marsh / mud / standing water — worse than dirt but less waterborne than gut worms; roof-immune |
+| roofedMultiplier | 0.3 | Applied to dirt/stone/ice (not breeding) |
 
 ---
 
@@ -217,7 +226,7 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 
 ## Counterplay
 
-- **Indoor barn housing** — `indoorReductionPerCellFromEdge 0.20` is the highest of any disease. A roofed barn with 5+ cells to the nearest unroofed cell nearly eliminates soil exposure. This is the strongest single counter and requires no active management.
+- **Roofed built-floor housing** — under the `groundContact` model, a roofed barn with a built or stone floor cuts exposure to `stoneFactor 0.20 × roofedMultiplier 0.3 ≈ 0.06x`, and frozen ground is lower still. Keeping animals off bare grazing dirt (especially marsh/mud) is the strongest single counter and requires no active management. Note this now keys on the floor surface and roof, not how deep the barn is.
 - **Vet inspection** — handler detection via sick signal is the key lever. A skilled handler (Animals skill 15+) has a ~75% detection chance per interaction. Routine handler routines (training, tending, feeding) will catch most infections before slaughter.
 - **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
 - **Cooking quality** — ordinary cooked meals share a 0.20 recipe factor before Cooking skill. Survival meals (0.05×) are safer because they are cooked and sealed. Avoid raw meat and pemmican (0.70×) from uncertain sources.
@@ -229,7 +238,7 @@ Unlike gut worms, muscle parasites do not cause vomiting — no `Vector_Fomite`.
 
 ## Tuning Notes
 
-- `baseChancePerCheck 0.0015` is lower than gut worms (0.002). Muscle parasites should feel slightly rarer but more impactful per outbreak. May need adjusting upward if playtesting shows muscle parasites are too infrequent on temperate maps.
+- `baseChancePerCheck 0.0075` is higher than gut worms (0.0028) to compensate for muscle parasites' lower breeding/water dependence (it is a dry-grazing soil disease, not waterborne): the extra base lifts the dirt-grazing route so an outdoor grazing window saturates the budget, while built-floor housing still nearly eliminates it. Most exposure comes from `dirtFactor 1.0` ground rather than the modest `breedingFactor 1.8`.
 - `contaminationExpiryDays 30` matches gut worms so both parasite food chains have the same persistence window.
 - No `Seeder_Arrival`: muscle parasites is not carried in by visitors or traders. It enters only through the environmental window and the animal/butchery chain, keeping the arrival pool focused on the diseases that are actually contagious between people (flu, plague).
 - `Seeder_Environmental cooldownDays 4` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.

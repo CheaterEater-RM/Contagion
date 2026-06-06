@@ -49,13 +49,16 @@ The map environment is the source. Pawns with outdoor access near water accumula
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.0035 | Per 2500-tick pass |
+| baseChancePerCheck | 0.0040 | Per 2500-tick pass |
 | minTemperature | 16°C | Mosquitoes inactive below 16°C |
 | peakTemperature | 30°C | Tropical peak |
 | waterProximityRadius | 10 | Water bodies within 10 cells drive risk |
 | waterProximityWeight | 0.02 | Moderate water effect |
-| indoorReductionPerCellFromEdge | 0.08 | Indoor shelter reduces exposure; deep indoors is mostly safe |
+| indoorReductionPerCellFromEdge | 0.15 | Shelter as bed-net substitute; ~0.6x in a typical 5x5 room, full protection ~7 cells deep |
 | coolRoomThreshold | 22°C | Air-conditioned rooms reduce mosquito activity |
+| timeOfDayActivityCurve | night-peaked | Anopheles bite dusk→dawn; midday is the low. Averages ~1.0/day, so it redistributes risk across the clock rather than changing the daily total |
+
+**Time of day.** Mosquitoes peak from dusk through pre-dawn (curve ≈1.5x at night, ≈0.3x at midday). Because the curve averages ~1.0 over 24 hours, an always-outdoors pawn is unchanged, but **when** a pawn is outside now matters: a day-worker who sleeps under a roof at night dodges the peak, while a night-shift worker or an unsheltered sleeper takes the brunt. Sim (7-day window, 10 pawns): always-outdoors ≈3.6 infections, day-out/sheltered-at-night ≈2.6, night-shift ≈3.4.
 
 ---
 
@@ -98,6 +101,7 @@ Suppression is on as a **balance** guarantee, not because malaria spreads coloni
 
 - **Penoxycyline** — the primary tool. Reduces `DiseaseContractChanceFactor` significantly.
 - **Indoor work** — pawns who spend most time indoors have dramatically reduced exposure. Outdoor workers (miners, farmers, hunters) are at highest risk.
+- **Sleep under a roof** — the night-peaked activity curve means a roofed bedroom (ideally deep / mountain interior) covers the hours of highest mosquito activity. A day-worker who sleeps inside is meaningfully safer than a night-shift worker; avoid scheduling outdoor labor into the dusk-to-dawn window.
 - **Air conditioning / cool rooms** — rooms cooled below `coolRoomThreshold 22°C` suppress the vector.
 - **Distance from water** — map placement matters. A river delta base has continuous pressure; an arid highland base has nearly none.
 - **No transmission counterplay** — there is no person-to-person spread to contain. Isolation, masks, and cleaning have no effect.
@@ -106,9 +110,9 @@ Suppression is on as a **balance** guarantee, not because malaria spreads coloni
 
 ## Tuning Notes
 
-- `baseChancePerCheck 0.0035` is meaningfully higher than gut worms or muscle parasites. In a tropical riverside location, malaria should feel like a persistent seasonal threat, not a rare event. This may still be too low for classic "malaria swamp" gameplay — consider 0.004–0.005 for high-water, high-temperature tiles.
+- `baseChancePerCheck 0.0040` is meaningfully higher than gut worms or muscle parasites. In a tropical riverside location, malaria should feel like a persistent seasonal threat. At peak heat + wet tiles, an always-outdoors window saturates the budget (sim: 100% of trials hit the cap); a sheltered day-worker is held to ~1.3 of ~3.9 budget — real but survivable risk.
 - The 16°C minimum temperature gate is the primary climate filter. For tiles that never reach 16°C outdoors, malaria simply never fires. This creates a clean geographic distinction without biome-gating logic.
-- `indoorReductionPerCellFromEdge 0.08` is gentler than gut worms (0.15). Mosquitoes can penetrate slightly deeper into structures before being fully blocked. A colony where pawns work in shallow or open-roofed areas should still take some hits even indoors.
+- `indoorReductionPerCellFromEdge 0.15` is the lower of the two flying-insect vectors (sleeping sickness is 0.18). Malaria mosquitoes are most active at dawn/dusk/night and actively seek humans, so a roof helps but does not seal them out the way it does the daytime tsetse fly. A typical 5x5 room (≈2–3 cells deep) lands near 0.6x outdoor risk; full protection needs ≈7 cells of depth from the nearest unroofed cell. Shelter is our stand-in for bed nets, which the engine cannot model directly. (Was 0.08 — too weak; a normal roofed colony sat at ~0.7x and only a 13-cell-deep interior reached immunity.)
 - `coolRoomThreshold 22°C` means even a moderately cooled room (under 22°C) counts as cool. A lightly climate-controlled bedroom provides meaningful protection. This may be too generous; consider raising to 18°C to require actual AC investment.
 - `Seeder_Acausal mtbDays 180 / cooldownDays 10` exists only as the Storyteller-window expiry fallback. It does not run as an independent Mode 2 seeder.
 - Arctic and arid colonies rarely get malaria organically in Contagion-driven mode because the environmental source is absent or suppressed. That is intentional; prevention through climate, distance from water, and indoor cooling should stand.

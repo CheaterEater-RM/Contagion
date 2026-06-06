@@ -93,6 +93,7 @@
   <Contagion_DiagnosticsIncidenceApplications>Incidence application: {0} seeded, {1} blocked, {2} immunity-blocked.</Contagion_DiagnosticsIncidenceApplications>
   <Contagion_DiagnosticsIncidenceIntroductions>Introductions success/attempts: trait/direct {0}, arrivals {1}, environment {2}, continuous {3}; storyteller cancelled {4}.</Contagion_DiagnosticsIncidenceIntroductions>
   <Contagion_DiagnosticsIncidencePending>Pending events: queued {0}, cap-dropped {1}, duplicates {2}, resolved arrival {3}, animal {4}, acausal {5}, windows opened {6}, closed {7}.</Contagion_DiagnosticsIncidencePending>
+  <Contagion_DiagnosticsEnvironmentalWindows>Environmental windows: checked {0}, roll-failed {1}, pending {2}, cooldown {3}, cap {4}, no biome {5}, no budget {6}; opened budget H/A/W {7}/{8}/{9}.</Contagion_DiagnosticsEnvironmentalWindows>
   <Contagion_DiagnosticsIncidenceArrivals>Arrivals: groups {0}, empty {1}, no disease {2}, no carriers {3}, carriers {4} ({5} latent, {6} mild).</Contagion_DiagnosticsIncidenceArrivals>
   <Contagion_DiagnosticsSpreadApplications>Spread application: {0} seeded, {1} blocked, {2} immunity-blocked.</Contagion_DiagnosticsSpreadApplications>
   <Contagion_DiagnosticsSpreadVectors>Spread success/attempts: airborne {0}, proximity {1}, social {2}, foodborne {3}, fomite {4}.</Contagion_DiagnosticsSpreadVectors>

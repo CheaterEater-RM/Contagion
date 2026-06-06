@@ -90,20 +90,34 @@ internal sealed class ContagionEnvironmentalExposureProcessor
             return false;
         }
 
+        ContagionCaseTrack budgetTrack = ContagionTransmissionUtility.GetCaseTrack(pawn);
+        if (windowEvent?.HasTrackBudgets == true
+            && (!ContagionSeedingCoordinator.TryGetEnvironmentalBudgetTrack(pawn, environmentalProfile.Seeder, out budgetTrack)
+                || !windowEvent.HasRemainingBudgetFor(budgetTrack)))
+        {
+            return false;
+        }
+
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalAttempted);
         Room room = pawn.Position.GetRoom(_map);
         float ambientTemperature = GetAmbientTemperature(room);
+        float biomeFactor = ContagionSeedingCoordinator.CurrentMode == ContagionSeedingMode.Contagion
+            ? 1f
+            : environmentalProfile.BiomeCommonalityFactor;
         float chance = environmentalProfile.Vector.baseChancePerCheck
             * environmentalProfile.Seeder.baseChanceMultiplier
-            * environmentalProfile.BiomeCommonalityFactor
+            * biomeFactor
             * seedingMultiplier;
         chance *= GetEnvironmentalTemperatureFactor(ambientTemperature, environmentalProfile.Vector);
+        chance *= GetTimeOfDayActivityFactor(environmentalProfile.Vector);
         if (chance <= 0f)
         {
             return false;
         }
 
-        chance *= GetEnvironmentalShelterFactor(pawn.Position, room, ambientTemperature, environmentalProfile.Vector, roofEdgeCache);
+        chance *= environmentalProfile.Vector.groundContact != null
+            ? GetGroundContactFactor(pawn.Position, environmentalProfile.Vector.groundContact)
+            : GetEnvironmentalShelterFactor(pawn.Position, room, ambientTemperature, environmentalProfile.Vector, roofEdgeCache);
         chance *= GetWaterProximityFactor(pawn.Position, environmentalProfile.Vector, waterProximityCache);
         chance *= GetEnvironmentalPawnFactor(pawn, environmentalProfile.Vector);
         // Sealed full-body suits / boots reduce ambient exposure (target side; animals wear nothing -> 1).
@@ -135,7 +149,7 @@ internal sealed class ContagionEnvironmentalExposureProcessor
                 out HediffDef _);
             if (seeded)
             {
-                ContagionSeedingCoordinator.NotifyEnvironmentalSeeded(_owner, environmentalProfile.ResolvedProfile, environmentalProfile.Seeder, windowEvent);
+                ContagionSeedingCoordinator.NotifyEnvironmentalSeeded(_owner, environmentalProfile.ResolvedProfile, environmentalProfile.Seeder, windowEvent, budgetTrack);
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalSeeded);
                 ContagionDiagnostics.Trace($"Environmental transmission: {environmentalProfile.ResolvedProfile.DiseaseDef.defName} on {pawn.LabelShortCap}.");
                 // No source thing — anchor the chain origin at the pawn's cell.
@@ -240,6 +254,18 @@ internal sealed class ContagionEnvironmentalExposureProcessor
         return room.Temperature;
     }
 
+    // Vector activity by local time of day (mosquitoes at night, tsetse at midday). Map-wide clock, so
+    // it does not vary per cell. Null curve = no weighting.
+    private float GetTimeOfDayActivityFactor(Vector_Environmental vector)
+    {
+        if (vector.timeOfDayActivityCurve == null)
+        {
+            return 1f;
+        }
+
+        return Mathf.Max(0f, vector.timeOfDayActivityCurve.Evaluate(GenLocalDate.HourFloat(_map)));
+    }
+
     private static float GetEnvironmentalTemperatureFactor(float ambientTemperature, Vector_Environmental vector)
     {
         if (ambientTemperature <= vector.minTemperature)
@@ -310,6 +336,52 @@ internal sealed class ContagionEnvironmentalExposureProcessor
         }
 
         return maxRadius;
+    }
+
+    // Ground-tracked parasites: exposure is driven by the BASE terrain under the pawn (not flood/ice
+    // overlays — rule: use BaseTerrainAt) and whether that cell is roofed. No distance-from-edge term.
+    private float GetGroundContactFactor(IntVec3 cell, GroundContactProfile ground)
+    {
+        if (!cell.InBounds(_map))
+        {
+            return 0f;
+        }
+
+        TerrainDef terrain = _map.terrainGrid.BaseTerrainAt(cell);
+        if (terrain == null)
+        {
+            return ground.dirtFactor;
+        }
+
+        // Standing water, marsh (IsWater), and mud / shallow water that dries out are the breeding
+        // source. A roof over the breeding ground does not stop it, so return before the roof step.
+        if (terrain.IsWater || terrain.driesTo != null)
+        {
+            return ground.breedingFactor;
+        }
+
+        float factor;
+        if (terrain.IsIce)
+        {
+            factor = ground.iceFactor;
+        }
+        else if (terrain.IsRock || terrain.IsFloor || terrain.categoryType == TerrainDef.TerrainCategoryType.Stone)
+        {
+            // Natural rock and any constructed/smoothed floor — a hard, cleanable surface.
+            factor = ground.stoneFactor;
+        }
+        else
+        {
+            // Soil, sand, gravel, and other natural ground: the dirty baseline.
+            factor = ground.dirtFactor;
+        }
+
+        if (_map.roofGrid.Roofed(cell))
+        {
+            factor *= ground.roofedMultiplier;
+        }
+
+        return factor;
     }
 
     private float GetWaterProximityFactor(

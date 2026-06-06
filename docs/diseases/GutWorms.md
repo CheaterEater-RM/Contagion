@@ -53,7 +53,7 @@ Storyteller fulfillment stays environmental. Incoming groups never carry gut wor
 
 - Water proximity: bodies of water within `waterProximityRadius 14` cells increase exposure dramatically (`waterProximityWeight 0.08` — the highest of any disease).
 - Temperature: eggs require above-freezing water to remain viable (`minTemperature 0°C`) — frozen or icy water suppresses transmission. Peak in moderate warmth (`peakTemperature 22°C`).
-- Outdoor vs. indoor: indoor pawns and animals receive `indoorReductionPerCellFromEdge 0.15` per cell of depth from the nearest unroofed cell. A pawn or animal in the centre of a large roofed structure has near-zero exposure; open pastures, outdoor work, and waterside paths have full exposure.
+- Surface-driven exposure (`groundContact`): gut worms are tracked in from the ground, so what matters is the terrain under the pawn and whether it is roofed — not how deep into a room they are. Bare dirt is the baseline (1.0), standing/contaminated water and marsh are the breeding source (3.0, roof-immune), hard floors and natural rock are nearly clean (0.25), ice is negligible (0.05); a roof knocks the non-breeding surfaces down ×0.3. In the sim (5-day Contagion window), an outdoor colonist on dirt averages ~1.1 infections, an indoor colonist on a built/stone floor ~0.1, while a pawn on marsh/wet ground near water saturates the budget (~3.6/3.6, 98% of trials reach the cap). Open pastures, outdoor work, and waterside paths carry the real risk.
 - Human hygiene: humanlike pawns use `humanExposureFactor 0.50`, reflecting better hygiene and less direct contact with contaminated water and feces. This is a reduction, not immunity.
 
 ---
@@ -153,14 +153,23 @@ This vector can infect humans and animals directly from contaminated outdoor wat
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.002 | Per 2500-tick environmental pass |
+| baseChancePerCheck | 0.0028 | Per 2500-tick environmental pass |
 | humanExposureFactor | 0.50 | Humans get a hygiene reduction; animals rely on position/shelter |
 | minTemperature | 0°C | Eggs require above-freezing water; frozen water suppresses transmission |
 | peakTemperature | 22°C | Moderate warmth, not tropical |
 | waterProximityRadius | 14 | Wide radius — rivers and large ponds at range |
 | waterProximityWeight | 0.08 | Strongest water dependency of any disease |
-| indoorReductionPerCellFromEdge | 0.15 | Barn depth matters significantly |
-| coolRoomThreshold | 10°C | Refrigerated rooms reduce risk |
+| **groundContact** | (see below) | Replaces the distance-from-edge shelter model: exposure is gated on the terrain under the pawn, not room depth |
+
+**groundContact** (soil/water-tracked acquisition — what surface you stand on, and whether it is roofed):
+
+| Surface factor | Value | Notes |
+|---|---|---|
+| dirtFactor | 1.0 | Bare natural soil — the dirty baseline |
+| stoneFactor | 0.25 | Natural rock and any constructed/smoothed floor — cleanable |
+| iceFactor | 0.05 | Frozen ground barely transmits |
+| breedingFactor | 3.0 | Standing water / marsh / mud — the breeding source; very high and **roof-immune** |
+| roofedMultiplier | 0.3 | Applied to dirt/stone/ice (not breeding) — a roof keeps fresh contamination off the floor |
 
 ---
 
@@ -230,7 +239,7 @@ This mechanic is especially important for gut worms: undetected infected animals
 ## Counterplay
 
 - **Water management** — humans and animals near rivers or large ponds have much higher environmental exposure. Roofed barns and indoor work areas with no water proximity are effectively safe.
-- **Indoor livestock** — a strong counter for the meat-chain path. An animal in the centre of a large roofed barn has near-zero gut worm exposure.
+- **Roofed built-floor livestock** — a strong counter for the meat-chain path. Under the `groundContact` model an animal kept on a roofed stone/built floor (away from standing water) sits at ≈`stoneFactor 0.25 × roofedMultiplier 0.3 = 0.075x`; the risk is grazing live ground and waterside dirt, not barn depth.
 - **Vet inspection** — the sick signal lets a skilled handler catch infected animals before slaughter. High Animals skill is the key lever.
 - **Corpse filtering** — leave `AllowInfectedCorpses` disabled on butcher bills unless you deliberately want to process infected carcasses.
 - **Butcher skill** — the notice roll in `Patch_Corpse_ButcherProducts` uses Medical as primary and Cooking at 0.60× weight; Animals adds at 0.25× for animal corpses. A skilled butcher-medic or a dedicated cook-handler significantly reduces meat-chain risk.
@@ -243,7 +252,7 @@ This mechanic is especially important for gut worms: undetected infected animals
 
 ## Tuning Notes
 
-- `baseChancePerCheck 0.002` for environmental exposure is very low per tick but runs every 2500 ticks. The total per-day probability depends heavily on water proximity. May need field testing across different biomes — desert colonies near no water may never naturally acquire gut worms from the environment.
+- `baseChancePerCheck 0.0028` for environmental exposure is low per tick but runs every 2500 ticks. The total per-day probability depends heavily on the ground surface and water proximity. May need field testing across different biomes — desert colonies near no water may never naturally acquire gut worms from the environment.
 - No `Seeder_Arrival`: gut worms is not carried in by visitors or traders. It enters only through the environmental window (contaminated water / infected meat) and the animal track, which keeps the arrival pool focused on the diseases that are actually contagious between people (flu, plague).
 - `Seeder_Environmental cooldownDays 3` intentionally backs off after a successful environmental seed without shutting down the environmental source for a whole season.
 - Fomite `potencyDecayPerHour 0.08` gives gut-worm vomit a ~12 h half-life. This means a single vomit event from a severe case contaminates an area for half a day. If cleaning is poor, this can become a significant secondary spread path. Intentional: it rewards keeping sick pawns isolated and areas clean.

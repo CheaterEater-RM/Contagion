@@ -5,9 +5,9 @@ using System.Linq;
 using System.Xml.Linq;
 
 // Disease + vector data loaded straight from 1.6/Patches/Contagion_Profiles.xml, plus the vanilla
-// immunity/severity race (from the disease's vanilla HediffDef, captured in docs/diseases). Only the
-// LIVE pawn-to-pawn vectors are modeled (Airborne, Proximity, Social); corpse/food/fecal-oral are
-// out of scope for this harness.
+// immunity/severity race (from the disease's vanilla HediffDef, captured in docs/diseases). The live
+// pawn-to-pawn simulator models Airborne/Proximity/Social; the environmental simulator models the
+// source-less Vector_Environmental + Seeder_Environmental window path.
 
 internal enum VectorKind
 {
@@ -32,6 +32,80 @@ internal sealed class LiveVector
     public float MaskTargetEffectiveness;
 }
 
+internal enum EnvironmentalTargetKind
+{
+    Human,
+    ColonyAnimal,
+    WildAnimal,
+}
+
+internal enum EnvironmentalBudgetMode
+{
+    Profile,
+    None,
+    Fixed,
+}
+
+// When the pawn is OUTDOORS over the day. Off-hours are spent sheltered (roofed; ground-contact
+// surface treated as a clean built/stone floor, shelter model uses --cells-from-edge depth).
+internal enum EnvironmentalSchedule
+{
+    Always, // outdoors every hour (honours --indoor/--outdoor as before)
+    Day,    // outdoors during work hours, sheltered at night (mountain sleeper)
+    Night,  // outdoors at night, sheltered during the day (night-shift worker)
+}
+
+internal sealed class FloatRangeModel
+{
+    public float Min;
+    public float Max;
+
+    public float RandomInRange(Random rng) => Min + (Max - Min) * (float)rng.NextDouble();
+}
+
+internal sealed class EnvironmentalVectorModel
+{
+    public float BaseChancePerCheck;
+    public float HumanExposureFactor = 1f;
+    public float MinTemperature = 15f;
+    public float PeakTemperature = 30f;
+    public int WaterProximityRadius = 10;
+    public float WaterProximityWeight = 0.02f;
+    public float IndoorReductionPerCellFromEdge = 0.1f;
+    public float CoolRoomThreshold = 18f;
+    public GroundContactModel GroundContact; // non-null for soil-tracked parasites
+    public Curve TimeOfDayActivityCurve;     // non-null for time-weighted vectors (mosquito/tsetse)
+}
+
+internal enum EnvironmentalSurface
+{
+    Dirt,
+    Stone,
+    Ice,
+    Breeding,
+}
+
+internal sealed class GroundContactModel
+{
+    public float DirtFactor = 1f;
+    public float StoneFactor = 0.25f;
+    public float IceFactor = 0.05f;
+    public float BreedingFactor = 2.5f;
+    public float RoofedMultiplier = 0.3f;
+}
+
+internal sealed class EnvironmentalSeederModel
+{
+    public float BaseChanceMultiplier = 1f;
+    public float WindowDays = 14f;
+    public float ContagionWindowDays = -1f;
+    public FloatRangeModel ColonyHumanBudgetFraction = new() { Min = 0.25f, Max = 0.75f };
+    public FloatRangeModel ColonyAnimalBudgetFraction = new() { Min = 0.25f, Max = 0.75f };
+    public float WildAnimalBudgetSqrtFactor = 1f;
+
+    public float EffectiveWindowDays => ContagionWindowDays > 0f ? ContagionWindowDays : WindowDays;
+}
+
 internal sealed class DiseaseModel
 {
     public string Name;
@@ -44,6 +118,8 @@ internal sealed class DiseaseModel
     public Curve IncubationCurve;
     public Curve ActiveCurve;
     public List<LiveVector> Vectors = new();
+    public EnvironmentalVectorModel EnvironmentalVector;
+    public EnvironmentalSeederModel EnvironmentalSeeder;
 
     public static DiseaseModel Load(XDocument profiles, string disease, float incubationDays, float immunityPerDaySick, float severityPerDayNotImmune)
     {
@@ -60,6 +136,38 @@ internal sealed class DiseaseModel
             ActiveCurve = Curve.From(profile.Element("activeInfectivityCurve")) ?? Curve.DefaultActive(),
         };
 
+        model.LoadVectors(profile);
+        model.LoadEnvironmentalSeeder(profile);
+
+        return model;
+    }
+
+    public static DiseaseModel LoadEnvironmental(XDocument profiles, string disease)
+    {
+        XElement profile = Xml.Profile(profiles, disease);
+        DiseaseModel model = new()
+        {
+            Name = disease,
+            IncubationDays = Xml.FieldOr(profile, "incubationDays", 1f),
+            SpreadSuppressionScale = Xml.FieldOr(profile, "spreadSuppressionScale", 1f),
+            MaxActiveCaseChanceOffset = Xml.FieldOr(profile, "maxActiveCaseChanceOffset", 0f),
+            IncubationCurve = Curve.From(profile.Element("incubationInfectivityCurve")),
+            ActiveCurve = Curve.From(profile.Element("activeInfectivityCurve")) ?? Curve.DefaultActive(),
+        };
+
+        model.LoadVectors(profile);
+        model.LoadEnvironmentalSeeder(profile);
+
+        if (model.EnvironmentalVector == null || model.EnvironmentalSeeder == null)
+        {
+            throw new InvalidOperationException($"{disease} does not define both Vector_Environmental and Seeder_Environmental.");
+        }
+
+        return model;
+    }
+
+    private void LoadVectors(XElement profile)
+    {
         XElement vectors = profile.Element("vectors");
         if (vectors != null)
         {
@@ -106,12 +214,72 @@ internal sealed class DiseaseModel
 
                 if (v != null)
                 {
-                    model.Vectors.Add(v);
+                    Vectors.Add(v);
+                }
+                else if (cls == "Contagion.Vector_Environmental")
+                {
+                    EnvironmentalVector = new EnvironmentalVectorModel
+                    {
+                        BaseChancePerCheck = Xml.FieldOr(li, "baseChancePerCheck", 0.02f),
+                        HumanExposureFactor = Xml.FieldOr(li, "humanExposureFactor", 1f),
+                        MinTemperature = Xml.FieldOr(li, "minTemperature", 15f),
+                        PeakTemperature = Xml.FieldOr(li, "peakTemperature", 30f),
+                        WaterProximityRadius = (int)Xml.FieldOr(li, "waterProximityRadius", 10f),
+                        WaterProximityWeight = Xml.FieldOr(li, "waterProximityWeight", 0.02f),
+                        IndoorReductionPerCellFromEdge = Xml.FieldOr(li, "indoorReductionPerCellFromEdge", 0.1f),
+                        CoolRoomThreshold = Xml.FieldOr(li, "coolRoomThreshold", 18f),
+                        GroundContact = LoadGroundContact(li.Element("groundContact")),
+                        TimeOfDayActivityCurve = Curve.From(li.Element("timeOfDayActivityCurve")),
+                    };
                 }
             }
         }
+    }
 
-        return model;
+    private static GroundContactModel LoadGroundContact(XElement element)
+    {
+        if (element == null)
+        {
+            return null;
+        }
+
+        return new GroundContactModel
+        {
+            DirtFactor = Xml.FieldOr(element, "dirtFactor", 1f),
+            StoneFactor = Xml.FieldOr(element, "stoneFactor", 0.25f),
+            IceFactor = Xml.FieldOr(element, "iceFactor", 0.05f),
+            BreedingFactor = Xml.FieldOr(element, "breedingFactor", 2.5f),
+            RoofedMultiplier = Xml.FieldOr(element, "roofedMultiplier", 0.3f),
+        };
+    }
+
+    private void LoadEnvironmentalSeeder(XElement profile)
+    {
+        XElement seeders = profile.Element("seeders");
+        if (seeders == null)
+        {
+            return;
+        }
+
+        foreach (XElement li in seeders.Elements("li"))
+        {
+            string cls = li.Attribute("Class")?.Value ?? string.Empty;
+            if (cls != "Contagion.Seeder_Environmental")
+            {
+                continue;
+            }
+
+            EnvironmentalSeeder = new EnvironmentalSeederModel
+            {
+                BaseChanceMultiplier = Xml.FieldOr(li, "baseChanceMultiplier", 1f),
+                WindowDays = Xml.FieldOr(li, "windowDays", 14f),
+                ContagionWindowDays = Xml.FieldOr(li, "contagionWindowDays", -1f),
+                ColonyHumanBudgetFraction = Xml.RangeOr(li, "colonyHumanBudgetFraction", 0.25f, 0.75f),
+                ColonyAnimalBudgetFraction = Xml.RangeOr(li, "colonyAnimalBudgetFraction", 0.25f, 0.75f),
+                WildAnimalBudgetSqrtFactor = Xml.FieldOr(li, "wildAnimalBudgetSqrtFactor", 1f),
+            };
+            return;
+        }
     }
 
     public bool HasVector(VectorKind kind) => Vectors.Any(v => v.Kind == kind);
@@ -216,5 +384,27 @@ internal static class Xml
     {
         XElement child = element.Element(name);
         return child == null ? fallback : float.Parse(child.Value, CultureInfo.InvariantCulture);
+    }
+
+    public static FloatRangeModel RangeOr(XElement element, string name, float minFallback, float maxFallback)
+    {
+        XElement child = element.Element(name);
+        if (child == null)
+        {
+            return new FloatRangeModel { Min = minFallback, Max = maxFallback };
+        }
+
+        string[] parts = child.Value.Split('~');
+        if (parts.Length == 1)
+        {
+            float value = float.Parse(parts[0], CultureInfo.InvariantCulture);
+            return new FloatRangeModel { Min = value, Max = value };
+        }
+
+        return new FloatRangeModel
+        {
+            Min = float.Parse(parts[0], CultureInfo.InvariantCulture),
+            Max = float.Parse(parts[1], CultureInfo.InvariantCulture),
+        };
     }
 }

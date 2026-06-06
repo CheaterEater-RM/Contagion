@@ -50,13 +50,16 @@ Sleeping sickness represents tsetse habitat pressure rather than generic mosquit
 
 | Parameter | Value | Notes |
 |---|---|---|
-| baseChancePerCheck | 0.0022 | Per 2500-tick pass — lower than malaria (0.0035) |
+| baseChancePerCheck | 0.0030 | Per 2500-tick pass — lower than malaria (0.0040) |
 | minTemperature | **20°C** | Higher floor than malaria (16°C) — tsetse requires genuine warmth |
 | peakTemperature | **32°C** | Peak at tropical heat |
 | waterProximityRadius | 12 | Wide range — tsetse breeds near rivers and wetlands |
 | waterProximityWeight | 0.035 | Stronger water dependency than malaria |
-| indoorReductionPerCellFromEdge | 0.15 | Strong indoor shelter; deep interior rooms are much safer |
+| indoorReductionPerCellFromEdge | 0.18 | Strongest of the two flying-insect vectors — daytime tsetse are well blocked by a roof (full protection ≈6 cells deep) |
 | coolRoomThreshold | **24°C** | Higher threshold — requires actual tropical cooling to suppress |
+| timeOfDayActivityCurve | day-peaked | Tsetse bite by day (≈2x at midday, ≈0.3x at night). Averages ~1.0/day — the inverse of malaria |
+
+**Time of day.** Tsetse are daytime biters: risk peaks at midday and is near-zero after dark. The curve averages ~1.0 over 24 hours, so an always-outdoors pawn is unchanged, but scheduling outdoor work to the night — or simply being indoors during the day — is a real defense. Sim (7-day window, 10 pawns): always-outdoors ≈2.9 infections, day-shift ≈2.4, **night-shift ≈1.2** (about 0.4x of always — meaningful protection, but no longer a near-perfect dodge). This is the mirror image of malaria, where night sleep is the defense.
 
 ---
 
@@ -99,13 +102,14 @@ Suppression is on as a **balance** guarantee (see [Malaria.md](Malaria.md) → S
 
 | Parameter | Malaria | Sleeping Sickness |
 |---|---|---|
-| Base check chance | 0.0035 | 0.0022 |
+| Base check chance | 0.0040 | 0.0030 |
 | Min temperature | 16°C | 20°C |
 | Peak temperature | 30°C | 32°C |
 | Water proximity radius | 10 | 12 |
 | Water proximity weight | 0.02 | 0.035 |
-| Indoor reduction | 0.08/cell | 0.15/cell |
+| Indoor reduction | 0.15/cell | 0.18/cell |
 | Cool room threshold | 22°C | 24°C |
+| Time of day | night-peaked (sleep inside) | day-peaked (work at night) |
 | Permanent summer multiplier | 1.0 | 1.1 |
 | Seeder multiplier | 1.0 | 0.75 |
 | Overall feel | Common warm-climate hazard | Rare deep-tropics hazard |
@@ -117,8 +121,9 @@ Suppression is on as a **balance** guarantee (see [Malaria.md](Malaria.md) → S
 Similar to malaria, but with stronger rewards for staying out of wet tropical habitat.
 
 - **Penoxycyline** — primary prevention tool.
-- **Indoor work** — standard shelter provides more protection against sleeping sickness than malaria (0.15 vs. 0.08 per cell). Deeper indoor positioning helps a lot.
+- **Indoor work** — standard shelter provides more protection against sleeping sickness than malaria (0.18 vs. 0.15 per cell). Tsetse bite outdoors during the day and rest in vegetation, so a roof over the colonist's head is a stronger shield than against night-biting mosquitoes. A typical 5x5 room cuts risk to ~0.5x; ≈6 cells of depth gives full protection.
 - **Climate control** — the 24°C cool room threshold means AC must bring rooms below 24°C to help. A lightly cooled room may not qualify.
+- **Night-shift outdoor work** — the day-peaked activity curve makes scheduling outdoor labor (hunting, hauling, farming) into the night a strong, free defense: night-shift outdoor exposure runs roughly half of day-shift (≈0.4x of always-outdoors). The mirror image of malaria, where the defense is sleeping inside at night.
 - **Wetland avoidance** — riverside farming, fishing-style work zones, and outdoor paths through wet tropical areas should feel riskier than dry, enclosed movement.
 - **Biome selection** — sleeping sickness is effectively absent from temperate and cold biomes. It is a deliberate hazard of colonising tropical tiles.
 
@@ -126,7 +131,7 @@ Similar to malaria, but with stronger rewards for staying out of wet tropical ha
 
 ## Tuning Notes
 
-- `baseChancePerCheck 0.0022` is lower than malaria. Sleeping sickness should feel like something that occasionally appears in a tropical colony — serious when it hits but not a constant pressure. If it never fires in practice, consider 0.0025-0.003.
+- `baseChancePerCheck 0.0030` is lower than malaria (0.0040). Sleeping sickness should feel like something that occasionally appears in a tropical colony — serious when it hits but not a constant pressure. At peak heat + wet tiles, an always-outdoors window reaches ~92% of the budget; a night-shift schedule holds it to ~0.7 of ~3.7 budget.
 - The 20°C minimum and 32°C peak create a very narrow climate window compared to malaria. Most temperate biomes never hit the minimum long enough for sustained risk. This is intentional — sleeping sickness is a premium on tropical biome colonisation — but may be over-tuned if it effectively never appears outside equatorial biomes.
 - `permanentSummer 1.1` gives equatorial tiles slightly higher sleeping sickness than standard summer. This is a deliberate distinction: equatorial colonies should feel uniquely pressured by this disease in ways that northern/southern temperate colonies are not, even in summer.
 - Seeder `baseChanceMultiplier 0.75` reduces sleeping sickness frequency compared to malaria even when conditions are otherwise identical. Combined with the higher temperature floor, sleeping sickness events should be roughly half as frequent as malaria in the same biome. If it feels too rare, consider raising to 0.85–0.9.

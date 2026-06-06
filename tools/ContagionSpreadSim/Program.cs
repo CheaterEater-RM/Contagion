@@ -29,15 +29,43 @@ internal static class Program
             ["Flu"] = DiseaseModel.Load(profiles, "Flu", incubationDays: 1.0f, immunityPerDaySick: 0.2388f, severityPerDayNotImmune: 0.2488f),
             ["Plague"] = DiseaseModel.Load(profiles, "Plague", incubationDays: 2.0f, immunityPerDaySick: 0.5224f, severityPerDayNotImmune: 0.666f),
         };
+        Dictionary<string, DiseaseModel> environmentalDiseases = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["GutWorms"] = DiseaseModel.LoadEnvironmental(profiles, "GutWorms"),
+            ["MuscleParasites"] = DiseaseModel.LoadEnvironmental(profiles, "MuscleParasites"),
+            ["Malaria"] = DiseaseModel.LoadEnvironmental(profiles, "Malaria"),
+            ["SleepingSickness"] = DiseaseModel.LoadEnvironmental(profiles, "SleepingSickness"),
+        };
 
         Dictionary<string, Scenario> scenarios = Scenario.Catalog();
 
         if (args.Length > 0)
         {
             RunConditions single = RunConditions.Parse(args, out string scenarioName);
+            if (single.Environmental)
+            {
+                if (!environmentalDiseases.TryGetValue(single.Disease, out DiseaseModel environmentalDisease))
+                {
+                    Console.Error.WriteLine($"Unknown environmental disease '{single.Disease}'. Known: {string.Join(", ", environmentalDiseases.Keys)}");
+                    return 2;
+                }
+
+                EnvironmentalRunResult environmentalResult = EnvironmentalSimulator.Run(single, environmentalDisease);
+                Reporter.PrintEnvironmentalHeader();
+                Reporter.PrintEnvironmentalConfig(single, environmentalDisease);
+                Reporter.PrintEnvironmentalRow(single, environmentalResult);
+                return 0;
+            }
+
             if (!scenarios.TryGetValue(scenarioName, out Scenario scenario))
             {
                 Console.Error.WriteLine($"Unknown scenario '{scenarioName}'. Known: {string.Join(", ", scenarios.Keys)}");
+                return 2;
+            }
+
+            if (!diseases.ContainsKey(single.Disease))
+            {
+                Console.Error.WriteLine($"Unknown live-spread disease '{single.Disease}'. Known: {string.Join(", ", diseases.Keys)}");
                 return 2;
             }
 
@@ -50,6 +78,7 @@ internal static class Program
         }
 
         RunCanonicalMatrix(scenarios, diseases);
+        RunEnvironmentalMatrix(environmentalDiseases);
         return 0;
     }
 
@@ -122,6 +151,26 @@ internal static class Program
         RunResult result = Simulator.Run(scenario, conditions, diseases[conditions.Disease]);
         Reporter.PrintRow(scenario, conditions, result);
         rows.Add((scenario, conditions, result));
+    }
+
+    private static void RunEnvironmentalMatrix(Dictionary<string, DiseaseModel> environmentalDiseases)
+    {
+        Reporter.PrintEnvironmentalHeader();
+        foreach (string disease in new[] { "GutWorms", "MuscleParasites", "Malaria", "SleepingSickness" })
+        {
+            RunConditions c = RunConditions.Defaults(disease);
+            c.Environmental = true;
+            c.EnvironmentalTargets = 10;
+            c.EnvironmentalBudgetMode = EnvironmentalBudgetMode.Profile;
+            c.EnvironmentalTargetKind = EnvironmentalTargetKind.Human;
+            c.Outdoor = true;
+            c.Suppression = ContagionSuppressionMode.Medium;
+            EnvironmentalRunResult result = EnvironmentalSimulator.Run(c, environmentalDiseases[disease]);
+            Reporter.PrintEnvironmentalRow(c, result);
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("Tip: add --env --budget-mode none for pure window infectivity, or --water-factor 2/3 and --temp N to test wet/hot exposure.");
     }
 
     internal static ContagionSuppressionMode ParseSuppression(string value) => value.ToLowerInvariant() switch

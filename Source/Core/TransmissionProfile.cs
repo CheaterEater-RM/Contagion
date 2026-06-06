@@ -281,6 +281,43 @@ public sealed class Vector_Environmental : TransmissionVector
     public float indoorReductionPerCellFromEdge = 0.1f;
 
     public float coolRoomThreshold = 18f;
+
+    // Optional 24-hour activity weighting (x = local hour 0-24, y = multiplier on the per-pass chance).
+    // Lets a vector concentrate its biting risk in part of the day: night-active mosquitoes (malaria)
+    // peak after dusk, daytime tsetse (sleeping sickness) peak at midday. Authored to average ~1.0 over
+    // a full day, so an always-outdoors pawn sees unchanged total exposure — the curve only redistributes
+    // risk across the clock, which makes WHEN a pawn is outdoors (and where it sleeps) matter. Null =
+    // uniform across the day.
+    public SimpleCurve timeOfDayActivityCurve;
+
+    // Ground-contact acquisition (parasites): when set, replaces the distance-from-unroofed-edge
+    // shelter model with a check of the terrain under the pawn. Soil-tracked diseases (gut worms,
+    // muscle parasites) are caught by stepping in contaminated dirt or drinking tainted water, so
+    // what matters is the surface you stand on and whether it is roofed — not how deep into a room
+    // you are. Null = use the aerosol/distance shelter model (mosquito/fly vectors).
+    public GroundContactProfile groundContact;
+}
+
+// Surface-under-pawn exposure for ground-tracked parasites. Each factor is a multiplier on the
+// per-pass chance based on the BASE terrain of the pawn's cell; roofedMultiplier then knocks the
+// non-breeding surfaces down (a roof keeps rain/runoff and fresh contamination off the floor).
+// Standing water / marsh / mud is the breeding source itself, so a roof over it does not help.
+public sealed class GroundContactProfile
+{
+    // Bare natural soil — the dirty baseline you track parasites in from.
+    public float dirtFactor = 1f;
+
+    // Natural rock and any constructed/smoothed floor: a hard, cleanable surface carries little.
+    public float stoneFactor = 0.25f;
+
+    // Ice: frozen ground barely transmits.
+    public float iceFactor = 0.05f;
+
+    // Standing water, marsh, and mud — the parasite's breeding ground; very high and roof-immune.
+    public float breedingFactor = 2.5f;
+
+    // Roof multiplier applied to dirt/stone/ice (NOT breeding surfaces).
+    public float roofedMultiplier = 0.3f;
 }
 
 public sealed class Vector_Fomite : TransmissionVector
@@ -453,9 +490,21 @@ public sealed class Seeder_Environmental : TransmissionSeeder
 {
     public float baseChanceMultiplier = 1f;
 
+    public float mtbDays = 120f;
+
     public float windowDays = 14f;
 
+    public float contagionWindowDays = -1f;
+
     public IntRange infectionBudget = new IntRange(2, 5);
+
+    public FloatRange colonyHumanBudgetFraction = new FloatRange(0.25f, 0.75f);
+
+    public bool includePrisonersInColonyHumanBudget;
+
+    public FloatRange colonyAnimalBudgetFraction = new FloatRange(0.25f, 0.75f);
+
+    public float wildAnimalBudgetSqrtFactor = 1f;
 }
 
 public sealed class Seeder_AnimalLinked : TransmissionSeeder

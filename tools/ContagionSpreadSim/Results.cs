@@ -65,3 +65,66 @@ internal sealed class RunResult
         return reached.Count % 2 == 1 ? reached[mid] : (reached[mid - 1] + reached[mid]) / 2f;
     }
 }
+
+internal sealed class EnvironmentalTrialMetrics
+{
+    public int TargetCount;
+    public int Capacity;
+    public int Budget;
+    public float PerPassChanceAtStart;
+    public float DaysToFirst = -1f;
+    public float DaysTo50 = -1f;
+    public float DaysToBudget = -1f;
+    public int Infected;
+    public float InfectedPct;
+}
+
+internal sealed class EnvironmentalRunResult
+{
+    public int TargetCount;
+    public int Capacity;
+    public int Trials;
+    public float WindowDays;
+    public float MeanBudget;
+    public float MeanPerPassChanceAtStart;
+    public float MeanInfected;
+    public float MeanInfectedPct;
+    public float AnyInfectedRate;
+    public float BudgetReachedRate;
+    public float MedianDaysToFirst;
+    public float MedianDaysTo50;
+    public float MedianDaysToBudget;
+
+    public static EnvironmentalRunResult Summarize(List<EnvironmentalTrialMetrics> trials, float windowDays, int targetCount, int capacity)
+    {
+        EnvironmentalRunResult r = new()
+        {
+            TargetCount = targetCount,
+            Capacity = capacity,
+            Trials = trials.Count,
+            WindowDays = windowDays,
+            MeanBudget = (float)trials.Average(t => t.Budget),
+            MeanPerPassChanceAtStart = (float)trials.Average(t => t.PerPassChanceAtStart),
+            MeanInfected = (float)trials.Average(t => t.Infected),
+            MeanInfectedPct = (float)trials.Average(t => t.InfectedPct),
+            AnyInfectedRate = trials.Count(t => t.Infected > 0) / (float)trials.Count,
+            BudgetReachedRate = trials.Count(t => t.Budget >= 0 && t.Infected >= t.Budget) / (float)trials.Count,
+            MedianDaysToFirst = MedianOfReached(trials.Select(t => t.DaysToFirst), trials.Count),
+            MedianDaysTo50 = MedianOfReached(trials.Select(t => t.DaysTo50), trials.Count),
+            MedianDaysToBudget = MedianOfReached(trials.Select(t => t.DaysToBudget), trials.Count),
+        };
+        return r;
+    }
+
+    private static float MedianOfReached(IEnumerable<float> values, int totalTrials)
+    {
+        List<float> reached = values.Where(v => v >= 0f).OrderBy(v => v).ToList();
+        if (reached.Count * 2 < totalTrials)
+        {
+            return -1f;
+        }
+
+        int mid = reached.Count / 2;
+        return reached.Count % 2 == 1 ? reached[mid] : (reached[mid - 1] + reached[mid]) / 2f;
+    }
+}

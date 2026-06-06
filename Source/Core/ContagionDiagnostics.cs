@@ -98,6 +98,26 @@ public enum ContagionDiagnosticCounter
     EnvironmentalWindowClosedBudget,
     [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
     EnvironmentalWindowClosedExpiry,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowChecked,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowBlockedPending,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowBlockedCapacity,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowBlockedCooldown,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowNoBiome,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowRollFailed,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowNoBudgetTargets,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowHumanBudgetOpened,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowColonyAnimalBudgetOpened,
+    [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Incidence)]
+    EnvironmentalWindowWildAnimalBudgetOpened,
     [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
     AirborneAttempted,
     [DiagnosticCounterCategory(ContagionDiagnosticCounterCategory.Spread)]
@@ -379,6 +399,17 @@ public static class ContagionDiagnostics
                 GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowOpened),
                 GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowClosedBudget)
                     + GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowClosedExpiry)).Resolve());
+            stringBuilder.AppendLine("Contagion_DiagnosticsEnvironmentalWindows".Translate(
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowChecked),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowRollFailed),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowBlockedPending),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowBlockedCooldown),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowBlockedCapacity),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowNoBiome),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowNoBudgetTargets),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowHumanBudgetOpened),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowColonyAnimalBudgetOpened),
+                GetCounter(ContagionDiagnosticCounter.EnvironmentalWindowWildAnimalBudgetOpened)).Resolve());
             stringBuilder.AppendLine("Contagion_DiagnosticsIncidenceArrivals".Translate(
                 GetCounter(ContagionDiagnosticCounter.ArrivalGroupChecked),
                 GetCounter(ContagionDiagnosticCounter.ArrivalGroupSkippedEmpty),

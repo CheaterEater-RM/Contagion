@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI.Group;
 
 namespace Contagion;
 
@@ -311,7 +312,7 @@ public static class ContagionSeedingCoordinator
             return false;
         }
 
-        if (CurrentMode == ContagionSeedingMode.Storyteller)
+        if (CurrentMode == ContagionSeedingMode.Storyteller || CurrentMode == ContagionSeedingMode.Contagion)
         {
             windowEvent = component.GetPendingEvent(resolvedProfile.DiseaseDef);
             if (windowEvent == null || !windowEvent.IsEnvironmentalWindow)
@@ -335,41 +336,34 @@ public static class ContagionSeedingCoordinator
             return true;
         }
 
-        if (!component.CanRunSeeder(resolvedProfile, seeder))
-        {
-            return false;
-        }
-
-        chanceMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile)
-            * ContagionIncidenceMultiplier
-            * ContagionTransmissionUtility.GetSeasonalMultiplier(component.Map, resolvedProfile.Profile);
-        return true;
+        return false;
     }
 
     public static void NotifyEnvironmentalSeeded(
         Contagion_MapTransmissionComponent component,
         ResolvedTransmissionProfile resolvedProfile,
         Seeder_Environmental seeder,
-        PendingDiseaseEvent windowEvent)
+        PendingDiseaseEvent windowEvent,
+        ContagionCaseTrack budgetTrack)
     {
         if (component == null || resolvedProfile?.Profile == null || seeder == null)
         {
             return;
         }
 
-        if (CurrentMode == ContagionSeedingMode.Storyteller)
+        if (windowEvent != null && windowEvent.IsEnvironmentalWindow)
         {
-            if (windowEvent == null)
-            {
-                return;
-            }
-
-            windowEvent.infectionsApplied++;
+            windowEvent.NotifyInfectionApplied(budgetTrack);
             if (!windowEvent.HasRemainingBudget)
             {
                 component.RemovePendingEvent(windowEvent);
                 ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowClosedBudget);
                 ContagionDiagnostics.Trace($"Environmental window closed after reaching budget: {resolvedProfile.DiseaseDef.defName}.");
+            }
+
+            if (CurrentMode == ContagionSeedingMode.Contagion)
+            {
+                component.DiseaseDirector.NotifySeeded(resolvedProfile.Profile, 1);
             }
 
             return;
@@ -408,6 +402,43 @@ public static class ContagionSeedingCoordinator
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingQueued);
         ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowOpened);
         return true;
+    }
+
+    public static bool TryGetEnvironmentalBudgetTrack(Pawn pawn, Seeder_Environmental seeder, out ContagionCaseTrack track)
+    {
+        track = ContagionCaseTrack.None;
+        if (pawn == null || pawn.Dead)
+        {
+            return false;
+        }
+
+        if (pawn.RaceProps?.Humanlike == true)
+        {
+            if (pawn.IsColonist || pawn.IsSlaveOfColony || (seeder?.includePrisonersInColonyHumanBudget == true && pawn.IsPrisonerOfColony))
+            {
+                track = ContagionCaseTrack.Human;
+                return true;
+            }
+
+            return false;
+        }
+
+        if (pawn.RaceProps?.Animal == true)
+        {
+            if (pawn.Faction == Faction.OfPlayer)
+            {
+                track = ContagionCaseTrack.Animal;
+                return true;
+            }
+
+            if (pawn.GetLord() == null)
+            {
+                track = ContagionCaseTrack.WildAnimal;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool TryResolveImmediateAcausal(
@@ -1203,6 +1234,18 @@ public static class ContagionSeedingCoordinator
                 continue;
             }
 
+            if (pendingEvent.IsEnvironmentalWindow)
+            {
+                if (pendingEvent.IsExpired(Find.TickManager.TicksGame))
+                {
+                    component.RemovePendingEvent(pendingEvent);
+                    ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowClosedExpiry);
+                    ContagionDiagnostics.Trace($"Environmental window expired in Contagion mode: {resolvedProfile.DiseaseDef.defName}.");
+                }
+
+                continue;
+            }
+
             component.RemovePendingEvent(pendingEvent);
             ContagionDiagnostics.Trace($"Cleared pending storyteller request during switch to Contagion mode: {resolvedProfile.DiseaseDef.defName}.");
         }
@@ -1233,8 +1276,200 @@ public static class ContagionSeedingCoordinator
                             pawn => GetAnimalLinkedWeight(pawn, animalLinked));
                     }
                 }
+                else if (seeder is Seeder_Environmental environmental)
+                {
+                    TryRunContinuousEnvironmentalWindow(component, resolvedProfile, environmental, spawnedPawns);
+                }
             }
         }
+    }
+
+    private static void TryRunContinuousEnvironmentalWindow(
+        Contagion_MapTransmissionComponent component,
+        ResolvedTransmissionProfile resolvedProfile,
+        Seeder_Environmental seeder,
+        IReadOnlyList<Pawn> spawnedPawns)
+    {
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowChecked);
+
+        if (component.GetPendingEvent(resolvedProfile.DiseaseDef) != null)
+        {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowBlockedPending);
+            return;
+        }
+
+        if (component.IsAtActiveCaseLimit(resolvedProfile, seeder))
+        {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowBlockedCapacity);
+            return;
+        }
+
+        if (!component.CanRunSeeder(resolvedProfile, seeder))
+        {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowBlockedCooldown);
+            return;
+        }
+
+        float biomeCommonalityFactor = GetBiomeDiseaseCommonalityFactor(component.Map, resolvedProfile);
+        if (biomeCommonalityFactor <= 0f)
+        {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowNoBiome);
+            return;
+        }
+
+        float seedingMultiplier = component.DiseaseDirector.GetChanceMultiplier(resolvedProfile.Profile)
+            * ContagionIncidenceMultiplier
+            * ContagionTransmissionUtility.GetSeasonalMultiplier(component.Map, resolvedProfile.Profile)
+            * biomeCommonalityFactor;
+        if (seedingMultiplier <= 0f || seeder.mtbDays <= 0f)
+        {
+            return;
+        }
+
+        float adjustedMtbDays = seeder.mtbDays / seedingMultiplier;
+        if (!Rand.MTBEventOccurs(adjustedMtbDays, TicksPerDay, 2500f))
+        {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowRollFailed);
+            return;
+        }
+
+        if (TryOpenContagionEnvironmentalWindow(component, resolvedProfile, seeder, spawnedPawns))
+        {
+            component.NotifySeederFired(resolvedProfile, seeder);
+        }
+    }
+
+    private static bool TryOpenContagionEnvironmentalWindow(
+        Contagion_MapTransmissionComponent component,
+        ResolvedTransmissionProfile resolvedProfile,
+        Seeder_Environmental seeder,
+        IReadOnlyList<Pawn> spawnedPawns)
+    {
+        int colonyHumanTargets = CountEnvironmentalBudgetTargets(spawnedPawns, component.Map, resolvedProfile, seeder, ContagionCaseTrack.Human);
+        int colonyAnimalTargets = CountEnvironmentalBudgetTargets(spawnedPawns, component.Map, resolvedProfile, seeder, ContagionCaseTrack.Animal);
+        int wildAnimalTargets = CountEnvironmentalBudgetTargets(spawnedPawns, component.Map, resolvedProfile, seeder, ContagionCaseTrack.WildAnimal);
+
+        int colonyHumanBudget = CapBudgetToRemainingCapacity(
+            component.Map,
+            resolvedProfile,
+            ContagionCaseTrack.Human,
+            BudgetFromFraction(colonyHumanTargets, seeder.colonyHumanBudgetFraction));
+        int colonyAnimalBudget = CapBudgetToRemainingCapacity(
+            component.Map,
+            resolvedProfile,
+            ContagionCaseTrack.Animal,
+            BudgetFromFraction(colonyAnimalTargets, seeder.colonyAnimalBudgetFraction));
+        int wildAnimalBudget = CapBudgetToRemainingCapacity(
+            component.Map,
+            resolvedProfile,
+            ContagionCaseTrack.WildAnimal,
+            BudgetFromWildAnimals(wildAnimalTargets, seeder.wildAnimalBudgetSqrtFactor));
+
+        if (colonyHumanBudget <= 0 && colonyAnimalBudget <= 0 && wildAnimalBudget <= 0)
+        {
+            ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowNoBudgetTargets);
+            ContagionDiagnostics.Trace($"Environmental window skipped for {resolvedProfile.DiseaseDef.defName}: no eligible budget targets.");
+            return false;
+        }
+
+        int currentTick = Find.TickManager.TicksGame;
+        PendingDiseaseEvent pendingEvent = new PendingDiseaseEvent
+        {
+            diseaseDef = resolvedProfile.DiseaseDef,
+            firedTick = currentTick,
+            expiryTick = currentTick + Mathf.Max(1, Mathf.RoundToInt(GetContagionEnvironmentalWindowDays(seeder) * TicksPerDay)),
+            colonyHumanInfectionBudget = colonyHumanBudget,
+            colonyAnimalInfectionBudget = colonyAnimalBudget,
+            wildAnimalInfectionBudget = wildAnimalBudget
+        };
+
+        component.AddPendingEvent(pendingEvent);
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.PendingQueued);
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowOpened);
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowHumanBudgetOpened, colonyHumanBudget);
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowColonyAnimalBudgetOpened, colonyAnimalBudget);
+        ContagionDiagnostics.Record(ContagionDiagnosticCounter.EnvironmentalWindowWildAnimalBudgetOpened, wildAnimalBudget);
+        ContagionDiagnostics.Trace(
+            $"Environmental window opened: {resolvedProfile.DiseaseDef.defName} (human {colonyHumanBudget}/{colonyHumanTargets}, colony animal {colonyAnimalBudget}/{colonyAnimalTargets}, wild animal {wildAnimalBudget}/{wildAnimalTargets}).");
+        return true;
+    }
+
+    private static float GetContagionEnvironmentalWindowDays(Seeder_Environmental seeder)
+    {
+        if (seeder == null)
+        {
+            return 1f;
+        }
+
+        return seeder.contagionWindowDays > 0f ? seeder.contagionWindowDays : seeder.windowDays;
+    }
+
+    private static int CountEnvironmentalBudgetTargets(
+        IReadOnlyList<Pawn> spawnedPawns,
+        Map map,
+        ResolvedTransmissionProfile resolvedProfile,
+        Seeder_Environmental seeder,
+        ContagionCaseTrack track)
+    {
+        if (spawnedPawns == null || resolvedProfile?.Profile == null)
+        {
+            return 0;
+        }
+
+        int count = 0;
+        for (int i = 0; i < spawnedPawns.Count; i++)
+        {
+            Pawn pawn = spawnedPawns[i];
+            if (pawn == null
+                || pawn.Dead
+                || !pawn.Spawned
+                || pawn.Map != map
+                || !resolvedProfile.Profile.CanAffect(pawn)
+                || !TryGetEnvironmentalBudgetTrack(pawn, seeder, out ContagionCaseTrack pawnTrack)
+                || pawnTrack != track)
+            {
+                continue;
+            }
+
+            count++;
+        }
+
+        return count;
+    }
+
+    private static int BudgetFromFraction(int targetCount, FloatRange fractionRange)
+    {
+        if (targetCount <= 0 || fractionRange.max <= 0f)
+        {
+            return 0;
+        }
+
+        return Mathf.Clamp(Mathf.CeilToInt(targetCount * Mathf.Max(0f, fractionRange.RandomInRange)), 0, targetCount);
+    }
+
+    private static int BudgetFromWildAnimals(int targetCount, float sqrtFactor)
+    {
+        if (targetCount <= 0 || sqrtFactor <= 0f)
+        {
+            return 0;
+        }
+
+        return Mathf.Clamp(Mathf.CeilToInt(Mathf.Sqrt(targetCount) * sqrtFactor), 0, targetCount);
+    }
+
+    private static int CapBudgetToRemainingCapacity(
+        Map map,
+        ResolvedTransmissionProfile resolvedProfile,
+        ContagionCaseTrack track,
+        int budget)
+    {
+        if (budget <= 0)
+        {
+            return 0;
+        }
+
+        int remainingCapacity = ContagionTransmissionUtility.GetRemainingActiveCaseCapacity(map, resolvedProfile, track);
+        return remainingCapacity == int.MaxValue ? budget : Mathf.Min(budget, remainingCapacity);
     }
 
     private static void TryRunContinuousSeeder(
@@ -1287,6 +1522,16 @@ public static class ContagionSeedingCoordinator
         {
             ContagionTrace.SourceAtCell(seededPawn.PositionHeld, seededPawn, resolvedProfile.DiseaseDef, ContagionDebugVectorKind.Environmental);
         }
+    }
+
+    private static float GetBiomeDiseaseCommonalityFactor(Map map, ResolvedTransmissionProfile resolvedProfile)
+    {
+        if (resolvedProfile?.LinkedIncidentDef == null || map?.Biome == null)
+        {
+            return 0f;
+        }
+
+        return ContagionRiskMath.BiomeDiseaseCommonalityFactor(map.Biome.CommonalityOfDisease(resolvedProfile.LinkedIncidentDef));
     }
 
     private static float GetAnimalLinkedWeight(Pawn pawn, Seeder_AnimalLinked seeder)
