@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <!-- Cybranian - Diseases+: Common cold -->
+  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific">
+    <xpath>Defs/HediffDef[defName="DimonSever000_CommonCold" and not(modExtensions)]</xpath>
+    <value>
+      <modExtensions />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific">
+    <xpath>Defs/HediffDef[defName="DimonSever000_CommonCold" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+        <incubationDays>1.0</incubationDays>
+        <pendingWindowDays>15</pendingWindowDays>
+        <immunityDurationDays>20</immunityDurationDays>
+        <affectsHumans>true</affectsHumans>
+        <dangerWeight>0.6</dangerWeight>
+        <incubationInfectivityCurve>
+          <points>
+            <li>(0.0, 0.1)</li>
+            <li>(0.3, 0.2)</li>
+            <li>(0.7, 0.45)</li>
+            <li>(1.0, 0.5)</li>
+          </points>
+        </incubationInfectivityCurve>
+        <activeInfectivityCurve>
+          <points>
+            <li>(0.00, 0.5)</li>
+            <li>(0.25, 1.0)</li>
+            <li>(0.55, 1.0)</li>
+            <li>(0.80, 0.3)</li>
+            <li>(1.00, 0.0)</li>
+          </points>
+        </activeInfectivityCurve>
+        <seasonalInfectivity>
+          <spring>0.6</spring>
+          <summer>0.3</summer>
+          <fall>0.8</fall>
+          <winter>1.0</winter>
+          <permanentSummer>0.4</permanentSummer>
+          <permanentWinter>0.7</permanentWinter>
+        </seasonalInfectivity>
+        <vectors>
+          <li Class="Contagion.Vector_Airborne">
+            <baseChancePerCheck>0.035</baseChancePerCheck>
+            <outdoorFactor>0.5</outdoorFactor>
+            <maxRange>10</maxRange>
+            <distanceFalloffRate>0.22</distanceFalloffRate>
+            <obstructedFactor>0.0</obstructedFactor>
+            <roomAirBaseChanceFactor>0.25</roomAirBaseChanceFactor>
+            <roomAirMaxRange>10</roomAirMaxRange>
+            <roomAirMaxCells>100</roomAirMaxCells>
+            <maskTargetEffectiveness>0.7</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
+          </li>
+          <li Class="Contagion.Vector_Social">
+            <baseChancePerInteraction>0.12</baseChancePerInteraction>
+            <outdoorFactor>0.8</outdoorFactor>
+            <maskTargetEffectiveness>0.6</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
+          </li>
+        </vectors>
+        <seeders>
+          <li Class="Contagion.Seeder_Storyteller">
+            <seedCountRange>1~2</seedCountRange>
+            <cooldownDays>8</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.02</arrivalChance>
+            <cooldownDays>3</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>150</mtbDays>
+            <cooldownDays>8</cooldownDays>
+          </li>
+        </seeders>
+        <outbreakNotification>FirstCase</outbreakNotification>
+      </li>
+    </value>
+  </Operation>
+
+  <!-- Cybranian - Diseases+: Tuberculosis -->
+  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific">
+    <xpath>Defs/HediffDef[defName="DimonSever000_Tuberculosis" and not(modExtensions)]</xpath>
+    <value>
+      <modExtensions />
+    </value>
+  </Operation>
+  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific">
+    <xpath>Defs/HediffDef[defName="DimonSever000_Tuberculosis" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+    <value>
+      <li Class="Contagion.TransmissionProfile">
+        <incubationDays>5.0</incubationDays>
+        <pendingWindowDays>30</pendingWindowDays>
+        <immunityDurationDays>90</immunityDurationDays>
+        <affectsHumans>true</affectsHumans>
+        <dangerWeight>1.5</dangerWeight>
+        <incubationInfectivityCurve>
+          <points>
+            <li>(0.0, 0.05)</li>
+            <li>(0.5, 0.15)</li>
+            <li>(1.0, 0.25)</li>
+          </points>
+        </incubationInfectivityCurve>
+        <activeInfectivityCurve>
+          <points>
+            <li>(0.00, 0.35)</li>
+            <li>(0.20, 0.60)</li>
+            <li>(0.70, 0.75)</li>
+            <li>(0.95, 0.45)</li>
+            <li>(1.00, 0.0)</li>
+          </points>
+        </activeInfectivityCurve>
+        <vectors>
+          <li Class="Contagion.Vector_Airborne">
+            <baseChancePerCheck>0.006</baseChancePerCheck>
+            <outdoorFactor>0.25</outdoorFactor>
+            <maxRange>12</maxRange>
+            <distanceFalloffRate>0.18</distanceFalloffRate>
+            <obstructedFactor>0.0</obstructedFactor>
+            <roomAirBaseChanceFactor>0.45</roomAirBaseChanceFactor>
+            <roomAirMaxRange>12</roomAirMaxRange>
+            <roomAirMaxCells>120</roomAirMaxCells>
+            <maskTargetEffectiveness>0.7</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
+          </li>
+          <li Class="Contagion.Vector_Social">
+            <baseChancePerInteraction>0.015</baseChancePerInteraction>
+            <outdoorFactor>0.35</outdoorFactor>
+            <maskTargetEffectiveness>0.7</maskTargetEffectiveness>
+            <maskSourceEffectiveness>0.5</maskSourceEffectiveness>
+          </li>
+        </vectors>
+        <seeders>
+          <li Class="Contagion.Seeder_Storyteller">
+            <seedCountRange>1~1</seedCountRange>
+            <cooldownDays>20</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Arrival">
+            <arrivalChance>0.006</arrivalChance>
+            <cooldownDays>7</cooldownDays>
+          </li>
+          <li Class="Contagion.Seeder_Acausal">
+            <mtbDays>300</mtbDays>
+            <cooldownDays>20</cooldownDays>
+          </li>
+        </seeders>
+        <outbreakNotification>FirstCase</outbreakNotification>
+      </li>
+    </value>
+  </Operation>
+</Patch>
