@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Patch>
   <!-- Cybranian - Diseases+: Common cold -->
-  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific">
+  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific"><success>Always</success>
     <xpath>Defs/HediffDef[defName="DimonSever000_CommonCold" and not(modExtensions)]</xpath>
     <value>
       <modExtensions />
     </value>
   </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific">
+  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific"><success>Always</success>
     <xpath>Defs/HediffDef[defName="DimonSever000_CommonCold" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
@@ -81,13 +81,13 @@
   </Operation>
 
   <!-- Cybranian - Diseases+: Tuberculosis -->
-  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific">
+  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific"><success>Always</success>
     <xpath>Defs/HediffDef[defName="DimonSever000_Tuberculosis" and not(modExtensions)]</xpath>
     <value>
       <modExtensions />
     </value>
   </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific">
+  <Operation Class="PatchOperationAdd" MayRequire="DimonSever000.DiseasesPlus.Specific"><success>Always</success>
     <xpath>Defs/HediffDef[defName="DimonSever000_Tuberculosis" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">

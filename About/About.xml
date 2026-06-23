@@ -7,7 +7,7 @@
     <li>1.6</li>
   </supportedVersions>
   <description>Turns RimWorld diseases into contagious agents with outbreaks and transmission mechanics.</description>
-  <modVersion>1.01</modVersion>
+  <modVersion>1.02</modVersion>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>
