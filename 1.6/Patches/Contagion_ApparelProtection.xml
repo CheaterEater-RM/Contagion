@@ -13,17 +13,16 @@
 
        Helmet airwaySeal is still authored alongside airwaySealed: airwaySealed grants full respiratory
        immunity, while airwaySeal remains the physical-filter value for non-respiratory vectors that happen
-       to use the airway channel (for example plague proximity with airwayImmunityFactor=0). -->
+       to use the airway channel (for example plague proximity with airwayImmunityFactor=0).
+
+       PatchOperationAddModExtension creates <modExtensions> if absent and appends to it if present, so this
+       coexists with mods (e.g. Combat Extended) that add their own modExtension to the same def. -->
 
   <!-- ============================ Core ============================ -->
 
   <!-- Recon helmet -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetRecon" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetRecon"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetRecon"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <airwaySeal>0.80</airwaySeal>
@@ -33,12 +32,8 @@
   </Operation>
 
   <!-- Marine helmet -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[defName="Apparel_PowerArmorHelmet" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[defName="Apparel_PowerArmorHelmet"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/ThingDef[defName="Apparel_PowerArmorHelmet"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <airwaySeal>0.85</airwaySeal>
@@ -48,12 +43,8 @@
   </Operation>
 
   <!-- Recon armor -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorRecon" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorRecon"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorRecon"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <skinSeal>0.90</skinSeal>
@@ -63,12 +54,8 @@
   </Operation>
 
   <!-- Marine (power) armor -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[defName="Apparel_PowerArmor" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/ThingDef[defName="Apparel_PowerArmor"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/ThingDef[defName="Apparel_PowerArmor"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <skinSeal>0.95</skinSeal>
@@ -79,12 +66,8 @@
 
   <!-- ============================ Royalty ============================ -->
   <!-- Cataphract helmet -->
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetCataphract" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetCataphract"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorHelmetCataphract"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <airwaySeal>0.92</airwaySeal>
@@ -94,12 +77,8 @@
   </Operation>
 
   <!-- Prestige marine helmet -->
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarineHelmetPrestige" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarineHelmetPrestige"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarineHelmetPrestige"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <airwaySeal>0.85</airwaySeal>
@@ -109,12 +88,8 @@
   </Operation>
 
   <!-- Cataphract armor -->
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorCataphract" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorCataphract"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorCataphract"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <skinSeal>1.00</skinSeal>
@@ -124,12 +99,8 @@
   </Operation>
 
   <!-- Prestige marine armor -->
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarinePrestige" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.royalty">
-    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarinePrestige"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension" MayRequire="ludeon.rimworld.royalty">
+    <xpath>Defs/ThingDef[defName="Apparel_ArmorMarinePrestige"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <skinSeal>0.95</skinSeal>
@@ -140,12 +111,8 @@
 
   <!-- ============================ Odyssey ============================ -->
   <!-- Vacsuit helmet (dedicated PPE: recycles oxygen, immune to tox gas) -->
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
-    <xpath>Defs/ThingDef[defName="Apparel_VacsuitHelmet" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
-    <xpath>Defs/ThingDef[defName="Apparel_VacsuitHelmet"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension" MayRequire="ludeon.rimworld.odyssey">
+    <xpath>Defs/ThingDef[defName="Apparel_VacsuitHelmet"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <airwaySeal>0.85</airwaySeal>
@@ -156,12 +123,8 @@
   </Operation>
 
   <!-- Vacsuit (dedicated PPE: fully sealed body shell) -->
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
-    <xpath>Defs/ThingDef[defName="Apparel_Vacsuit" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
-    <xpath>Defs/ThingDef[defName="Apparel_Vacsuit"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension" MayRequire="ludeon.rimworld.odyssey">
+    <xpath>Defs/ThingDef[defName="Apparel_Vacsuit"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <skinSeal>1.00</skinSeal>
@@ -172,12 +135,8 @@
   </Operation>
 
   <!-- Kid vacsuit -->
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
-    <xpath>Defs/ThingDef[defName="Apparel_VacsuitChildren" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="ludeon.rimworld.odyssey">
-    <xpath>Defs/ThingDef[defName="Apparel_VacsuitChildren"]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension" MayRequire="ludeon.rimworld.odyssey">
+    <xpath>Defs/ThingDef[defName="Apparel_VacsuitChildren"]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <skinSeal>1.00</skinSeal>

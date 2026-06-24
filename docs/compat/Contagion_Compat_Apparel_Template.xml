@@ -10,9 +10,9 @@
   apparel ThingDef(s) so worn gear protects pawns against disease vectors.
   No assembly reference, no Harmony, no C# required — pure XML.
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   REQUIRED SETUP IN YOUR About/About.xml
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
     <loadAfter>
       <li>CheaterEater.Contagion</li>
     </loadAfter>
@@ -20,29 +20,35 @@
   Loading after Contagion guarantees your patch sees its defs and your
   modExtension is authoritative over Contagion's stat/tech-level fallback.
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   RULES (these are why the template looks the way it does)
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   1. Guard EVERY operation with MayRequire so the patch is silently skipped
      when Contagion is not installed:
         MayRequire="CheaterEater.Contagion,your.mod.id"
      (Comma-separated: Contagion + the mod that owns the apparel def. If the
       apparel is your own, list only your own id alongside Contagion.)
 
-  2. Use the flat TWO-STEP add pattern for <modExtensions>:
-        Step 1 — create <modExtensions> only if it does not exist.
-        Step 2 — add the <li> only if it is not already present.
+  2. Use PatchOperationAddModExtension to attach the <li>. It creates the
+     <modExtensions> node if the def has none and appends to it if one already
+     exists — e.g. another mod (like Combat Extended) added its own modExtension
+     to the same def first. One operation is enough; do NOT use the older
+     two-step "create <modExtensions> if absent, then add the <li>" pattern —
+     its first step uses not(modExtensions), which silently fails to match (and
+     logs an error) the moment any other mod has already added a modExtension.
+     Keep the li-guard not(modExtensions/li[@Class="..."]) in the xpath so the
+     operation is idempotent and never adds the extension twice.
      NEVER use PatchOperationSequence/PatchOperationConditional against a
      <modExtensions> node that may be absent — it half-applies and corrupts
      the def database.
 
   3. <success>Always</success> keeps the operation quiet (no red error) when
-     its xpath matches nothing — e.g. the node already exists, or another
-     mod added the extension first.
+     its xpath matches nothing — e.g. the def already carries the extension
+     (idempotent re-run), or the target def is absent in this load order.
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   ApparelContagionProtection FIELDS  (all optional; omit what you don't need)
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
     airwaySeal   float 0..1   Airway channel seal quality (0 porous, 1 hermetic).
     skinSeal     float 0..1   Torso/skin channel seal quality.
     handsSeal    float 0..1   Hands channel seal quality.
@@ -63,9 +69,9 @@
                                 (modded hazmat) -> trips the sealed-system
                                 capstone on any DLC.
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   IMPORTANT — MASKS
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   A plain mask's airway filtering is read at RUNTIME from its
   ToxicEnvironmentResistance stat. Do NOT author airwaySeal on such a mask —
   it double-counts the protection. Only author airwaySeal for a mask whose mod
@@ -73,7 +79,7 @@
   in that case set a graded airwaySeal WITHOUT airwaySealed so it filters but
   is not treated as hermetic.
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   Replace YourModId and the defNames below, delete the examples you don't need.
   ============================================================================
 -->
@@ -82,14 +88,9 @@
   <!-- ======================================================================
        EXAMPLE 1 — Full hazmat suit (sealed body shell, dedicated PPE)
        ====================================================================== -->
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
+  <Operation Class="PatchOperationAddModExtension" MayRequire="CheaterEater.Contagion,YourModId">
     <success>Always</success>
-    <xpath>Defs/ThingDef[defName="YourHazmatSuit" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
-    <success>Always</success>
-    <xpath>Defs/ThingDef[defName="YourHazmatSuit" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+    <xpath>Defs/ThingDef[defName="YourHazmatSuit" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <skinSeal>1.00</skinSeal>
@@ -105,14 +106,9 @@
        airwaySealed grants full respiratory immunity; airwaySeal stays as the
        physical-filter value for non-respiratory vectors that use the airway.
        ====================================================================== -->
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
+  <Operation Class="PatchOperationAddModExtension" MayRequire="CheaterEater.Contagion,YourModId">
     <success>Always</success>
-    <xpath>Defs/ThingDef[defName="YourSealedHelmet" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
-    <success>Always</success>
-    <xpath>Defs/ThingDef[defName="YourSealedHelmet" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+    <xpath>Defs/ThingDef[defName="YourSealedHelmet" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <airwaySeal>0.85</airwaySeal>
@@ -126,14 +122,9 @@
        The single most useful piece of PPE for fomite / butchery / cooking
        vectors. Coverage is automatic from bodyPartGroups (Hands).
        ====================================================================== -->
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
+  <Operation Class="PatchOperationAddModExtension" MayRequire="CheaterEater.Contagion,YourModId">
     <success>Always</success>
-    <xpath>Defs/ThingDef[defName="YourGloves" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
-    <success>Always</success>
-    <xpath>Defs/ThingDef[defName="YourGloves" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+    <xpath>Defs/ThingDef[defName="YourGloves" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <handsSeal>0.90</handsSeal>
@@ -147,14 +138,9 @@
        ToxicEnvironmentResistance, so Contagion's runtime filter sees nothing.
        Author a graded airwaySeal but DO NOT set airwaySealed.
        ====================================================================== -->
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
+  <Operation Class="PatchOperationAddModExtension" MayRequire="CheaterEater.Contagion,YourModId">
     <success>Always</success>
-    <xpath>Defs/ThingDef[defName="YourMaskWithWrongStat" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
-    <success>Always</success>
-    <xpath>Defs/ThingDef[defName="YourMaskWithWrongStat" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+    <xpath>Defs/ThingDef[defName="YourMaskWithWrongStat" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]</xpath>
     <value>
       <li Class="Contagion.ApparelContagionProtection">
         <airwaySeal>0.80</airwaySeal>

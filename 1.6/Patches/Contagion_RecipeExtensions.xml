@@ -9,127 +9,78 @@
      factor = asymptote + (low - asymptote) * exp(-decay * Cooking).
      Defaults: low=1.5, asymptote=0.25, decay=0.18.
      Simple/fine/lavish meals intentionally share the same ordinary-cooking factor;
-     higher-tier meals are safer because they require better cooks. -->
+     higher-tier meals are safer because they require better cooks.
+     PatchOperationAddModExtension creates <modExtensions> if absent and appends to it if present, so
+     this coexists with any mod that adds its own modExtension to these recipes; the li-guard keeps it
+     idempotent (never adds a second CookingContaminationExtension). -->
 <Patch>
 
   <!-- ── Ordinary cooked meals (0.20 before cook-skill factor) ──────────────────────── -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealSimple" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealSimple" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealSimple" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.20</reductionFactor></li></value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealSimpleBulk" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealSimpleBulk" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealSimpleBulk" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.20</reductionFactor></li></value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavish" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavish" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealLavish" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.20</reductionFactor></li></value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavish_Meat" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavish_Meat" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealLavish_Meat" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.20</reductionFactor></li></value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavish_Veg" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavish_Veg" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealLavish_Veg" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.20</reductionFactor></li></value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavishBulk" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavishBulk" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealLavishBulk" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.20</reductionFactor></li></value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavishBulk_Meat" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavishBulk_Meat" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealLavishBulk_Meat" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.20</reductionFactor></li></value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavishBulk_Veg" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealLavishBulk_Veg" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealLavishBulk_Veg" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.20</reductionFactor></li></value>
   </Operation>
 
   <!-- ── Survival meal (0.05) — packaged and sealed, very low parasite risk ─────────── -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealSurvival" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealSurvival" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealSurvival" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.05</reductionFactor></li></value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealSurvivalBulk" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="CookMealSurvivalBulk" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="CookMealSurvivalBulk" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.05</reductionFactor></li></value>
   </Operation>
 
   <!-- ── Pemmican (0.70) — preserved but minimally cooked, significant risk ─────────── -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="Make_Pemmican" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="Make_Pemmican" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="Make_Pemmican" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.70</reductionFactor></li></value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="Make_PemmicanBulk" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="Make_PemmicanBulk" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="Make_PemmicanBulk" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.70</reductionFactor></li></value>
   </Operation>
 
   <!-- ── Kibble (0.60) — animal feed, moderate processing ──────────────────────────── -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="Make_Kibble" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/RecipeDef[defName="Make_Kibble" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/RecipeDef[defName="Make_Kibble" and not(modExtensions/li[@Class="Contagion.CookingContaminationExtension"])]</xpath>
     <value><li Class="Contagion.CookingContaminationExtension"><reductionFactor>0.60</reductionFactor></li></value>
   </Operation>
 

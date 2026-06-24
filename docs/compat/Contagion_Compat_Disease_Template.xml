@@ -11,31 +11,36 @@
   vectors, seeds onto the map, and respects Contagion's outbreak suppression.
   No assembly reference, no Harmony, no C# required — pure XML.
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   REQUIRED SETUP IN YOUR About/About.xml
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
     <loadAfter>
       <li>CheaterEater.Contagion</li>
     </loadAfter>
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   RULES (these are why the template looks the way it does)
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   1. Guard EVERY operation with MayRequire so the patch is silently skipped
      when Contagion is not installed:
         MayRequire="CheaterEater.Contagion,your.mod.id"
      (If the HediffDef is your own, list your own id alongside Contagion. If
       you are making a third party's disease contagious, list their id.)
 
-  2. Use the flat TWO-STEP add pattern for <modExtensions>:
-        Step 1 — create <modExtensions> only if it does not exist.
-        Step 2 — add the <li> only if it is not already present.
+  2. Use PatchOperationAddModExtension to attach the <li>. It creates the
+     <modExtensions> node if the def has none and appends to it if one already
+     exists (e.g. another mod added its own modExtension to the disease first).
+     One operation is enough; do NOT use the older two-step "create
+     <modExtensions> if absent, then add the <li>" pattern — its not(modExtensions)
+     step silently fails to match (and logs an error) once any other mod has
+     added a modExtension to the same def. Keep the li-guard
+     not(modExtensions/li[@Class="..."]) in the xpath so it stays idempotent.
      NEVER use PatchOperationSequence/PatchOperationConditional against a
      <modExtensions> node that may be absent.
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   KEY TOP-LEVEL TransmissionProfile FIELDS  (defaults in brackets)
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
     incubationDays        [1]      Pre-symptomatic window (contagious via the
                                    incubationInfectivityCurve below).
     pendingWindowDays     [5]      Storyteller mode: how long a queued start
@@ -66,16 +71,16 @@
     outbreakNotification  [FirstCase]  None / FirstCase / EveryCase.
     outbreakEndDays       [3]      Quiet days before the next case is "first" again.
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   INFECTIVITY CURVES (SimpleCurve: x = progress 0..1, y = relative shedding)
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
     incubationInfectivityCurve  x = incubation progress (0 = just infected,
                                 1 = symptom onset). REQUIRED for incubating
                                 carriers to shed at all — a zero/absent curve
                                 filters them out of contagious scanning.
     activeInfectivityCurve      x = active-disease severity progress.
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   VECTOR CLASSES  (<li Class="Contagion.Vector_*">) — copy the closest analog
   out of 1.6/Patches/Contagion_Profiles.xml for full per-vector params:
     Vector_Airborne        plume/room-air spread          (see Flu)
@@ -100,7 +105,7 @@
           <feetWeight>0</feetWeight>
         </apparelProtection>
 
-  ----------------------------------------------------------------------------
+  ────────────────────────────────────────────────────────────────────────────
   SEEDER CLASSES  (<li Class="Contagion.Seeder_*">):
     Seeder_Storyteller   storyteller-driven start (pairs with selfSchedules).
     Seeder_Arrival       carried in by visitors/traders/caravans.
@@ -114,15 +119,11 @@
 -->
 <Patch>
 
-  <!-- Step 1: ensure a modExtensions node exists -->
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
-    <xpath>Defs/HediffDef[defName="YourDisease" and not(modExtensions)]</xpath>
-    <value><modExtensions /></value>
-  </Operation>
-
-  <!-- Step 2: add the transmission profile if not already present -->
-  <Operation Class="PatchOperationAdd" MayRequire="CheaterEater.Contagion,YourModId">
-    <xpath>Defs/HediffDef[defName="YourDisease" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+  <!-- Add the transmission profile. PatchOperationAddModExtension creates the
+       <modExtensions> node if absent and appends if present; the li-guard keeps
+       it idempotent (never adds a second TransmissionProfile). -->
+  <Operation Class="PatchOperationAddModExtension" MayRequire="CheaterEater.Contagion,YourModId">
+    <xpath>Defs/HediffDef[defName="YourDisease" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
 

@@ -349,9 +349,10 @@ DefModExtension + optional vector/profile fields + UI).
 Respiratory already routes through `GetRespiratoryMaskFactor` into the three pawn-to-pawn breakdowns.
 
 **XML** (`1.6/Patches/`)
-- `Contagion_ApparelProtection.xml` — flat two-step `PatchOperationAdd` of §6 modExtensions; DLC rows via
-  `MayRequire` package-id guards. (Most spacer armor is also caught by the tech-level
-  fallback, so authoring is a refinement, not a requirement.)
+- `Contagion_ApparelProtection.xml` — one `PatchOperationAddModExtension` per def for the §6 modExtensions
+  (creates `<modExtensions>` if absent, appends if present, so it coexists with mods like Combat Extended
+  that add their own); DLC rows via `MayRequire` package-id guards. (Most spacer armor is also caught by the
+  tech-level fallback, so authoring is a refinement, not a requirement.)
 - `ModPatches/Contagion_ApparelProtection_*.xml` — known third-party gear, one guarded file per source mod.
 - Profile XML — §4 `ContactProtectionProfile` blocks on the relevant `<li Class="Contagion.Vector_*">`.
 

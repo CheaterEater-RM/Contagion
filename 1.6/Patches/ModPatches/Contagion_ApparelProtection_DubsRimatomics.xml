@@ -2,13 +2,11 @@
 <Patch>
   <!-- Dubs Rimatomics: MOPP gear is sealed CBRN; radiation suit is partial skin protection.
        Radiation/MOPP gear inherits ToxicEnvironmentResistance 0.40, so the radiation mask already filters
-       the airway at runtime. MOPP mask uses airwaySealed, with the filter harmless underneath. -->
-  <Operation Class="PatchOperationAdd" MayRequire="Dubwise.Rimatomics"><success>Always</success>
-          <xpath>Defs/ThingDef[(defName="Apparel_MoppSuitDesert" or defName="Apparel_MoppSuitWoodland" or defName="Apparel_MoppSuitSnow") and not(modExtensions)]</xpath>
-          <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="Dubwise.Rimatomics"><success>Always</success>
-          <xpath>Defs/ThingDef[(defName="Apparel_MoppSuitDesert" or defName="Apparel_MoppSuitWoodland" or defName="Apparel_MoppSuitSnow") and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+       the airway at runtime. MOPP mask uses airwaySealed, with the filter harmless underneath.
+       PatchOperationAddModExtension coexists with any modExtension the source mod adds; the li-guard keeps
+       it idempotent. -->
+  <Operation Class="PatchOperationAddModExtension" MayRequire="Dubwise.Rimatomics"><success>Always</success>
+          <xpath>Defs/ThingDef[(defName="Apparel_MoppSuitDesert" or defName="Apparel_MoppSuitWoodland" or defName="Apparel_MoppSuitSnow") and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]</xpath>
           <value>
             <li Class="Contagion.ApparelContagionProtection">
               <skinSeal>0.95</skinSeal>
@@ -18,12 +16,8 @@
           </value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd" MayRequire="Dubwise.Rimatomics"><success>Always</success>
-          <xpath>Defs/ThingDef[(defName="Apparel_MoppMaskDesert" or defName="Apparel_MoppMaskWoodland" or defName="Apparel_MoppMaskSnow") and not(modExtensions)]</xpath>
-          <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="Dubwise.Rimatomics"><success>Always</success>
-          <xpath>Defs/ThingDef[(defName="Apparel_MoppMaskDesert" or defName="Apparel_MoppMaskWoodland" or defName="Apparel_MoppMaskSnow") and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension" MayRequire="Dubwise.Rimatomics"><success>Always</success>
+          <xpath>Defs/ThingDef[(defName="Apparel_MoppMaskDesert" or defName="Apparel_MoppMaskWoodland" or defName="Apparel_MoppMaskSnow") and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]</xpath>
           <value>
             <li Class="Contagion.ApparelContagionProtection">
               <airwaySealed>true</airwaySealed>
@@ -32,12 +26,8 @@
           </value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd" MayRequire="Dubwise.Rimatomics"><success>Always</success>
-          <xpath>Defs/ThingDef[defName="Apparel_RadiationSuit" and not(modExtensions)]</xpath>
-          <value><modExtensions /></value>
-  </Operation>
-  <Operation Class="PatchOperationAdd" MayRequire="Dubwise.Rimatomics"><success>Always</success>
-          <xpath>Defs/ThingDef[defName="Apparel_RadiationSuit" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension" MayRequire="Dubwise.Rimatomics"><success>Always</success>
+          <xpath>Defs/ThingDef[defName="Apparel_RadiationSuit" and not(modExtensions/li[@Class="Contagion.ApparelContagionProtection"])]</xpath>
           <value>
             <li Class="Contagion.ApparelContagionProtection">
               <skinSeal>0.6</skinSeal>

@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Patch>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Flu" and not(modExtensions)]</xpath>
-    <value>
-      <modExtensions />
-    </value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/HediffDef[defName="Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
@@ -118,14 +112,8 @@
     </value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Animal_Flu" and not(modExtensions)]</xpath>
-    <value>
-      <modExtensions />
-    </value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Animal_Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/HediffDef[defName="Animal_Flu" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
@@ -221,14 +209,8 @@
     </value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Plague" and not(modExtensions)]</xpath>
-    <value>
-      <modExtensions />
-    </value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Plague" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/HediffDef[defName="Plague" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>2.0</incubationDays>
@@ -409,14 +391,8 @@
   <!-- Redesigned: enters via contaminated water (environmental) and infected animal meat
        (butchering chain). Spreads within the colony via contaminated food and vomit fomite.
        Animals also carry it, meaning infected animal carcasses are unsafe to butcher. -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="GutWorms" and not(modExtensions)]</xpath>
-    <value>
-      <modExtensions />
-    </value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="GutWorms" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/HediffDef[defName="GutWorms" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>2.0</incubationDays>
@@ -692,14 +668,8 @@
        Trichinella-type larvae contracted by eating raw or improperly cooked meat from infected
        animals. No person-to-person spread and no vomiting — the main chain is:
        environment → animal → butchered meat → human, with direct outdoor environmental exposure also possible. -->
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="MuscleParasites" and not(modExtensions)]</xpath>
-    <value>
-      <modExtensions />
-    </value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="MuscleParasites" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/HediffDef[defName="MuscleParasites" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>3.0</incubationDays>
@@ -931,14 +901,8 @@
     </value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Malaria" and not(modExtensions)]</xpath>
-    <value>
-      <modExtensions />
-    </value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="Malaria" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/HediffDef[defName="Malaria" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
@@ -1027,14 +991,8 @@
     </value>
   </Operation>
 
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="SleepingSickness" and not(modExtensions)]</xpath>
-    <value>
-      <modExtensions />
-    </value>
-  </Operation>
-  <Operation Class="PatchOperationAdd">
-    <xpath>Defs/HediffDef[defName="SleepingSickness" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]/modExtensions</xpath>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>Defs/HediffDef[defName="SleepingSickness" and not(modExtensions/li[@Class="Contagion.TransmissionProfile"])]</xpath>
     <value>
       <li Class="Contagion.TransmissionProfile">
         <incubationDays>1.0</incubationDays>
